@@ -12,6 +12,6 @@ export class AuthController {
   @Post('login')
   login(@Req() req: express.Request) {
     const user = req.user as User;
-    return this.authService.login({ sub: user.id });
+    return this.authService.login({ sub: user.id, profileId: user.profile.id });
   }
 }

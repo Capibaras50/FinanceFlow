@@ -47,6 +47,7 @@ export class UsersService {
   async findUserByEmail(email: string) {
     const user = await this.usersRepository.findOne({
       where: { email, deletedAt: undefined },
+      relations: ['profile'],
     });
     return user;
   }

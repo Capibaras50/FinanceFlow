@@ -33,8 +33,6 @@ export class Category {
   @JoinColumn({ name: 'profile_id', referencedColumnName: 'id' })
   profile: Profile;
 
-  // Earnings: Earning[];
-
   @ManyToMany(() => Earning, (earning) => earning.categories)
   earnings: Earning[];
 
