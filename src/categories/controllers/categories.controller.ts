@@ -8,6 +8,7 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
+  HttpCode,
 } from '@nestjs/common';
 import { CategoriesService } from '../services/categories.service';
 import { CreateCategoryDto } from '../dto/create-category.dto';
@@ -50,6 +51,7 @@ export class CategoriesController {
     return this.categoriesService.update(id, updateCategoryDto, profileId);
   }
 
+  @HttpCode(204)
   @Delete(':id')
   remove(
     @Param('id', ParseIntPipe) id: number,

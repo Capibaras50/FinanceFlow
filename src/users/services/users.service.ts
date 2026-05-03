@@ -8,12 +8,14 @@ import { UpdateUserDto } from '../dto/update-user.dto';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { CategoriesService } from 'src/categories/services/categories.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private categoriesService: CategoriesService,
   ) {}
   async findAll() {
     const users = await this.usersRepository.find({
@@ -56,6 +58,7 @@ export class UsersService {
     try {
       const createdUser = this.usersRepository.create(createUserDto);
       const newUser = await this.usersRepository.save(createdUser);
+      await this.categoriesService.createBaseCateogories(newUser.profile.id);
       return newUser;
     } catch {
       throw new BadRequestException('The user couldnt be created');

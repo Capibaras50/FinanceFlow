@@ -4,15 +4,16 @@ import { Profile } from 'src/users/entities/profile.entity';
 import {
   Column,
   CreateDateColumn,
-  DeleteDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 
+@Unique(['name', 'profile'])
 @Entity('wallets')
 export class Wallet {
   @PrimaryGeneratedColumn('increment')
@@ -48,11 +49,4 @@ export class Wallet {
     default: () => 'NOW()',
   })
   updatedAt: Date;
-
-  @DeleteDateColumn({
-    name: 'deleted_at',
-    type: 'timestamp with time zone',
-    nullable: true,
-  })
-  deletedAt: Date;
 }

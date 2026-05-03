@@ -4,7 +4,6 @@ import { Profile } from 'src/users/entities/profile.entity';
 import {
   Column,
   CreateDateColumn,
-  DeleteDateColumn,
   Entity,
   JoinColumn,
   ManyToMany,
@@ -52,11 +51,4 @@ export class Category {
     default: () => 'NOW()',
   })
   updatedAt: Date;
-
-  @DeleteDateColumn({
-    name: 'deleted_at',
-    type: 'timestamp with time zone',
-    nullable: true,
-  })
-  deletedAt: Date;
 }
