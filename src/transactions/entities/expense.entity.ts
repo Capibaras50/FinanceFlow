@@ -10,9 +10,11 @@ import {
   JoinTable,
   ManyToMany,
   ManyToOne,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Receipt } from './receipt.entity';
 
 @Entity('expenses')
 export class Expense {
@@ -41,10 +43,11 @@ export class Expense {
   categories: Category[];
 
   @ManyToOne(() => Profile, (profile) => profile.expenses)
-  @JoinColumn({ name: 'profile_id' })
+  @JoinColumn({ name: 'profile_id', referencedColumnName: 'id' })
   profile: Profile;
 
-  // Receipt
+  @OneToOne(() => Receipt, (receipt) => receipt.expense, { nullable: true })
+  receipt: Receipt;
 
   @CreateDateColumn({
     name: 'created_at',

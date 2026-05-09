@@ -5,7 +5,6 @@ import { Type } from 'class-transformer';
 import { UpdateProfileDto } from './update-profile.dto';
 import { Profile } from '../entities/profile.entity';
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 export class UpdateUserDto extends PartialType(CreateUserDto) {
   @ValidateNested()
   @Type(() => UpdateProfileDto)
