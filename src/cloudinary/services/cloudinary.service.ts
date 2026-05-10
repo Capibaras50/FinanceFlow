@@ -7,7 +7,6 @@ import axios from 'axios';
 export class CloudinaryService {
   uploadFile(file: Express.Multer.File) {
     return new Promise((resolve, reject) => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const upload = cloudinary.uploader.upload_stream(
         {
           folder: 'finance-flow',
@@ -24,7 +23,6 @@ export class CloudinaryService {
         },
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       streamifier.createReadStream(file.buffer).pipe(upload);
     });
   }
@@ -34,7 +32,8 @@ export class CloudinaryService {
       responseType: 'arraybuffer',
     });
 
-    const contentType = response.headers['Content-Type'];
+    const contentType = (response.headers['content-type'] ||
+      response.headers['Content-Type']) as string;
     const base64 = Buffer.from(response.data).toString('base64');
 
     return { mimeType: contentType, base64 };

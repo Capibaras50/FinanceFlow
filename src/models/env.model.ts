@@ -6,4 +6,8 @@ export interface Env {
   USER_DB: string;
   HOST_DB: string;
   SECRET_ACCESS_KEY: string;
+  CLOUDINARY_CLOUD_NAME: string;
+  CLOUDINARY_API_KEY: string;
+  CLOUDINARY_API_SECRET: string;
+  AI_URL: string;
 }
