@@ -5,7 +5,7 @@ import axios from 'axios';
 
 @Injectable()
 export class CloudinaryService {
-  uploadFile(file: Express.Multer.File) {
+  async uploadFile(file: Express.Multer.File) {
     return new Promise((resolve, reject) => {
       const upload = cloudinary.uploader.upload_stream(
         {
@@ -16,10 +16,12 @@ export class CloudinaryService {
           if (err) {
             const message =
               err instanceof Error ? err.message : 'Upload failed';
-            reject(new Error(message));
-          } else {
-            resolve(result);
+            return reject(new Error(message));
           }
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          const url = (result as any)?.secure_url || (result as any)?.url;
+          if (!url) return reject(new Error('Upload failed: No URL returned'));
+          resolve(url);
         },
       );
 
@@ -34,8 +36,10 @@ export class CloudinaryService {
 
     const contentType = (response.headers['content-type'] ||
       response.headers['Content-Type']) as string;
-    const base64 = Buffer.from(response.data).toString('base64');
+    const buffer = Buffer.from(response.data);
+    const base64 = buffer.toString('base64');
+    const sizeBytes = buffer.byteLength;
 
-    return { mimeType: contentType, base64 };
+    return { mimeType: contentType, base64, sizeBytes };
   }
 }

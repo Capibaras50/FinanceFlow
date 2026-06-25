@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CategoriesService } from 'src/categories/services/categories.service';
+import { WalletsService } from 'src/wallets/services/wallets.service';
 
 @Injectable()
 export class UsersService {
@@ -16,6 +17,7 @@ export class UsersService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private categoriesService: CategoriesService,
+    private walletsService: WalletsService,
   ) {}
   async findAll() {
     const users = await this.usersRepository.find({
@@ -59,6 +61,7 @@ export class UsersService {
       const createdUser = this.usersRepository.create(createUserDto);
       const newUser = await this.usersRepository.save(createdUser);
       await this.categoriesService.createBaseCateogories(newUser.profile.id);
+      await this.walletsService.createBaseWallets(newUser.profile.id);
       return newUser;
     } catch {
       throw new BadRequestException('The user couldnt be created');

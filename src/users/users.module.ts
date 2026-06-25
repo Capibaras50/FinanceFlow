@@ -5,9 +5,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Profile } from './entities/profile.entity';
 import { CategoriesModule } from 'src/categories/categories.module';
+import { WalletsModule } from 'src/wallets/wallets.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Profile]), CategoriesModule],
+  imports: [
+    TypeOrmModule.forFeature([User, Profile]),
+    CategoriesModule,
+    WalletsModule,
+  ],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],

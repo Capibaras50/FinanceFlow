@@ -56,7 +56,7 @@ export class Receipt {
   @OneToOne(() => Expense, (expense) => expense.receipt, {
     onDelete: 'CASCADE',
     cascade: true,
-    nullable: true,
+    nullable: false,
   })
   @JoinColumn({ name: 'expense_id', referencedColumnName: 'id' })
   expense: Expense;

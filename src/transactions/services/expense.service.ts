@@ -3,13 +3,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DeepPartial, Repository } from 'typeorm';
+import { DeepPartial, Repository, DataSource } from 'typeorm';
 import { Expense } from '../entities/expense.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateExpenseDto } from '../dto/create-expense.dto';
 import { UpdateExpenseDto } from '../dto/update-expense.dto';
 import { WalletsService } from 'src/wallets/services/wallets.service';
 import { CategoriesService } from 'src/categories/services/categories.service';
+import { Receipt } from '../entities/receipt.entity';
+import { ReceiptStatus } from '../enums/receipt.enums';
+import { ReceiptService } from './receipt.service';
 
 @Injectable()
 export class ExpenseService {
@@ -18,6 +21,8 @@ export class ExpenseService {
     private expensesRepository: Repository<Expense>,
     private walletsService: WalletsService,
     private categoriesService: CategoriesService,
+    private receiptsService: ReceiptService,
+    private dataSource: DataSource,
   ) {}
 
   async create(createExpenseDto: CreateExpenseDto, profileId: number) {
@@ -110,10 +115,13 @@ export class ExpenseService {
         changes.categories = categories;
       }
 
-      // if (updateExpenseDto.receiptId !== undefined) {
-      //   const receipt = await this.receiptsService.findOne(updateExpenseDto.receiptId, profileId);
-      //   changes['receipt'] = { id: receipt.id };
-      // }
+      if (updateExpenseDto.receiptId !== undefined) {
+        const receipt = await this.receiptsService.findOne(
+          updateExpenseDto.receiptId,
+          profileId,
+        );
+        changes.receipt = { id: receipt.id };
+      }
 
       const mergedExpense = this.expensesRepository.merge(expense, changes);
       const savedExpense = await this.expensesRepository.save(mergedExpense);
@@ -121,6 +129,70 @@ export class ExpenseService {
     } catch {
       throw new BadRequestException('The Expense Could Not Be Updated');
     }
+  }
+
+  async createExpenseFromReceipt(
+    nameExpense: string,
+    descriptionExpense: string,
+    valueExpense: number,
+    walletName: string,
+    categoryName: string,
+    profileId: number,
+    fileName: string,
+    sizeBytes: number,
+    mimeType: string,
+    receiptUrl: string,
+    extractionConfidence: number,
+    jobId: string | undefined,
+    attempts: number,
+    lastError: string | undefined,
+  ) {
+    return await this.dataSource
+      .transaction(async (manager) => {
+        const walletId = await this.walletsService.findByName(
+          walletName,
+          profileId,
+        );
+        const categoriesId = await this.categoriesService.findByName(
+          categoryName,
+          profileId,
+        );
+        const newExpense: DeepPartial<Expense> = {
+          name: nameExpense,
+          description: descriptionExpense,
+          value: valueExpense,
+          categories: categoriesId.map((id) => ({ id })),
+          wallet: { id: walletId },
+          receipt: undefined,
+          profile: { id: profileId },
+        };
+        const createdExpense = manager.create(Expense, newExpense);
+        await manager.save(createdExpense);
+        const newReceipt: DeepPartial<Receipt> = {
+          fileName,
+          extractionConfidence,
+          fileUrl: receiptUrl,
+          fileSizeBytes: sizeBytes,
+          mimeType,
+          status: ReceiptStatus.PENDING,
+          jobId,
+          attempts,
+          lastError,
+          expense: createdExpense,
+          profile: { id: profileId },
+        };
+        const createdReceipt = manager.create(Receipt, newReceipt);
+        await manager.save(createdReceipt);
+        const mergedExpense = manager.merge(Expense, createdExpense, {
+          receipt: createdReceipt,
+        });
+        return await manager.save(mergedExpense);
+      })
+      .catch(() => {
+        throw new BadRequestException(
+          'The Expense Could Not Be Created From Receipt',
+        );
+      });
   }
 
   async remove(id: number, profileId: number) {

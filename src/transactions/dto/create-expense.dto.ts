@@ -35,5 +35,5 @@ export class CreateExpenseDto {
 
   @IsNumber()
   @IsOptional()
-  receiptId: number;
+  receiptId?: number;
 }

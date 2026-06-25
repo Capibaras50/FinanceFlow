@@ -49,6 +49,57 @@ export class WalletsService {
     return wallet;
   }
 
+  async findByName(name: string, profileId: number) {
+    const wallets = await this.findAll(profileId);
+    const filteredWallets = wallets.filter((wallet) =>
+      wallet.name.toLowerCase().includes(name.toLowerCase()),
+    );
+    return filteredWallets[0]?.id ?? wallets[0]?.id;
+  }
+
+  async createBaseWallets(profileId: number) {
+    try {
+      const baseWallets = [
+        {
+          name: 'Efectivo',
+        },
+        {
+          name: 'Cuenta Bancaria',
+        },
+        {
+          name: 'Tarjeta Debito',
+        },
+        {
+          name: 'Tarjeta Credito',
+        },
+        {
+          name: 'Ahorros',
+        },
+        {
+          name: 'Inversiones',
+        },
+        {
+          name: 'Billeteras Digitales',
+        },
+        {
+          name: 'Otros',
+        },
+      ];
+      await this.walletRepository.insert(
+        baseWallets.map((wallet) => ({
+          name: wallet.name,
+          profile: { id: profileId },
+        })),
+      );
+      return {
+        success: true,
+        message: `${baseWallets.length} base wallets created successfully`,
+      };
+    } catch {
+      throw new BadRequestException('The Base Wallets Couldnt Be Created');
+    }
+  }
+
   async update(id: number, changes: UpdateWalletDto, profileId: number) {
     try {
       const wallet = await this.findOne(id, profileId);

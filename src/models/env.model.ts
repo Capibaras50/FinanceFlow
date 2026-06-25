@@ -10,4 +10,6 @@ export interface Env {
   CLOUDINARY_API_KEY: string;
   CLOUDINARY_API_SECRET: string;
   AI_URL: string;
+  HOST_QUEUE: string;
+  PORT_QUEUE: number;
 }

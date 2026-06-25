@@ -62,6 +62,15 @@ export class CategoriesService {
     return category;
   }
 
+  async findByName(name: string, profileId: number) {
+    const categories = await this.findAll(profileId);
+    const filteredCategories = categories.filter((category) =>
+      category.name.toLowerCase().includes(name.toLowerCase()),
+    );
+    const idsCategories = filteredCategories.map((category) => category.id);
+    return idsCategories ?? [categories[0].id];
+  }
+
   async createBaseCateogories(profileId: number) {
     try {
       const baseCategories = [

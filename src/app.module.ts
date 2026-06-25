@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { WalletsModule } from './wallets/wallets.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -24,6 +25,15 @@ import { WalletsModule } from './wallets/wallets.module';
         type: 'postgres',
         autoLoadEntities: true,
         synchronize: true,
+      }),
+    }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService<Env>) => ({
+        connection: {
+          host: configService.get('HOST_QUEUE', { infer: true }),
+          port: configService.get('PORT_QUEUE', { infer: true }),
+        },
       }),
     }),
     UsersModule,
