@@ -1,6 +1,6 @@
 # compiled output
 /dist
-/node_modules
+node_modules
 /build
 
 # Logs
@@ -41,6 +41,28 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+
+# Expo
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Android
+android/.gradle/
+android/app/build/
+android/.idea/
+*.apk
+*.aab
+
+# iOS
+ios/Pods/
+ios/build/
+ios/*.xcworkspace
+ios/.xcode.env.local
 
 # temp directory
 .temp

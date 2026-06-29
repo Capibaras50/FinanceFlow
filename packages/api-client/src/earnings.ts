@@ -1,0 +1,34 @@
+import type { Earning } from '@finance-flow/shared-types';
+import type { ApiClient } from './client';
+
+export interface CreateEarningDto {
+  name: string;
+  description?: string;
+  value: number;
+  walletId: number;
+  categoriesId: number[];
+}
+
+export class EarningsApi {
+  constructor(private client: ApiClient) {}
+
+  getAll(): Promise<Earning[]> {
+    return this.client.get<Earning[]>('/earnings');
+  }
+
+  getById(id: number): Promise<Earning> {
+    return this.client.get<Earning>(`/earnings/${id}`);
+  }
+
+  create(dto: CreateEarningDto): Promise<Earning> {
+    return this.client.post<Earning>('/earnings', dto);
+  }
+
+  update(id: number, dto: Partial<CreateEarningDto>): Promise<Earning> {
+    return this.client.patch<Earning>(`/earnings/${id}`, dto);
+  }
+
+  delete(id: number): Promise<void> {
+    return this.client.delete<void>(`/earnings/${id}`);
+  }
+}
