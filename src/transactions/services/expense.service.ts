@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DeepPartial, Repository, DataSource } from 'typeorm';
+import { DeepPartial, Repository, DataSource, Between, In } from 'typeorm';
 import { Expense } from '../entities/expense.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateExpenseDto } from '../dto/create-expense.dto';
@@ -13,6 +13,8 @@ import { CategoriesService } from 'src/categories/services/categories.service';
 import { Receipt } from '../entities/receipt.entity';
 import { ReceiptStatus } from '../enums/receipt.enums';
 import { ReceiptService } from './receipt.service';
+import { TopCategoriesInterface } from '../interfaces/top-categories.interface';
+import { TotalExpensesInterface } from '../interfaces/monthly-summary.interface';
 
 @Injectable()
 export class ExpenseService {
@@ -78,6 +80,74 @@ export class ExpenseService {
       throw new NotFoundException('The Expense Not Found');
     }
     return expense;
+  }
+
+  async findExpensesByCategory(categoriesIds: number[], profileId: number) {
+    const [expenses, total] = await this.expensesRepository.findAndCount({
+      where: {
+        categories: In(categoriesIds),
+        profile: { id: profileId },
+        deletedAt: undefined,
+      },
+      relations: ['categories', 'wallet'],
+    });
+    const addition = await this.expensesRepository.sum('value', {
+      categories: In(categoriesIds),
+      profile: { id: profileId },
+      deletedAt: undefined,
+    });
+    return {
+      expenses,
+      totalExpenses: total,
+      addition,
+    };
+  }
+
+  async findExpensesByDateRange(
+    startDate: Date,
+    endDate: Date,
+    profileId: number,
+  ) {
+    const expenses = await this.expensesRepository.find({
+      where: {
+        createdAt: Between(startDate, endDate),
+        profile: { id: profileId },
+      },
+      relations: ['categories', 'wallet'],
+    });
+    return expenses;
+  }
+
+  async getTopCategories(profileId: number, take: number) {
+    const categories = await this.expensesRepository
+      .createQueryBuilder('expense')
+      .leftJoin('expense.categories', 'category')
+      .select('category.id', 'id')
+      .addSelect('category.name', 'name')
+      .addSelect('SUM(expense.value)', 'total')
+      .addSelect('COUNT(expense.id)', 'count')
+      .where('expense.profile.id = :profileId', { profileId })
+      .groupBy('category.id')
+      .addGroupBy('category.name')
+      .orderBy({
+        'SUM(expense.value)': 'DESC',
+      })
+      .take(take)
+      .getRawMany<TopCategoriesInterface>();
+
+    return categories;
+  }
+
+  async getTotalExpenses(profileId: number, month: number) {
+    const totalExpenses = await this.expensesRepository
+      .createQueryBuilder('expenses')
+      .select('COALESCE(SUM(expenses.value), 0)', 'totalExpenses')
+      .addSelect('COUNT(expenses.id)', 'numExpenses')
+      .where('expenses.profile.id = :profileId', { profileId, month })
+      .andWhere('EXTRACT(MONTH FROM expenses.createdAt) = :month', { month })
+      .andWhere('expenses.deletedAt IS NULL')
+      .getRawOne<TotalExpensesInterface>();
+    return totalExpenses;
   }
 
   async update(

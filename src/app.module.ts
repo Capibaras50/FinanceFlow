@@ -8,6 +8,8 @@ import { CategoriesModule } from './categories/categories.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { BullModule } from '@nestjs/bullmq';
+import { FinancialToolsModule } from './financial-tools/financial-tools.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { BullModule } from '@nestjs/bullmq';
     CategoriesModule,
     TransactionsModule,
     WalletsModule,
+    FinancialToolsModule,
+    ChatModule,
   ],
 })
 export class AppModule {}
