@@ -1,9 +1,11 @@
-import { Controller, Post, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, UseGuards, Req, Query, Body } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import express from 'express';
 import { AuthService } from '../services/auth.service';
 import { User } from 'src/users/entities/user.entity';
 import { Throttle } from '@nestjs/throttler';
+import { ForgotPasswordDto } from '../dto/forgot-password.dto';
+import { ResetPasswordDto } from '../dto/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -15,5 +17,22 @@ export class AuthController {
   login(@Req() req: express.Request) {
     const user = req.user as User;
     return this.authService.login({ sub: user.id, profileId: user.profile.id });
+  }
+
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Post('forgot-password')
+  forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.recoveryPassword(forgotPasswordDto.email);
+  }
+
+  @Post('reset-password')
+  resetPassword(
+    @Query('token') recoveryToken: string,
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ) {
+    return this.authService.changePassword(
+      recoveryToken,
+      resetPasswordDto.password,
+    );
   }
 }

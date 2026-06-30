@@ -1,5 +1,6 @@
 import { MailerService } from '@nestjs-modules/mailer';
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { join } from 'node:path';
 
 @Injectable()
 export class MailService {
@@ -17,6 +18,13 @@ export class MailService {
         to,
         subject,
         text: message,
+        attachments: [
+          {
+            filename: 'logo.png',
+            path: join(process.cwd(), 'assets', 'images', 'logo.png'),
+            cid: 'financeflow-logo',
+          },
+        ],
       };
       if (from) {
         options['from'] = from;

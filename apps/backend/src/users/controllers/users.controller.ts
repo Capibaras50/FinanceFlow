@@ -52,7 +52,7 @@ export class UsersController {
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @Patch()
+  @Patch('change-password')
   changePassword(
     @GetUser('userId') userId: number,
     @Body() changePasswordDto: ChangePasswordDto,

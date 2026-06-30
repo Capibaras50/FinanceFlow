@@ -33,6 +33,16 @@ export class User {
   @JoinColumn({ name: 'profile_id', referencedColumnName: 'id' })
   profile: Profile;
 
+  @Column({ name: 'recovery_token_hash', type: 'text', nullable: true })
+  recoveryTokenHash: string;
+
+  @Column({
+    name: 'recovery_token_expires_at',
+    type: 'timestamp with time zone',
+    nullable: true,
+  })
+  recoveryTokenExpiresAt: Date;
+
   @CreateDateColumn({
     name: 'created_at',
     type: 'timestamp with time zone',

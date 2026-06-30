@@ -71,6 +71,39 @@ export class UsersService {
     }
   }
 
+  async saveRecoveryToken(id: number, hashRecoveryToken: string) {
+    const user = await this.findOne(id);
+    const recoveryTokenExpiresAt = new Date();
+    recoveryTokenExpiresAt.setMinutes(recoveryTokenExpiresAt.getMinutes() + 15);
+    const mergedUser = this.usersRepository.merge(user, {
+      recoveryTokenHash: hashRecoveryToken,
+      recoveryTokenExpiresAt,
+    });
+    return await this.usersRepository.save(mergedUser);
+  }
+
+  async findUserByRecoveryToken(hashRecoveryToken: string) {
+    const user = await this.usersRepository.findOne({
+      where: {
+        recoveryTokenHash: hashRecoveryToken,
+      },
+    });
+    if (!user) {
+      throw new UnauthorizedException('Invalid Recovery Token');
+    }
+    return user;
+  }
+
+  async recoveryPassword(id: number, hashPassword: string) {
+    const user = await this.findOne(id);
+    const mergedUser = this.usersRepository.merge(user, {
+      password: hashPassword,
+      recoveryTokenExpiresAt: undefined,
+      recoveryTokenHash: undefined,
+    });
+    await this.usersRepository.save(mergedUser);
+  }
+
   async update(id: number, updateUserDto: UpdateUserDto) {
     try {
       const user = await this.findOne(id);
@@ -83,26 +116,22 @@ export class UsersService {
   }
 
   async changePassword(id: number, changePasswordDto: ChangePasswordDto) {
-    try {
-      const user = await this.findOne(id);
-      if (!user) {
-        throw new NotFoundException('The User Not Found');
-      }
-      const isMatch = await compare(
-        changePasswordDto.currentPassword,
-        user.password,
-      );
-      if (!isMatch) {
-        throw new UnauthorizedException();
-      }
-      const hashPassword = await hash(changePasswordDto.newPassword, 10);
-      const mergedUser = this.usersRepository.merge(user, {
-        password: hashPassword,
-      });
-      return await this.usersRepository.save(mergedUser);
-    } catch {
-      throw new BadRequestException('The Password Couldnt Be Updated');
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException('The User Not Found');
     }
+    const isMatch = await compare(
+      changePasswordDto.currentPassword,
+      user.password,
+    );
+    if (!isMatch) {
+      throw new UnauthorizedException();
+    }
+    const hashPassword = await hash(changePasswordDto.newPassword, 10);
+    const mergedUser = this.usersRepository.merge(user, {
+      password: hashPassword,
+    });
+    return await this.usersRepository.save(mergedUser);
   }
 
   async remove(id: number) {

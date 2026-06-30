@@ -16,4 +16,5 @@ export interface Env {
   EMAIL_PASS: string;
   EMAIL_PORT: number;
   EMAIL_HOST: string;
+  RECOVERY_PASSWORD_URL: string;
 }
