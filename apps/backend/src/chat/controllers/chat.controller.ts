@@ -14,12 +14,14 @@ import { ChatService } from '../services/chat.service';
 import { CreateChatDto } from '../dto/create-chat.dto';
 import { GetUser } from 'src/decorators/get-user.decorator';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('chat')
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
+  @Throttle({ default: { ttl: 600000, limit: 10 } })
   @Post()
   create(
     @Body() createChatDto: CreateChatDto,

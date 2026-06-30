@@ -10,6 +10,8 @@ import { WalletsModule } from './wallets/wallets.module';
 import { BullModule } from '@nestjs/bullmq';
 import { FinancialToolsModule } from './financial-tools/financial-tools.module';
 import { ChatModule } from './chat/chat.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -38,6 +40,12 @@ import { ChatModule } from './chat/chat.module';
         },
       }),
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 60,
+      },
+    ]),
     UsersModule,
     AuthModule,
     CategoriesModule,
@@ -45,6 +53,12 @@ import { ChatModule } from './chat/chat.module';
     WalletsModule,
     FinancialToolsModule,
     ChatModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}
