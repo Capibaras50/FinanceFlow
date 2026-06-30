@@ -1,6 +1,16 @@
-import { Controller, Post, UseGuards, Req, Query, Body } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  UseGuards,
+  Req,
+  Query,
+  Body,
+  Res,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import express from 'express';
+import type express from 'express';
+import type { Response } from 'express';
 import { AuthService } from '../services/auth.service';
 import { User } from 'src/users/entities/user.entity';
 import { Throttle } from '@nestjs/throttler';
@@ -23,6 +33,15 @@ export class AuthController {
   @Post('forgot-password')
   forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.recoveryPassword(forgotPasswordDto.email);
+  }
+
+  @Get('recovery-password')
+  recoveryPasswordRedirect(
+    @Query('token') recoveryToken: string,
+    @Res() res: Response,
+  ) {
+    const deepLink = `finance-flow://reset-password?token=${encodeURIComponent(recoveryToken || '')}`;
+    res.redirect(302, deepLink);
   }
 
   @Post('reset-password')

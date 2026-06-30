@@ -13,6 +13,11 @@ export interface UpdateUserDto {
   profile?: { name?: string; avatarUrl?: string };
 }
 
+export interface ChangePasswordDto {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export class UsersApi {
   constructor(private client: ApiClient) {}
 
@@ -34,5 +39,9 @@ export class UsersApi {
 
   delete(): Promise<void> {
     return this.client.delete<void>('/users');
+  }
+
+  changePassword(dto: ChangePasswordDto): Promise<{ message: string }> {
+    return this.client.patch<{ message: string }>('/users/change-password', dto);
   }
 }

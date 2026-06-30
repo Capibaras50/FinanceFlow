@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,10 +9,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
+import { useNavigation } from '@react-navigation/native';
+import type { AuthNavigationProp } from '../../navigation/types';
 
-export function LoginScreen({ navigation }: any) {
+export function LoginScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<AuthNavigationProp>();
   const { login } = useAuth();
   const { showError } = useSnackbar();
   const [email, setEmail] = useState('');
@@ -37,19 +40,12 @@ export function LoginScreen({ navigation }: any) {
       style={{ flex: 1, backgroundColor: colors.background }}
     >
       <View style={{ flex: 1, paddingTop: insets.top + spacing['2xl'], paddingHorizontal: spacing.container }}>
-        <View style={{ alignItems: 'center', marginBottom: spacing['2xl'] }}>
+        <View style={styles.header}>
           <LinearGradient
             colors={colors.gradient.primary}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 22,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: spacing.md,
-            }}
+            style={styles.logoCircle}
           >
             <Ionicons name="wallet" size={36} color="#FFFFFF" />
           </LinearGradient>
@@ -80,7 +76,7 @@ export function LoginScreen({ navigation }: any) {
             />
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
-              style={{ position: 'absolute', right: 12, bottom: 14 }}
+              style={styles.eyeIcon}
             >
               <Ionicons
                 name={showPassword ? 'eye-off' : 'eye'}
@@ -89,6 +85,15 @@ export function LoginScreen({ navigation }: any) {
               />
             </TouchableOpacity>
           </View>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ForgotPassword')}
+            style={styles.forgotLink}
+          >
+            <Text style={[typography.bodySm, { color: colors.primary }]}>
+              ¿Olvidaste tu contraseña?
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <GradientButton
@@ -100,14 +105,7 @@ export function LoginScreen({ navigation }: any) {
 
         <TouchableOpacity
           onPress={() => navigation.navigate('Register')}
-          style={{
-            marginTop: spacing.md,
-            paddingVertical: spacing.md,
-            borderRadius: borderRadius.full,
-            borderWidth: 1.5,
-            borderColor: colors.primary,
-            alignItems: 'center',
-          }}
+          style={styles.registerButton}
         >
           <Text style={[typography.labelLg, { color: colors.primary }]}>
             Registrarse
@@ -117,3 +115,35 @@ export function LoginScreen({ navigation }: any) {
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    alignItems: 'center',
+    marginBottom: spacing['2xl'],
+  },
+  logoCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 12,
+    bottom: 14,
+  },
+  forgotLink: {
+    alignSelf: 'flex-end',
+    marginTop: spacing.xs,
+  },
+  registerButton: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.full,
+    borderWidth: 1.5,
+    borderColor: '#7C3AED',
+    alignItems: 'center',
+  },
+});

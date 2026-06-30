@@ -9,6 +9,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
+import { useNavigation } from '@react-navigation/native';
+import type { AuthNavigationProp } from '../../navigation/types';
 
 const passwordRules = [
   { key: 'min', label: 'Al menos 8 caracteres', test: (p: string) => p.length >= 8 },
@@ -34,7 +36,8 @@ function RequirementRow({ label, met }: { label: string; met: boolean }) {
   );
 }
 
-export function RegisterScreen({ navigation }: any) {
+export function RegisterScreen() {
+  const navigation = useNavigation<AuthNavigationProp>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { register } = useAuth();
