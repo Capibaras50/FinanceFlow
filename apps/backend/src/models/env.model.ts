@@ -12,4 +12,8 @@ export interface Env {
   AI_URL: string;
   HOST_QUEUE: string;
   PORT_QUEUE: number;
+  EMAIL_USER: string;
+  EMAIL_PASS: string;
+  EMAIL_PORT: number;
+  EMAIL_HOST: string;
 }

@@ -12,6 +12,7 @@ import { FinancialToolsModule } from './financial-tools/financial-tools.module';
 import { ChatModule } from './chat/chat.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { APP_GUARD } from '@nestjs/core';
     WalletsModule,
     FinancialToolsModule,
     ChatModule,
+    MailModule,
   ],
   providers: [
     {

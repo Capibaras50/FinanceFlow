@@ -1,3 +1,4 @@
+import axios, { type AxiosInstance } from 'axios';
 import type { ApiError } from '@finance-flow/shared-types';
 
 export interface ApiConfig {
@@ -6,62 +7,40 @@ export interface ApiConfig {
 }
 
 export class ApiClient {
-  private config: ApiConfig;
+  private instance: AxiosInstance;
 
   constructor(config: ApiConfig) {
-    this.config = config;
-  }
+    this.instance = axios.create({ baseURL: config.baseUrl });
 
-  private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    const token = this.config.getToken?.();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    return headers;
-  }
-
-  async request<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-    formData?: FormData,
-  ): Promise<T> {
-    const url = `${this.config.baseUrl}${path}`;
-
-    const options: RequestInit = {
-      method,
-      headers: formData ? {} : this.getHeaders(),
-    };
-
-    if (body && !formData) {
-      options.body = JSON.stringify(body);
-    }
-
-    if (formData) {
-      const token = this.config.getToken?.();
+    this.instance.interceptors.request.use((reqConfig) => {
+      const token = config.getToken?.();
       if (token) {
-        options.headers = { Authorization: `Bearer ${token}` };
+        reqConfig.headers.Authorization = `Bearer ${token}`;
       }
-      options.body = formData;
-    }
+      return reqConfig;
+    });
+  }
 
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      const error: ApiError = await response.json().catch(() => ({
-        message: 'Unknown error',
-        statusCode: response.status,
-      }));
-      throw error;
+  async request<T>(method: string, path: string, body?: unknown, formData?: FormData): Promise<T> {
+    try {
+      const response = await this.instance.request<T>({
+        method: method as any,
+        url: path,
+        data: formData || body,
+        headers: formData ? {} : { 'Content-Type': 'application/json' },
+      });
+      return response.data;
+    } catch (error: any) {
+      if (axios.isAxiosError(error) && error.response) {
+        const data = error.response.data as any;
+        const apiError: ApiError = {
+          message: data?.message || error.message,
+          statusCode: error.response.status,
+        };
+        throw apiError;
+      }
+      throw { message: error?.message || 'Network error', statusCode: 0 };
     }
-
-    if (response.status === 204) {
-      return undefined as T;
-    }
-
-    return response.json();
   }
 
   get<T>(path: string): Promise<T> {

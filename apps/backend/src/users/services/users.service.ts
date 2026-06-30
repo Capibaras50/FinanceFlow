@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
@@ -10,6 +11,8 @@ import { User } from '../entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CategoriesService } from 'src/categories/services/categories.service';
 import { WalletsService } from 'src/wallets/services/wallets.service';
+import { compare, hash } from 'bcrypt';
+import { ChangePasswordDto } from '../dto/change-password.dto';
 
 @Injectable()
 export class UsersService {
@@ -76,6 +79,29 @@ export class UsersService {
       return updatedUser;
     } catch {
       throw new BadRequestException('The user couldnt be updated');
+    }
+  }
+
+  async changePassword(id: number, changePasswordDto: ChangePasswordDto) {
+    try {
+      const user = await this.findOne(id);
+      if (!user) {
+        throw new NotFoundException('The User Not Found');
+      }
+      const isMatch = await compare(
+        changePasswordDto.currentPassword,
+        user.password,
+      );
+      if (!isMatch) {
+        throw new UnauthorizedException();
+      }
+      const hashPassword = await hash(changePasswordDto.newPassword, 10);
+      const mergedUser = this.usersRepository.merge(user, {
+        password: hashPassword,
+      });
+      return await this.usersRepository.save(mergedUser);
+    } catch {
+      throw new BadRequestException('The Password Couldnt Be Updated');
     }
   }
 

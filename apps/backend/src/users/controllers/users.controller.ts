@@ -13,6 +13,7 @@ import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from '../../decorators/get-user.decorator';
+import { ChangePasswordDto } from '../dto/change-password.dto';
 
 @Controller('users')
 export class UsersController {
@@ -48,6 +49,15 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserDto,
   ) {
     return this.usersService.update(userId, updateUserDto);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Patch()
+  changePassword(
+    @GetUser('userId') userId: number,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return this.usersService.changePassword(userId, changePasswordDto);
   }
 
   @UseGuards(AuthGuard('jwt'))
