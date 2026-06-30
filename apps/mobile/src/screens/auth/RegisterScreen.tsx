@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { useState, useMemo } from 'react';
+import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,30 @@ import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
+
+const passwordRules = [
+  { key: 'min', label: 'Al menos 8 caracteres', test: (p: string) => p.length >= 8 },
+  { key: 'upper', label: 'Al menos una mayúscula', test: (p: string) => /[A-Z]/.test(p) },
+  { key: 'lower', label: 'Mínimo 5 minúsculas', test: (p: string) => (p.match(/[a-z]/g) || []).length >= 5 },
+  { key: 'number', label: 'Al menos un número', test: (p: string) => /[0-9]/.test(p) },
+  { key: 'symbol', label: 'Al menos un símbolo', test: (p: string) => /[^a-zA-Z0-9]/.test(p) },
+];
+
+function RequirementRow({ label, met }: { label: string; met: boolean }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+      <Ionicons
+        name={met ? 'checkmark-circle' : 'ellipse-outline'}
+        size={16}
+        color={met ? colors.success : colors.onSurfaceVariant}
+      />
+      <Text style={[typography.bodySm, { color: met ? colors.success : colors.onSurfaceVariant }]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
 
 export function RegisterScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -21,8 +45,18 @@ export function RegisterScreen({ navigation }: any) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const rules = useMemo(() =>
+    passwordRules.map(r => ({ ...r, met: r.test(password) })),
+    [password]
+  );
+
+  const allMet = rules.every(r => r.met);
+  const canSubmit = !loading && name && emailValid && allMet;
+
   const handleRegister = async () => {
-    if (!name || !email || !password) return;
+    if (!canSubmit) return;
     setLoading(true);
     try {
       await register(email, password, name);
@@ -37,7 +71,11 @@ export function RegisterScreen({ navigation }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <View style={{ flex: 1, paddingTop: insets.top + spacing['2xl'], paddingHorizontal: spacing.container }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingTop: insets.top + spacing['2xl'], paddingHorizontal: spacing.container, paddingBottom: insets.bottom + spacing['2xl'] }}
+        keyboardShouldPersistTaps="handled"
+      >
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={{
@@ -69,14 +107,19 @@ export function RegisterScreen({ navigation }: any) {
             value={name}
             onChangeText={setName}
           />
-          <Input
-            label="Correo electrónico"
-            placeholder="tu@correo.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+          <View>
+            <Input
+              label="Correo electrónico"
+              placeholder="tu@correo.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <View style={{ marginTop: spacing.xs, marginLeft: 4 }}>
+              <RequirementRow label="Formato de correo válido" met={email.length > 0 && emailValid} />
+            </View>
+          </View>
           <View>
             <Input
               label="Contraseña"
@@ -95,13 +138,18 @@ export function RegisterScreen({ navigation }: any) {
                 color={colors.onSurfaceVariant}
               />
             </TouchableOpacity>
+            <View style={{ marginTop: spacing.xs, marginLeft: 4, gap: 2 }}>
+              {rules.map(r => (
+                <RequirementRow key={r.key} label={r.label} met={r.met} />
+              ))}
+            </View>
           </View>
         </View>
 
         <GradientButton
           title="Crear Cuenta"
           onPress={handleRegister}
-          disabled={loading || !name || !email || !password}
+          disabled={!canSubmit}
           style={{ marginTop: spacing['2xl'] }}
         />
 
@@ -119,7 +167,7 @@ export function RegisterScreen({ navigation }: any) {
             <Text style={{ color: colors.primary, fontWeight: '600' }}>Inicia sesión</Text>
           </Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
