@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { CategoryChip } from '../../components/ui/CategoryChip';
 import { categoriesApi, walletsApi, earningsApi } from '../../services/api';
+import { useSnackbar } from '../../context/SnackbarContext';
 import type { Category, Wallet } from '@finance-flow/shared-types';
 
 export function AddEarningScreen({ navigation, route }: any) {
@@ -24,6 +25,7 @@ export function AddEarningScreen({ navigation, route }: any) {
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [selectedWallet, setSelectedWallet] = useState<number | null>(null);
+  const { showError } = useSnackbar();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -49,7 +51,9 @@ export function AddEarningScreen({ navigation, route }: any) {
       } else if (walData.length > 0) {
         setSelectedWallet(walData[0].id);
       }
-    } catch {}
+    } catch {
+      showError('Error al cargar datos');
+    }
   };
 
   const handleSave = async () => {
@@ -69,8 +73,8 @@ export function AddEarningScreen({ navigation, route }: any) {
         await earningsApi.create(dto);
       }
       navigation.goBack();
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      showError(e?.message || 'Error al guardar ingreso');
     } finally {
       setLoading(false);
     }

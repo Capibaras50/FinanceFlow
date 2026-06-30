@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
+import { useSnackbar } from '../../context/SnackbarContext';
 import { getTokenSync } from '../../services/storage';
 
 export function ReceiptScannerScreen({ navigation }: any) {
@@ -17,6 +18,7 @@ export function ReceiptScannerScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const { showError, showSuccess } = useSnackbar();
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -57,10 +59,10 @@ export function ReceiptScannerScreen({ navigation }: any) {
         headers,
         mimeType: 'image/jpeg',
       });
-      Alert.alert('Recibo enviado', 'El asistente IA está procesando tu recibo. Te notificaremos cuando esté listo.');
+      showSuccess('Recibo enviado. El asistente IA lo está procesando.');
       navigation.goBack();
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'No se pudo procesar el recibo. Intenta de nuevo.');
+      showError(err?.message || 'No se pudo procesar el recibo');
     } finally {
       setUploading(false);
     }

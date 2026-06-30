@@ -9,6 +9,7 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { categoriesApi, expensesApi } from '../../services/api';
+import { useSnackbar } from '../../context/SnackbarContext';
 import { formatCurrency } from '../../utils/format';
 import type { Category, Expense } from '@finance-flow/shared-types';
 
@@ -17,6 +18,7 @@ const presetColors = ['#7C3AED', '#EC4899', '#06B6D4', '#4ADE80', '#F59E0B', '#8
 export function CategoriesScreen({ navigation }: any) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { showError } = useSnackbar();
   const [categories, setCategories] = useState<Category[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -37,7 +39,9 @@ export function CategoriesScreen({ navigation }: any) {
       ]);
       setCategories(catData);
       setExpenses(expData);
-    } catch {}
+    } catch {
+      showError('Error al cargar categorías');
+    }
   };
 
   const getCategoryExpenses = (catId: number) => {
@@ -72,7 +76,9 @@ export function CategoriesScreen({ navigation }: any) {
           try {
             await categoriesApi.delete(cat.id);
             loadCategories();
-          } catch {}
+          } catch {
+            showError('Error al eliminar categoría');
+          }
         },
       },
     ]);
@@ -88,14 +94,18 @@ export function CategoriesScreen({ navigation }: any) {
       }
       setModalVisible(false);
       loadCategories();
-    } catch {}
+    } catch {
+      showError('Error al guardar categoría');
+    }
   };
 
   const loadCategories = async () => {
     try {
       const data = await categoriesApi.getAll();
       setCategories(data);
-    } catch {}
+    } catch {
+      showError('Error al cargar categorías');
+    }
   };
 
   return (

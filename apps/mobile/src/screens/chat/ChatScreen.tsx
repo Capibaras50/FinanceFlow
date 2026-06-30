@@ -7,6 +7,7 @@ import Markdown from 'react-native-markdown-display';
 import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { GlassCard } from '../../components/ui/GlassCard';
+import { useSnackbar } from '../../context/SnackbarContext';
 import { chatApi } from '../../services/api';
 import type { ChatMessage } from '@finance-flow/shared-types';
 
@@ -59,6 +60,7 @@ function TypingIndicator() {
 export function ChatScreen({ navigation }: any) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { showError } = useSnackbar();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -72,7 +74,9 @@ export function ChatScreen({ navigation }: any) {
     try {
       const data = await chatApi.getMessages(50);
       setMessages(data.reverse());
-    } catch {}
+    } catch {
+      showError('Error al cargar mensajes');
+    }
   };
 
   const sendMessage = async () => {

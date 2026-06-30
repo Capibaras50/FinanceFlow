@@ -10,6 +10,7 @@ import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../utils/format';
 import { useAuth } from '../../hooks/useAuth';
+import { useSnackbar } from '../../context/SnackbarContext';
 import { expensesApi, earningsApi } from '../../services/api';
 import type { Expense, Earning } from '@finance-flow/shared-types';
 
@@ -17,6 +18,7 @@ export function HomeScreen({ navigation }: any) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { showError } = useSnackbar();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [earnings, setEarnings] = useState<Earning[]>([]);
 
@@ -32,7 +34,9 @@ export function HomeScreen({ navigation }: any) {
       ]);
       setExpenses(expData);
       setEarnings(earnData);
-    } catch {}
+    } catch {
+      showError('Error al cargar datos del inicio');
+    }
   };
 
   const totalEarnings = earnings.reduce((sum, e) => sum + Number(e.value), 0);

@@ -11,6 +11,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../utils/format';
 import { useFocusEffect } from '@react-navigation/native';
 import { walletsApi, expensesApi } from '../../services/api';
+import { useSnackbar } from '../../context/SnackbarContext';
 import type { WalletBalance, Expense } from '@finance-flow/shared-types';
 
 const walletColors = ['#7C3AED', '#EC4899', '#06B6D4', '#4ADE80', '#F59E0B', '#8B5CF6'];
@@ -18,6 +19,7 @@ const walletColors = ['#7C3AED', '#EC4899', '#06B6D4', '#4ADE80', '#F59E0B', '#8
 export function WalletsScreen({ navigation }: any) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { showError } = useSnackbar();
   const [balances, setBalances] = useState<WalletBalance[]>([]);
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -36,7 +38,9 @@ export function WalletsScreen({ navigation }: any) {
       ]);
       setBalances(balData);
       setRecentExpenses(expData.slice(0, 5));
-    } catch {}
+    } catch {
+      showError('Error al cargar carteras');
+    }
   };
 
   const openCreate = () => {
@@ -61,7 +65,9 @@ export function WalletsScreen({ navigation }: any) {
           try {
             await walletsApi.delete(w.id);
             loadData();
-          } catch {}
+          } catch {
+            showError('Error al eliminar cartera');
+          }
         },
       },
     ]);
@@ -77,7 +83,9 @@ export function WalletsScreen({ navigation }: any) {
       }
       setModalVisible(false);
       loadData();
-    } catch {}
+    } catch {
+      showError('Error al guardar cartera');
+    }
   };
 
   const totalBalance = balances.reduce((sum, w) => sum + Number(w.balance), 0);

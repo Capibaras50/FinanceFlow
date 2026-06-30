@@ -9,6 +9,7 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { expensesApi, earningsApi } from '../../services/api';
+import { useSnackbar } from '../../context/SnackbarContext';
 import type { Expense, Earning } from '@finance-flow/shared-types';
 
 export function TransactionDetailScreen({ navigation, route }: any) {
@@ -16,6 +17,7 @@ export function TransactionDetailScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { transactionId, type } = route.params;
   const isExpense = type === 'expense';
+  const { showError } = useSnackbar();
   const [transaction, setTransaction] = useState<Expense | Earning | null>(null);
 
   useEffect(() => {
@@ -28,7 +30,9 @@ export function TransactionDetailScreen({ navigation, route }: any) {
         ? await expensesApi.getById(transactionId)
         : await earningsApi.getById(transactionId);
       setTransaction(data);
-    } catch {}
+    } catch {
+      showError('Error al cargar detalle');
+    }
   };
 
   const handleDelete = () => {
@@ -48,7 +52,9 @@ export function TransactionDetailScreen({ navigation, route }: any) {
                 await earningsApi.delete(transactionId);
               }
               navigation.goBack();
-            } catch {}
+            } catch {
+              showError('Error al eliminar transacción');
+            }
           },
         },
       ]

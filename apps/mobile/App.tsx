@@ -1,5 +1,7 @@
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthContext, useAuthProvider } from './src/hooks/useAuth';
 import { ThemeProvider } from './src/context/ThemeContext';
+import { SnackbarProvider } from './src/context/SnackbarContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from './src/hooks/useTheme';
@@ -10,7 +12,9 @@ function AppContent() {
 
   return (
     <AuthContext.Provider value={auth}>
-      <RootNavigator />
+      <SnackbarProvider>
+        <RootNavigator />
+      </SnackbarProvider>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
     </AuthContext.Provider>
   );
@@ -19,7 +23,9 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <SafeAreaProvider>
+        <AppContent />
+      </SafeAreaProvider>
     </ThemeProvider>
   );
 }

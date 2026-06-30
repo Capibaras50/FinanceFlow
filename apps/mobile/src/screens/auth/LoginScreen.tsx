@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
+import { useSnackbar } from '../../context/SnackbarContext';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 
@@ -13,6 +14,7 @@ export function LoginScreen({ navigation }: any) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { login } = useAuth();
+  const { showError } = useSnackbar();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +25,9 @@ export function LoginScreen({ navigation }: any) {
     setLoading(true);
     try {
       await login(email, password);
-    } catch {}
+    } catch (e: any) {
+      showError(e?.message || 'Error al iniciar sesión');
+    }
     setLoading(false);
   };
 

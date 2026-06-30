@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
+import { useSnackbar } from '../../context/SnackbarContext';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 
@@ -13,6 +14,7 @@ export function RegisterScreen({ navigation }: any) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { register } = useAuth();
+  const { showError } = useSnackbar();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +26,9 @@ export function RegisterScreen({ navigation }: any) {
     setLoading(true);
     try {
       await register(email, password, name);
-    } catch {}
+    } catch (e: any) {
+      showError(e?.message || 'Error al registrarse');
+    }
     setLoading(false);
   };
 

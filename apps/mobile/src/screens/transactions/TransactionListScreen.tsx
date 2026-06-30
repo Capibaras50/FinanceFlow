@@ -10,6 +10,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../utils/format';
 import { useFocusEffect } from '@react-navigation/native';
 import { expensesApi, earningsApi } from '../../services/api';
+import { useSnackbar } from '../../context/SnackbarContext';
 import type { Expense, Earning } from '@finance-flow/shared-types';
 
 type TransactionSection = {
@@ -20,6 +21,7 @@ type TransactionSection = {
 export function TransactionListScreen({ navigation }: any) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { showError } = useSnackbar();
   const [tab, setTab] = useState<'expenses' | 'earnings'>('expenses');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [earnings, setEarnings] = useState<Earning[]>([]);
@@ -37,7 +39,9 @@ export function TransactionListScreen({ navigation }: any) {
       ]);
       setExpenses(expData);
       setEarnings(earnData);
-    } catch {}
+    } catch {
+      showError('Error al cargar transacciones');
+    }
   };
 
   const handleDelete = useCallback(async (item: Expense | Earning) => {
@@ -49,13 +53,15 @@ export function TransactionListScreen({ navigation }: any) {
         onPress: async () => {
           try {
             if (tab === 'expenses') {
-              await expensesApi.delete(item.id);
-            } else {
-              await earningsApi.delete(item.id);
-            }
-            loadData();
-          } catch {}
-        },
+            await expensesApi.delete(item.id);
+          } else {
+            await earningsApi.delete(item.id);
+          }
+          loadData();
+        } catch {
+          showError('Error al eliminar transacción');
+        }
+      },
       },
     ]);
   }, [tab]);
