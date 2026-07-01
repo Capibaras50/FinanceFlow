@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, Switch, Modal, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, Switch, Modal, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,12 +20,68 @@ export function ProfileScreen() {
   const { colors, mode, toggleTheme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<RootNavigationProp>();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { showSuccess, showError } = useSnackbar();
   const [passModal, setPassModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [passLoading, setPassLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handlePickAvatar = () => {
+    Alert.alert('Foto de perfil', 'Selecciona una opción', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Cámara',
+        onPress: async () => {
+          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          if (!perm.granted) {
+            showError('Se requiere permiso de la cámara');
+            return;
+          }
+          const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.7,
+          });
+          if (!result.canceled) await uploadAvatar(result.assets[0]);
+        },
+      },
+      {
+        text: 'Galería',
+        onPress: async () => {
+          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!perm.granted) {
+            showError('Se requiere permiso de la galería');
+            return;
+          }
+          const result = await ImagePicker.launchImageLibraryAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.7,
+          });
+          if (!result.canceled) await uploadAvatar(result.assets[0]);
+        },
+      },
+    ]);
+  };
+
+  const uploadAvatar = async (asset: ImagePicker.ImagePickerAsset) => {
+    setUploading(true);
+    try {
+      const ext = asset.uri.split('.').pop() || 'jpg';
+      await usersApi.uploadAvatar({
+        uri: asset.uri,
+        name: `avatar.${ext}`,
+        type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+      });
+      await refreshUser();
+      showSuccess('Foto de perfil actualizada');
+    } catch (e) {
+      showError(getErrorMessage(e, 'Error al subir la foto'));
+    }
+    setUploading(false);
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -65,22 +122,36 @@ export function ProfileScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
       >
-        <LinearGradient
-          colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.avatarCircle}
-        >
-          <Text style={styles.avatarText}>
-            {user?.profile?.name?.charAt(0)?.toUpperCase() || 'U'}
-          </Text>
-        </LinearGradient>
+        <TouchableOpacity onPress={handlePickAvatar} disabled={uploading}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.avatarCircle}
+          >
+            {user?.profile?.avatarUrl ? (
+              <Image source={{ uri: user.profile.avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {user?.profile?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </Text>
+            )}
+          </LinearGradient>
+          <View style={styles.cameraBadge}>
+            <Ionicons name="camera" size={14} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
         <Text style={[typography.headlineMd, { color: '#FFFFFF' }]}>
           {user?.profile?.name || 'Usuario'}
         </Text>
         <Text style={[typography.bodyMd, { color: 'rgba(255,255,255,0.7)', marginTop: spacing.xs }]}>
           {user?.email}
         </Text>
+        {uploading && (
+          <View style={styles.uploadingOverlay}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+          </View>
+        )}
       </LinearGradient>
 
       <ScrollView
@@ -216,11 +287,37 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.3)',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 22,
   },
   avatarText: {
     fontSize: 36,
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: -4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  uploadingOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 24,
   },
 });
 

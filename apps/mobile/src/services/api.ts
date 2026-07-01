@@ -9,11 +9,34 @@ import {
   ReceiptsApi,
   ChatApi,
 } from '@finance-flow/api-client';
-import { getTokenSync } from './storage';
+import {
+  getTokenSync,
+  getRefreshTokenSync,
+  saveToken,
+  saveRefreshToken,
+  removeToken,
+  removeRefreshToken,
+} from './storage';
+
+let forceLogoutHandler: (() => void) | null = null;
+
+export function setForceLogoutHandler(handler: (() => void) | null) {
+  forceLogoutHandler = handler;
+}
 
 const client = createApiClient({
   baseUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000',
   getToken: getTokenSync,
+  getRefreshToken: getRefreshTokenSync,
+  onTokenRefreshed: (accessToken, refreshToken) => {
+    saveToken(accessToken);
+    saveRefreshToken(refreshToken);
+  },
+  onForceLogout: () => {
+    removeToken();
+    removeRefreshToken();
+    forceLogoutHandler?.();
+  },
 });
 
 export const authApi = new AuthApi(client);

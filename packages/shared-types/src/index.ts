@@ -81,6 +81,7 @@ export interface ChatMessage {
 
 export interface AuthResponse {
   accessToken: string;
+  refreshToken: string;
 }
 
 export interface MonthlySummary {

@@ -7,6 +7,7 @@ import {
   Query,
   Body,
   Res,
+  HttpCode,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type express from 'express';
@@ -37,6 +38,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @HttpCode(204)
   logout(@Body() logoutDto: LogoutDto) {
     return this.authService.revokeRefreshToken(logoutDto.refreshToken);
   }

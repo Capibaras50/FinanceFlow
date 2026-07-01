@@ -1,7 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
+import { View, ActivityIndicator, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { NavigationContainer, NavigationContainerRef, type LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
@@ -43,38 +47,48 @@ const linking: LinkingOptions<RootStackParamList> = {
   },
 };
 
+function SplashScreen() {
+  const { colors } = useTheme();
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+      <LinearGradient
+        colors={colors.gradient.primary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ width: 72, height: 72, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}
+      >
+        <Ionicons name="wallet" size={36} color="#FFFFFF" />
+      </LinearGradient>
+      <Text style={{ color: colors.onSurface, fontSize: 22, fontWeight: '700', marginBottom: 8 }}>
+        Finance Flow
+      </Text>
+      <ActivityIndicator size="large" color={colors.primary} />
+    </View>
+  );
+}
+
 export function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
-  const prevAuth = useRef<boolean | null>(null);
 
-  useEffect(() => {
-    if (isLoading) return;
-    const nav = navigationRef.current;
-    if (!nav) return;
-
-    if (prevAuth.current === null) {
-      prevAuth.current = isAuthenticated;
-      if (isAuthenticated) {
-        nav.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-      }
-      return;
-    }
-
-    if (prevAuth.current !== isAuthenticated) {
-      prevAuth.current = isAuthenticated;
-      nav.reset({ index: 0, routes: [{ name: isAuthenticated ? 'MainTabs' : 'Login' }] });
-    }
-  }, [isAuthenticated, isLoading]);
+  if (isLoading) {
+    return <SplashScreen />;
+  }
 
   return (
     <NavigationContainer ref={navigationRef} linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-        <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+        {isAuthenticated ? (
+          <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+        ) : (
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+          </>
+        )}
         <Stack.Screen name="AddExpense" component={AddExpenseScreen} options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="AddEarning" component={AddEarningScreen} options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="TransactionDetail" component={TransactionDetailScreen} options={{ animation: 'slide_from_right' }} />

@@ -8,6 +8,14 @@ export class AuthApi {
     return this.client.post<AuthResponse>('/auth/login', { email, password });
   }
 
+  refresh(refreshToken: string): Promise<AuthResponse> {
+    return this.client.post<AuthResponse>('/auth/refresh', { refreshToken });
+  }
+
+  logout(refreshToken: string): Promise<{ message: string }> {
+    return this.client.post<{ message: string }>('/auth/logout', { refreshToken });
+  }
+
   forgotPassword(email: string): Promise<{ message: string }> {
     return this.client.post<{ message: string }>('/auth/forgot-password', { email });
   }

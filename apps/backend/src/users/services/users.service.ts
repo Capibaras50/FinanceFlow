@@ -82,6 +82,14 @@ export class UsersService {
     return await this.usersRepository.save(mergedUser);
   }
 
+  async uploadAvatar(id: number, avatarUrl: string) {
+    const user = await this.findOne(id);
+    const mergedUser = this.usersRepository.merge(user, {
+      profile: { avatarUrl },
+    });
+    return await this.usersRepository.save(mergedUser);
+  }
+
   async findUserByRecoveryToken(hashRecoveryToken: string) {
     const user = await this.usersRepository.findOne({
       where: {
