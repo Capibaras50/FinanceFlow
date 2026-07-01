@@ -4,15 +4,21 @@ import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcrypt';
 import crypto from 'node:crypto';
 import { MailService } from 'src/mail/services/mail.service';
+import { Env } from 'src/models/env.model';
 import { Payload } from 'src/models/payload.model';
 import { UsersService } from 'src/users/services/users.service';
+import { DeepPartial, Repository } from 'typeorm';
+import { RefreshToken } from '../entities/refresh-tokens.entity';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class AuthService {
   constructor(
+    @InjectRepository(RefreshToken)
+    private refreshTokenRepository: Repository<RefreshToken>,
     private usersService: UsersService,
     private mailService: MailService,
-    private configService: ConfigService,
+    private configService: ConfigService<Env>,
     private jwtService: JwtService,
   ) {}
 
@@ -28,9 +34,86 @@ export class AuthService {
     return user;
   }
 
-  login(payload: Payload) {
-    const accessToken = this.jwtService.sign(payload);
-    return { accessToken };
+  async login(payload: Payload) {
+    const accessToken = await this.signAccessToken(payload);
+    const refreshToken = await this.signRefreshToken(payload);
+    await this.saveRefreshToken(refreshToken, payload.sub);
+    return { accessToken, refreshToken };
+  }
+
+  async saveRefreshToken(refreshToken: string, userId: number) {
+    const currentDate = new Date();
+    const newRefreshToken: DeepPartial<RefreshToken> = {
+      user: { id: userId },
+      token: refreshToken,
+      tokenHash: refreshToken,
+      expiresAt: new Date(currentDate.setDate(currentDate.getDate() + 7)),
+    };
+    const createdRefreshToken =
+      this.refreshTokenRepository.create(newRefreshToken);
+    return await this.refreshTokenRepository.save(createdRefreshToken);
+  }
+
+  async refreshToken(refreshToken: string) {
+    const revokedRefreshToken = await this.revokeRefreshToken(refreshToken);
+    const payload: Payload = {
+      sub: revokedRefreshToken.user.id,
+      profileId: revokedRefreshToken.user.profile.id,
+    };
+    const accessToken = await this.signAccessToken(payload);
+    const newRefreshToken = await this.signRefreshToken(payload);
+    await this.saveRefreshToken(newRefreshToken, revokedRefreshToken.user.id);
+    return { accessToken, refreshToken: newRefreshToken };
+  }
+
+  signAccessToken(payload: Payload) {
+    return this.jwtService.signAsync(payload);
+  }
+
+  async revokeRefreshToken(refreshToken: string) {
+    const oldPayload = await this.verifyRefreshToken(refreshToken);
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(refreshToken)
+      .digest('hex');
+    const oldRefreshToken = await this.refreshTokenRepository.findOne({
+      where: {
+        revoked: false,
+        user: { id: oldPayload.sub },
+        tokenHash,
+      },
+      relations: ['user', 'user.profile'],
+    });
+    if (!oldRefreshToken) {
+      throw new UnauthorizedException();
+    }
+    const isMatch = await compare(refreshToken, oldRefreshToken.token);
+    if (!isMatch) {
+      throw new UnauthorizedException();
+    }
+    const mergedOldRefreshToken = this.refreshTokenRepository.merge(
+      oldRefreshToken,
+      { revoked: true },
+    );
+    return await this.refreshTokenRepository.save(mergedOldRefreshToken);
+  }
+
+  verifyRefreshToken(refreshToken: string) {
+    try {
+      return this.jwtService.verifyAsync<Payload>(refreshToken, {
+        secret: this.configService.get('SECRET_REFRESH_KEY', { infer: true }),
+        ignoreExpiration: false,
+      });
+    } catch {
+      throw new UnauthorizedException();
+    }
+  }
+
+  signRefreshToken(payload: Payload) {
+    return this.jwtService.signAsync(payload, {
+      secret: this.configService.get('SECRET_REFRESH_KEY', { infer: true }),
+      expiresIn: this.configService.get('EXPIRES_REFRESH_KEY', { infer: true }),
+    });
   }
 
   async recoveryPassword(mail: string) {

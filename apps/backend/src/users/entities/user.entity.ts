@@ -8,10 +8,12 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { hash } from 'bcrypt';
 import { Exclude } from 'class-transformer';
 import { Profile } from './profile.entity';
+import { RefreshToken } from 'src/auth/entities/refresh-tokens.entity';
 
 @Entity('users')
 export class User {
@@ -35,6 +37,11 @@ export class User {
 
   @Column({ name: 'recovery_token_hash', type: 'text', nullable: true })
   recoveryTokenHash: string;
+
+  @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user, {
+    onDelete: 'CASCADE',
+  })
+  refreshToken: RefreshToken;
 
   @Column({
     name: 'recovery_token_expires_at',

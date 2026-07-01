@@ -16,6 +16,8 @@ import { User } from 'src/users/entities/user.entity';
 import { Throttle } from '@nestjs/throttler';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
+import { LogoutDto } from '../dto/logout.dto';
+import { RefreshDto } from '../dto/refresh.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -27,6 +29,16 @@ export class AuthController {
   login(@Req() req: express.Request) {
     const user = req.user as User;
     return this.authService.login({ sub: user.id, profileId: user.profile.id });
+  }
+
+  @Post('refresh')
+  refresh(@Body() refreshDto: RefreshDto) {
+    return this.authService.refreshToken(refreshDto.refreshToken);
+  }
+
+  @Post('logout')
+  logout(@Body() logoutDto: LogoutDto) {
+    return this.authService.revokeRefreshToken(logoutDto.refreshToken);
   }
 
   @Throttle({ default: { ttl: 60000, limit: 5 } })

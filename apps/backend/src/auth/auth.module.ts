@@ -9,16 +9,21 @@ import { ConfigService } from '@nestjs/config';
 import { Env } from 'src/models/env.model';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { MailModule } from 'src/mail/mail.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { RefreshToken } from './entities/refresh-tokens.entity';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([RefreshToken]),
     UsersModule,
     PassportModule,
     MailModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService<Env>) => ({
-        signOptions: { expiresIn: '1h' },
+        signOptions: {
+          expiresIn: configService.get('EXPIRES_ACCESS_KEY', { infer: true }),
+        },
         secret: configService.get('SECRET_ACCESS_KEY', { infer: true }),
       }),
     }),
