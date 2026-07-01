@@ -1,47 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { typography, spacing, borderRadius } from '../../theme';
+import { typography, spacing } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
+import { PasswordRequirements, passwordRules } from '../../components/auth/PasswordRequirements';
 import { authApi } from '../../services/api';
+import { getErrorMessage } from '../../utils/format';
 import type { AuthNavigationProp, RootStackParamList } from '../../navigation/types';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
-
-const passwordRules = [
-  { key: 'min', label: 'Al menos 8 caracteres', test: (p: string) => p.length >= 8 },
-  { key: 'upper', label: 'Al menos una mayúscula', test: (p: string) => /[A-Z]/.test(p) },
-  { key: 'lower', label: 'Mínimo 5 minúsculas', test: (p: string) => (p.match(/[a-z]/g) || []).length >= 5 },
-  { key: 'number', label: 'Al menos un número', test: (p: string) => /[0-9]/.test(p) },
-  { key: 'symbol', label: 'Al menos un símbolo', test: (p: string) => /[^a-zA-Z0-9]/.test(p) },
-];
-
-function RequirementRow({ label, met }: { label: string; met: boolean }) {
-  const { colors } = useTheme();
-  return (
-    <View style={requirementStyles.row}>
-      <Ionicons
-        name={met ? 'checkmark-circle' : 'ellipse-outline'}
-        size={16}
-        color={met ? colors.success : colors.onSurfaceVariant}
-      />
-      <Text style={[typography.bodySm, { color: met ? colors.success : colors.onSurfaceVariant }]}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-const requirementStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-});
 
 export function ResetPasswordScreen() {
   const { colors } = useTheme();
@@ -53,12 +23,7 @@ export function ResetPasswordScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const rules = useMemo(() =>
-    passwordRules.map(r => ({ ...r, met: r.test(password) })),
-    [password]
-  );
-
-  const allMet = rules.every(r => r.met);
+  const allMet = passwordRules.every(r => r.test(password));
 
   const handleReset = async () => {
     if (!allMet) return;
@@ -67,8 +32,8 @@ export function ResetPasswordScreen() {
       await authApi.resetPassword(route.params.token, password);
       showSuccess('Contraseña actualizada correctamente');
       navigation.navigate('Login');
-    } catch (e: any) {
-      showError(e?.message || 'Error al restablecer contraseña');
+    } catch (e) {
+      showError(getErrorMessage(e, 'Error al restablecer contraseña'));
     }
     setLoading(false);
   };
@@ -118,11 +83,7 @@ export function ResetPasswordScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={{ gap: 2 }}>
-            {rules.map(r => (
-              <RequirementRow key={r.key} label={r.label} met={r.met} />
-            ))}
-          </View>
+          <PasswordRequirements password={password} />
         </View>
 
         <GradientButton

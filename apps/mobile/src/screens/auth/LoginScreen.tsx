@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
+import { getErrorMessage } from '../../utils/format';
 import { useNavigation } from '@react-navigation/native';
 import type { AuthNavigationProp } from '../../navigation/types';
 
@@ -28,8 +29,8 @@ export function LoginScreen() {
     setLoading(true);
     try {
       await login(email, password);
-    } catch (e: any) {
-      showError(e?.message || 'Error al iniciar sesión');
+    } catch (e) {
+      showError(getErrorMessage(e, 'Error al iniciar sesión'));
     }
     setLoading(false);
   };
@@ -105,7 +106,7 @@ export function LoginScreen() {
 
         <TouchableOpacity
           onPress={() => navigation.navigate('Register')}
-          style={styles.registerButton}
+          style={[styles.registerButton, { borderColor: colors.primary }]}
         >
           <Text style={[typography.labelLg, { color: colors.primary }]}>
             Registrarse
@@ -143,7 +144,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: borderRadius.full,
     borderWidth: 1.5,
-    borderColor: '#7C3AED',
     alignItems: 'center',
   },
 });

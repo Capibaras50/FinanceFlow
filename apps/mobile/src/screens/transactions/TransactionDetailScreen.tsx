@@ -10,9 +10,14 @@ import { GradientButton } from '../../components/ui/GradientButton';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { expensesApi, earningsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
 import type { Expense, Earning } from '@finance-flow/shared-types';
+import type { ThemeColors } from '../../theme';
 
-export function TransactionDetailScreen({ navigation, route }: any) {
+export function TransactionDetailScreen() {
+  const navigation = useNavigation<RootNavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'TransactionDetail'>>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { transactionId, type } = route.params;
@@ -221,7 +226,7 @@ function DetailRow({
   label: string;
   value: string;
   valueColor?: string;
-  colors: any;
+  colors: ThemeColors;
 }) {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>

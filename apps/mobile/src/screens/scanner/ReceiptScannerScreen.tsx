@@ -11,9 +11,13 @@ import { useTheme } from '../../hooks/useTheme';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { useSnackbar } from '../../context/SnackbarContext';
+import { useNavigation } from '@react-navigation/native';
+import type { RootNavigationProp } from '../../navigation/types';
 import { getTokenSync } from '../../services/storage';
+import { getErrorMessage } from '../../utils/format';
 
-export function ReceiptScannerScreen({ navigation }: any) {
+export function ReceiptScannerScreen() {
+  const navigation = useNavigation<RootNavigationProp>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<CameraView>(null);
@@ -38,7 +42,7 @@ export function ReceiptScannerScreen({ navigation }: any) {
       mediaTypes: ['images'],
       quality: 0.8,
     });
-    if (!result.canceled && result.assets[0]) {
+    if (!result.canceled && result.assets?.[0]) {
       setCapturedImage(result.assets[0].uri);
       setShowConfirm(true);
     }
@@ -61,8 +65,8 @@ export function ReceiptScannerScreen({ navigation }: any) {
       });
       showSuccess('Recibo enviado. El asistente IA lo está procesando.');
       navigation.goBack();
-    } catch (err: any) {
-      showError(err?.message || 'No se pudo procesar el recibo');
+    } catch (err) {
+      showError(getErrorMessage(err, 'No se pudo procesar el recibo'));
     } finally {
       setUploading(false);
     }

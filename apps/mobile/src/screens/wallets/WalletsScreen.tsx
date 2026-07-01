@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { RootNavigationProp } from '../../navigation/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../../components/ui/GlassCard';
@@ -16,7 +18,8 @@ import type { WalletBalance, Expense } from '@finance-flow/shared-types';
 
 const walletColors = ['#7C3AED', '#EC4899', '#06B6D4', '#4ADE80', '#F59E0B', '#8B5CF6'];
 
-export function WalletsScreen({ navigation }: any) {
+export function WalletsScreen() {
+  const navigation = useNavigation<RootNavigationProp>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { showError } = useSnackbar();
@@ -192,7 +195,7 @@ export function WalletsScreen({ navigation }: any) {
               <Text style={[typography.titleLg, { color: colors.onSurface }]}>
                 Movimientos Recientes
               </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
+              <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'Transactions' })}>
                 <Text style={[typography.bodySm, { color: colors.primary }]}>Ver todo</Text>
               </TouchableOpacity>
             </View>

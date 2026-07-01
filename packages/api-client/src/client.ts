@@ -21,25 +21,26 @@ export class ApiClient {
     });
   }
 
-  async request<T>(method: string, path: string, body?: unknown, formData?: FormData): Promise<T> {
+  async request<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown, formData?: FormData): Promise<T> {
     try {
       const response = await this.instance.request<T>({
-        method: method as any,
+        method,
         url: path,
         data: formData || body,
         headers: formData ? {} : { 'Content-Type': 'application/json' },
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
-        const data = error.response.data as any;
+        const data: Record<string, unknown> | undefined = error.response.data as Record<string, unknown>;
         const apiError: ApiError = {
-          message: data?.message || error.message,
+          message: typeof data?.message === 'string' ? data.message : error.message,
           statusCode: error.response.status,
         };
         throw apiError;
       }
-      throw { message: error?.message || 'Network error', statusCode: 0 };
+      const msg = error instanceof Error ? error.message : 'Network error';
+      throw { message: msg, statusCode: 0 };
     }
   }
 

@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { TransactionCard } from '../../components/ui/TransactionCard';
 import { typography, spacing, borderRadius } from '../../theme';
@@ -12,9 +12,11 @@ import { formatCurrency } from '../../utils/format';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { expensesApi, earningsApi } from '../../services/api';
+import type { RootNavigationProp } from '../../navigation/types';
 import type { Expense, Earning } from '@finance-flow/shared-types';
 
-export function HomeScreen({ navigation }: any) {
+export function HomeScreen() {
+  const navigation = useNavigation<RootNavigationProp>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -34,22 +36,28 @@ export function HomeScreen({ navigation }: any) {
       ]);
       setExpenses(expData);
       setEarnings(earnData);
-    } catch {
+    } catch (e) {
       showError('Error al cargar datos del inicio');
     }
   };
 
-  const totalEarnings = earnings.reduce((sum, e) => sum + Number(e.value), 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.value), 0);
-  const balance = totalEarnings - totalExpenses;
-  const maxVal = Math.max(totalEarnings, totalExpenses, 1);
-  const incomeBarWidth = (totalEarnings / maxVal) * 100;
-  const expenseBarWidth = (totalExpenses / maxVal) * 100;
+  const totalEarnings = useMemo(() => earnings.reduce((sum, e) => sum + Number(e.value), 0), [earnings]);
+  const totalExpenses = useMemo(() => expenses.reduce((sum, e) => sum + Number(e.value), 0), [expenses]);
+  const balance = useMemo(() => totalEarnings - totalExpenses, [totalEarnings, totalExpenses]);
+  const { incomeBarWidth, expenseBarWidth } = useMemo(() => {
+    const maxVal = Math.max(totalEarnings, totalExpenses, 1);
+    return {
+      incomeBarWidth: (totalEarnings / maxVal) * 100,
+      expenseBarWidth: (totalExpenses / maxVal) * 100,
+    };
+  }, [totalEarnings, totalExpenses]);
 
-  const recentTransactions = [
-    ...expenses.slice(0, 3).map(e => ({ ...e, _type: 'expense' as const })),
+  const recentTransactions = useMemo(() =>
+    [...expenses.slice(0, 3).map(e => ({ ...e, _type: 'expense' as const })),
     ...earnings.slice(0, 2).map(e => ({ ...e, _type: 'earning' as const })),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
+    [expenses, earnings]
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -231,7 +239,7 @@ export function HomeScreen({ navigation }: any) {
               <Text style={[typography.titleLg, { color: colors.onSurface }]}>
                 Últimas Transacciones
               </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
+              <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'Transactions' })}>
                 <Text style={[typography.bodySm, { color: colors.primary }]}>Ver todo</Text>
               </TouchableOpacity>
             </View>

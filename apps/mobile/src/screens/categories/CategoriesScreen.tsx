@@ -10,12 +10,15 @@ import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { categoriesApi, expensesApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
+import { useNavigation } from '@react-navigation/native';
+import type { RootNavigationProp } from '../../navigation/types';
 import { formatCurrency } from '../../utils/format';
 import type { Category, Expense } from '@finance-flow/shared-types';
 
 const presetColors = ['#7C3AED', '#EC4899', '#06B6D4', '#4ADE80', '#F59E0B', '#8B5CF6', '#F472B6', '#14B8A6', '#3B82F6', '#EF4444', '#10B981', '#F97316'];
 
-export function CategoriesScreen({ navigation }: any) {
+export function CategoriesScreen() {
+  const navigation = useNavigation<RootNavigationProp>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { showError } = useSnackbar();

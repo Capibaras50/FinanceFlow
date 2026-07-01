@@ -24,3 +24,12 @@ export function formatDate(dateString: string): string {
 export function getCategoryColor(color: string): string {
   return color || '#7C3AED';
 }
+
+export function getErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const msg = (error as { message: unknown }).message;
+    if (typeof msg === 'string') return msg;
+  }
+  if (error instanceof Error) return error.message;
+  return fallback;
+}

@@ -10,12 +10,17 @@ import { GradientButton } from '../../components/ui/GradientButton';
 import { CategoryChip } from '../../components/ui/CategoryChip';
 import { categoriesApi, walletsApi, earningsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
+import { getErrorMessage } from '../../utils/format';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
 import type { Category, Wallet } from '@finance-flow/shared-types';
 
-export function AddEarningScreen({ navigation, route }: any) {
+export function AddEarningScreen() {
+  const navigation = useNavigation<RootNavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'AddEarning'>>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const earningId = route?.params?.earningId;
+  const earningId = route.params?.earningId;
   const isEditing = !!earningId;
 
   const [name, setName] = useState('');
@@ -73,8 +78,8 @@ export function AddEarningScreen({ navigation, route }: any) {
         await earningsApi.create(dto);
       }
       navigation.goBack();
-    } catch (e: any) {
-      showError(e?.message || 'Error al guardar ingreso');
+    } catch (e) {
+      showError(getErrorMessage(e, 'Error al guardar ingreso'));
     } finally {
       setLoading(false);
     }

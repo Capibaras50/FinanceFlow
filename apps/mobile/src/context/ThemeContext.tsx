@@ -30,7 +30,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setModeState(saved);
         return;
       }
-    } catch {}
+    } catch (e) {
+      console.warn('ThemeContext: error reading saved theme', e);
+    }
     setModeState(getSystemThemeMode());
   };
 
@@ -38,7 +40,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setModeState(newMode);
     try {
       await SecureStore.setItemAsync(THEME_STORAGE_KEY, newMode);
-    } catch {}
+    } catch (e) {
+      console.warn('ThemeContext: error saving theme', e);
+    }
   }, []);
 
   const toggleTheme = useCallback(() => {

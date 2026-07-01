@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
+import { getErrorMessage } from '../../utils/format';
 import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
@@ -45,8 +46,8 @@ export function ProfileScreen() {
       setPassModal(false);
       setCurrentPassword('');
       setNewPassword('');
-    } catch (e: any) {
-      showError(e?.message || 'Error al cambiar contraseña');
+    } catch (e) {
+      showError(getErrorMessage(e, 'Error al cambiar contraseña'));
     }
     setPassLoading(false);
   };

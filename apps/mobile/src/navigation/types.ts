@@ -1,5 +1,6 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { Ionicons } from '@expo/vector-icons';
 
 export type RootStackParamList = {
@@ -7,7 +8,7 @@ export type RootStackParamList = {
   Register: undefined;
   ForgotPassword: undefined;
   ResetPassword: { token: string };
-  MainTabs: undefined;
+  MainTabs: NavigatorScreenParams<MainTabParamList>;
   AddExpense: { expenseId?: number } | undefined;
   AddEarning: { earningId?: number } | undefined;
   ReceiptScanner: undefined;

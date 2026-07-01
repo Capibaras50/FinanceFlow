@@ -10,12 +10,17 @@ import { GradientButton } from '../../components/ui/GradientButton';
 import { CategoryChip } from '../../components/ui/CategoryChip';
 import { categoriesApi, walletsApi, expensesApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
+import { getErrorMessage } from '../../utils/format';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
 import type { Category, Wallet } from '@finance-flow/shared-types';
 
-export function AddExpenseScreen({ navigation, route }: any) {
+export function AddExpenseScreen() {
+  const navigation = useNavigation<RootNavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'AddExpense'>>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const expenseId = route?.params?.expenseId;
+  const expenseId = route.params?.expenseId;
   const isEditing = !!expenseId;
 
   const [name, setName] = useState('');
@@ -73,8 +78,8 @@ export function AddExpenseScreen({ navigation, route }: any) {
         await expensesApi.create(dto);
       }
       navigation.goBack();
-    } catch (e: any) {
-      showError(e?.message || 'Error al guardar gasto');
+    } catch (e) {
+      showError(getErrorMessage(e, 'Error al guardar gasto'));
     } finally {
       setLoading(false);
     }

@@ -9,32 +9,10 @@ import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
+import { getErrorMessage } from '../../utils/format';
+import { PasswordRequirements, passwordRules } from '../../components/auth/PasswordRequirements';
 import { useNavigation } from '@react-navigation/native';
 import type { AuthNavigationProp } from '../../navigation/types';
-
-const passwordRules = [
-  { key: 'min', label: 'Al menos 8 caracteres', test: (p: string) => p.length >= 8 },
-  { key: 'upper', label: 'Al menos una mayúscula', test: (p: string) => /[A-Z]/.test(p) },
-  { key: 'lower', label: 'Mínimo 5 minúsculas', test: (p: string) => (p.match(/[a-z]/g) || []).length >= 5 },
-  { key: 'number', label: 'Al menos un número', test: (p: string) => /[0-9]/.test(p) },
-  { key: 'symbol', label: 'Al menos un símbolo', test: (p: string) => /[^a-zA-Z0-9]/.test(p) },
-];
-
-function RequirementRow({ label, met }: { label: string; met: boolean }) {
-  const { colors } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-      <Ionicons
-        name={met ? 'checkmark-circle' : 'ellipse-outline'}
-        size={16}
-        color={met ? colors.success : colors.onSurfaceVariant}
-      />
-      <Text style={[typography.bodySm, { color: met ? colors.success : colors.onSurfaceVariant }]}>
-        {label}
-      </Text>
-    </View>
-  );
-}
 
 export function RegisterScreen() {
   const navigation = useNavigation<AuthNavigationProp>();
@@ -50,21 +28,16 @@ export function RegisterScreen() {
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  const rules = useMemo(() =>
-    passwordRules.map(r => ({ ...r, met: r.test(password) })),
-    [password]
-  );
-
-  const allMet = rules.every(r => r.met);
-  const canSubmit = !loading && name && emailValid && allMet;
+  const allRulesMet = passwordRules.every(r => r.test(password));
+  const canSubmit = !loading && name && emailValid && allRulesMet;
 
   const handleRegister = async () => {
     if (!canSubmit) return;
     setLoading(true);
     try {
       await register(email, password, name);
-    } catch (e: any) {
-      showError(e?.message || 'Error al registrarse');
+    } catch (e) {
+      showError(getErrorMessage(e, 'Error al registrarse'));
     }
     setLoading(false);
   };
@@ -120,7 +93,9 @@ export function RegisterScreen() {
               autoCapitalize="none"
             />
             <View style={{ marginTop: spacing.xs, marginLeft: 4 }}>
-              <RequirementRow label="Formato de correo válido" met={email.length > 0 && emailValid} />
+              <Text style={[typography.bodySm, { color: emailValid ? colors.success : colors.onSurfaceVariant }]}>
+                {email.length > 0 && !emailValid ? '✗' : '✓'} Formato de correo válido
+              </Text>
             </View>
           </View>
           <View>
@@ -141,10 +116,8 @@ export function RegisterScreen() {
                 color={colors.onSurfaceVariant}
               />
             </TouchableOpacity>
-            <View style={{ marginTop: spacing.xs, marginLeft: 4, gap: 2 }}>
-              {rules.map(r => (
-                <RequirementRow key={r.key} label={r.label} met={r.met} />
-              ))}
+            <View style={{ marginTop: spacing.xs, marginLeft: 4 }}>
+              <PasswordRequirements password={password} />
             </View>
           </View>
         </View>

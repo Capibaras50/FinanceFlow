@@ -9,6 +9,7 @@ import { useSnackbar } from '../../context/SnackbarContext';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { authApi } from '../../services/api';
+import { getErrorMessage } from '../../utils/format';
 import type { AuthNavigationProp } from '../../navigation/types';
 import { useNavigation } from '@react-navigation/native';
 
@@ -28,8 +29,8 @@ export function ForgotPasswordScreen() {
       await authApi.forgotPassword(email);
       setSent(true);
       showSuccess('Correo enviado. Revisa tu bandeja de entrada.');
-    } catch (e: any) {
-      showError(e?.message || 'Error al enviar correo');
+    } catch (e) {
+      showError(getErrorMessage(e, 'Error al enviar correo'));
     }
     setLoading(false);
   };

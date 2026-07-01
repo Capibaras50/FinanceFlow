@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, TextInput, SectionList, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,9 +8,10 @@ import { TransactionCard } from '../../components/ui/TransactionCard';
 import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../utils/format';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { expensesApi, earningsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
+import type { RootNavigationProp } from '../../navigation/types';
 import type { Expense, Earning } from '@finance-flow/shared-types';
 
 type TransactionSection = {
@@ -18,7 +19,8 @@ type TransactionSection = {
   data: (Expense | (Earning & { _type?: 'earning' }))[];
 };
 
-export function TransactionListScreen({ navigation }: any) {
+export function TransactionListScreen() {
+  const navigation = useNavigation<RootNavigationProp>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { showError } = useSnackbar();
@@ -66,32 +68,25 @@ export function TransactionListScreen({ navigation }: any) {
     ]);
   }, [tab]);
 
-  const data = tab === 'expenses' ? expenses : earnings;
-  const filtered = data.filter((t) =>
+  const data = useMemo(() => tab === 'expenses' ? expenses : earnings, [tab, expenses, earnings]);
+  const filtered = useMemo(() => data.filter((t) =>
     t.name.toLowerCase().includes(search.toLowerCase())
-  );
+  ), [data, search]);
 
-  const sections: TransactionSection[] = [
-    { title: 'Hoy', data: filtered.filter((t) => {
-      const d = new Date(t.createdAt);
-      return new Date().toDateString() === d.toDateString();
-    }) },
-    { title: 'Ayer', data: filtered.filter((t) => {
-      const d = new Date(t.createdAt);
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      return yesterday.toDateString() === d.toDateString();
-    }) },
-    { title: 'Anteriores', data: filtered.filter((t) => {
-      const d = new Date(t.createdAt);
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      return yesterday.toDateString() !== d.toDateString() &&
-        new Date().toDateString() !== d.toDateString();
-    }) },
-  ].filter(s => s.data.length > 0);
+  const sections: TransactionSection[] = useMemo(() => {
+    const today = new Date().toDateString();
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    return [
+      { title: 'Hoy', data: filtered.filter((t) => new Date(t.createdAt).toDateString() === today) },
+      { title: 'Ayer', data: filtered.filter((t) => new Date(t.createdAt).toDateString() === yesterday) },
+      { title: 'Anteriores', data: filtered.filter((t) => {
+        const d = new Date(t.createdAt).toDateString();
+        return d !== today && d !== yesterday;
+      }) },
+    ].filter(s => s.data.length > 0);
+  }, [filtered]);
 
-  const totalAmount = data.reduce((sum, t) => sum + t.value, 0);
+  const totalAmount = useMemo(() => data.reduce((sum, t) => sum + t.value, 0), [data]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

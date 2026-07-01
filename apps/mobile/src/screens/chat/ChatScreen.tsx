@@ -8,6 +8,8 @@ import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { useSnackbar } from '../../context/SnackbarContext';
+import { useNavigation } from '@react-navigation/native';
+import type { RootNavigationProp } from '../../navigation/types';
 import { chatApi } from '../../services/api';
 import type { ChatMessage } from '@finance-flow/shared-types';
 
@@ -28,10 +30,15 @@ function TypingIndicator() {
         ])
       );
 
-    Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-    bounce(dot1, 0).start();
-    bounce(dot2, 200).start();
-    bounce(dot3, 400).start();
+    const fade = Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true });
+    fade.start();
+    const b1 = bounce(dot1, 0);
+    const b2 = bounce(dot2, 200);
+    const b3 = bounce(dot3, 400);
+    b1.start();
+    b2.start();
+    b3.start();
+    return () => { fade.stop(); b1.stop(); b2.stop(); b3.stop(); };
   }, []);
 
   const { colors } = useTheme();
@@ -57,7 +64,8 @@ function TypingIndicator() {
   );
 }
 
-export function ChatScreen({ navigation }: any) {
+export function ChatScreen() {
+  const navigation = useNavigation<RootNavigationProp>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { showError } = useSnackbar();
