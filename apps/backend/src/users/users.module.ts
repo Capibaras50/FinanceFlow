@@ -6,12 +6,14 @@ import { User } from './entities/user.entity';
 import { Profile } from './entities/profile.entity';
 import { CategoriesModule } from 'src/categories/categories.module';
 import { WalletsModule } from 'src/wallets/wallets.module';
+import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Profile]),
     CategoriesModule,
     WalletsModule,
+    CloudinaryModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],
