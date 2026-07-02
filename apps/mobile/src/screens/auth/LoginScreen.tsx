@@ -17,7 +17,7 @@ export function LoginScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<AuthNavigationProp>();
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const { showError } = useSnackbar();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,6 +31,16 @@ export function LoginScreen() {
       await login(email, password);
     } catch (e) {
       showError(getErrorMessage(e, 'Error al iniciar sesión'));
+    }
+    setLoading(false);
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      await loginWithGoogle();
+    } catch (e) {
+      showError(getErrorMessage(e, 'Error al iniciar sesión con Google'));
     }
     setLoading(false);
   };
@@ -104,6 +114,25 @@ export function LoginScreen() {
           style={{ marginTop: spacing['2xl'] }}
         />
 
+        <View style={styles.divider}>
+          <View style={[styles.dividerLine, { backgroundColor: colors.outlineVariant }]} />
+          <Text style={[typography.bodySm, { color: colors.onSurfaceVariant, marginHorizontal: spacing.md }]}>
+            O
+          </Text>
+          <View style={[styles.dividerLine, { backgroundColor: colors.outlineVariant }]} />
+        </View>
+
+        <TouchableOpacity
+          onPress={handleGoogleLogin}
+          style={[styles.googleButton, { borderColor: colors.outlineVariant }]}
+          disabled={loading}
+        >
+          <Ionicons name="logo-google" size={20} color={colors.onSurface} />
+          <Text style={[typography.labelLg, { color: colors.onSurface, marginLeft: spacing.sm }]}>
+            Continuar con Google
+          </Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           onPress={() => navigation.navigate('Register')}
           style={[styles.registerButton, { borderColor: colors.primary }]}
@@ -138,6 +167,23 @@ const styles = StyleSheet.create({
   forgotLink: {
     alignSelf: 'flex-end',
     marginTop: spacing.xs,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   registerButton: {
     marginTop: spacing.md,

@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { authApi, usersApi, setForceLogoutHandler } from '../services/api';
 import {
   saveToken,
@@ -23,6 +25,7 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -106,6 +109,31 @@ export function useAuthProvider(): AuthContextType {
     await login(email, password);
   }, [login]);
 
+  const loginWithGoogle = useCallback(async () => {
+    const redirectUri = Linking.createURL('oauth');
+    const authUrl = `${API_URL}/auth?redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+    const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+    if (result.type !== 'success') {
+      throw new Error('Google sign-in cancelled');
+    }
+
+    const url = result.url;
+    const params = new URLSearchParams(url.split('?')[1] ?? '');
+    const accessToken = params.get('accessToken');
+    const refreshToken = params.get('refreshToken');
+
+    if (!accessToken || !refreshToken) {
+      throw new Error('Google sign-in failed');
+    }
+
+    await saveToken(accessToken);
+    await saveRefreshToken(refreshToken);
+    const user = await usersApi.me();
+    setState({ user, isLoading: false, isAuthenticated: true });
+  }, []);
+
   const logout = useCallback(async () => {
     const currentRefreshToken = getRefreshTokenSync();
     if (currentRefreshToken) {
@@ -123,5 +151,5 @@ export function useAuthProvider(): AuthContextType {
     setState(prev => ({ ...prev, user }));
   }, []);
 
-  return { ...state, login, register, logout, refreshUser };
+  return { ...state, login, register, loginWithGoogle, logout, refreshUser };
 }

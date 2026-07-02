@@ -76,7 +76,9 @@ export class AuthController {
 
   @UseGuards(GoogleOAuthGuard)
   @Get('google-redirect')
-  googleAuthRedirect(@Req() req: express.Request) {
-    return this.authService.googleLogin(req);
+  async googleAuthRedirect(@Req() req: express.Request, @Res() res: Response) {
+    const tokens = await this.authService.googleLogin(req);
+    const deepLink = `finance-flow://oauth?accessToken=${encodeURIComponent(tokens.accessToken)}&refreshToken=${encodeURIComponent(tokens.refreshToken)}`;
+    res.redirect(302, deepLink);
   }
 }

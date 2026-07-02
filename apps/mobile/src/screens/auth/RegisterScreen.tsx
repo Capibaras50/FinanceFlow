@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,7 +18,7 @@ export function RegisterScreen() {
   const navigation = useNavigation<AuthNavigationProp>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const { showError } = useSnackbar();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -38,6 +38,16 @@ export function RegisterScreen() {
       await register(email, password, name);
     } catch (e) {
       showError(getErrorMessage(e, 'Error al registrarse'));
+    }
+    setLoading(false);
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      await loginWithGoogle();
+    } catch (e) {
+      showError(getErrorMessage(e, 'Error al iniciar sesión con Google'));
     }
     setLoading(false);
   };
@@ -129,6 +139,25 @@ export function RegisterScreen() {
           style={{ marginTop: spacing['2xl'] }}
         />
 
+        <View style={styles.divider}>
+          <View style={[styles.dividerLine, { backgroundColor: colors.outlineVariant }]} />
+          <Text style={[typography.bodySm, { color: colors.onSurfaceVariant, marginHorizontal: spacing.md }]}>
+            O
+          </Text>
+          <View style={[styles.dividerLine, { backgroundColor: colors.outlineVariant }]} />
+        </View>
+
+        <TouchableOpacity
+          onPress={handleGoogleLogin}
+          style={[styles.googleButton, { borderColor: colors.outlineVariant }]}
+          disabled={loading}
+        >
+          <Ionicons name="logo-google" size={20} color={colors.onSurface} />
+          <Text style={[typography.labelLg, { color: colors.onSurface, marginLeft: spacing.sm }]}>
+            Registrarse con Google
+          </Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={{
@@ -147,3 +176,23 @@ export function RegisterScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
