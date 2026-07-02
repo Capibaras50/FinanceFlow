@@ -66,7 +66,7 @@ export class UsersService {
       const newUser = await this.usersRepository.save(createdUser);
       await this.categoriesService.createBaseCateogories(newUser.profile.id);
       await this.walletsService.createBaseWallets(newUser.profile.id);
-      return newUser;
+      return this.findOne(newUser.id);
     } catch {
       throw new BadRequestException('The user couldnt be created');
     }

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
@@ -20,7 +19,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     if (!callbackURL) {
       throw new Error('The Callback Url is not configured');
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     super({
       clientID,
       clientSecret,
@@ -35,21 +33,16 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     profile: Profile,
     done: VerifyCallback,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const { name, emails, photos } = profile;
     const user = {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       email: emails?.[0]?.value,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       firstName: name?.givenName,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       lastName: name?.familyName,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       picture: photos?.[0]?.value,
       accessToken,
       refreshToken,
     };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+
     done(null, user);
   }
 }
