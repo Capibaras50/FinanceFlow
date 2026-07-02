@@ -12,7 +12,7 @@ import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
-import { usersApi } from '../../services/api';
+import { uploadAvatarAsync } from '../../services/api';
 import { useNavigation } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 
@@ -69,12 +69,7 @@ export function ProfileScreen() {
   const uploadAvatar = async (asset: ImagePicker.ImagePickerAsset) => {
     setUploading(true);
     try {
-      const ext = asset.uri.split('.').pop() || 'jpg';
-      await usersApi.uploadAvatar({
-        uri: asset.uri,
-        name: `avatar.${ext}`,
-        type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-      });
+      await uploadAvatarAsync(asset.uri);
       await refreshUser();
       showSuccess('Foto de perfil actualizada');
     } catch (e) {

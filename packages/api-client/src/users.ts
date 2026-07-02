@@ -48,6 +48,6 @@ export class UsersApi {
   uploadAvatar(file: { uri: string; name: string; type: string }): Promise<User> {
     const formData = new FormData();
     formData.append('avatar', file as any);
-    return this.client.uploadFile<User>('/users/upload-avatar', formData, 'PATCH');
+    return this.client.uploadFile<User>('/users/upload-avatar', formData);
   }
 }

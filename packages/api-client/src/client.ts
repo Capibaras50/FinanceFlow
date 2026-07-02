@@ -32,6 +32,14 @@ export class ApiClient {
     });
   }
 
+  getBaseUrl(): string {
+    return this.config.baseUrl;
+  }
+
+  getAuthToken(): string | null {
+    return this.config.getToken?.() ?? null;
+  }
+
   async request<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown, formData?: FormData): Promise<T> {
     const reqConfig: AxiosRequestConfig = {
       method,
@@ -133,6 +141,7 @@ export class ApiClient {
   uploadFile<T>(path: string, formData: FormData, method: 'POST' | 'PATCH' = 'POST'): Promise<T> {
     return this.request<T>(method, path, undefined, formData);
   }
+
 }
 
 export function createApiClient(config: ApiConfig): ApiClient {

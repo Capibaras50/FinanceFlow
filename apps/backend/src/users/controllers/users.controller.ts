@@ -61,7 +61,7 @@ export class UsersController {
 
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('avatar'))
-  @Patch('upload-avatar')
+  @Post('upload-avatar')
   async uploadAvatar(
     @GetUser('userId') userId: number,
     @UploadedFile() avatar: Express.Multer.File,

@@ -1,3 +1,4 @@
+import type { User } from '@finance-flow/shared-types';
 import {
   createApiClient,
   AuthApi,
@@ -17,6 +18,7 @@ import {
   removeToken,
   removeRefreshToken,
 } from './storage';
+import { uploadAsync, FileSystemUploadType } from 'expo-file-system/legacy';
 
 let forceLogoutHandler: (() => void) | null = null;
 
@@ -47,3 +49,19 @@ export const expensesApi = new ExpensesApi(client);
 export const earningsApi = new EarningsApi(client);
 export const receiptsApi = new ReceiptsApi(client);
 export const chatApi = new ChatApi(client);
+
+export async function uploadAvatarAsync(uri: string) {
+  const token = getTokenSync();
+  const baseUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+  const result = await uploadAsync(`${baseUrl}/users/upload-avatar`, uri, {
+    httpMethod: 'POST',
+    uploadType: FileSystemUploadType.MULTIPART,
+    fieldName: 'avatar',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (result.status >= 400) {
+    const data = JSON.parse(result.body) as Record<string, unknown>;
+    throw { message: data?.message || 'Upload failed', statusCode: result.status };
+  }
+  return JSON.parse(result.body) as User;
+}
