@@ -1,4 +1,5 @@
 import {
+  IsEmail,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -7,7 +8,12 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class CreateProfileDto {
+export class CreateUserGoogleDto {
+  @IsString()
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
   @IsString()
   @IsNotEmpty()
   @MinLength(3)
@@ -15,7 +21,7 @@ export class CreateProfileDto {
   name: string;
 
   @IsString()
-  @IsUrl()
   @IsOptional()
-  avatarUrl: string;
+  @IsUrl()
+  avatarUrl?: string;
 }

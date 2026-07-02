@@ -20,4 +20,7 @@ export interface Env {
   EMAIL_PORT: number;
   EMAIL_HOST: string;
   RECOVERY_PASSWORD_URL: string;
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
+  GOOGLE_CALLBACK_URL: string;
 }

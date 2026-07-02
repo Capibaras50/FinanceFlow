@@ -19,6 +19,7 @@ import { ForgotPasswordDto } from '../dto/forgot-password.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { LogoutDto } from '../dto/logout.dto';
 import { RefreshDto } from '../dto/refresh.dto';
+import { GoogleOAuthGuard } from '../guards/google-oauth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -67,5 +68,15 @@ export class AuthController {
       recoveryToken,
       resetPasswordDto.password,
     );
+  }
+
+  @UseGuards(GoogleOAuthGuard)
+  @Get()
+  async googleAuth() {}
+
+  @UseGuards(GoogleOAuthGuard)
+  @Get('google-redirect')
+  googleAuthRedirect(@Req() req: express.Request) {
+    return this.authService.googleLogin(req);
   }
 }

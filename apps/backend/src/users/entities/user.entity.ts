@@ -24,7 +24,7 @@ export class User {
   email: string;
 
   @Exclude()
-  @Column({ type: 'text', nullable: false })
+  @Column({ type: 'text', nullable: true })
   password: string;
 
   @OneToOne(() => Profile, (profile) => profile.user, {
@@ -73,6 +73,8 @@ export class User {
 
   @BeforeInsert()
   async hashPassword() {
-    this.password = await hash(this.password, 10);
+    if (this.password) {
+      this.password = await hash(this.password, 10);
+    }
   }
 }

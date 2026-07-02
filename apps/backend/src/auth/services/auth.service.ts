@@ -10,6 +10,8 @@ import { UsersService } from 'src/users/services/users.service';
 import { DeepPartial, Repository } from 'typeorm';
 import { RefreshToken } from '../entities/refresh-tokens.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Request } from 'express';
+import { GoogleUserInterface } from '../interfaces/google-user.interface';
 
 @Injectable()
 export class AuthService {
@@ -24,7 +26,7 @@ export class AuthService {
 
   async validateUser(email: string, password: string) {
     const user = await this.usersService.findUserByEmail(email);
-    if (!user) {
+    if (!user || !user.password) {
       throw new UnauthorizedException();
     }
     const isMatch = await compare(password, user.password);
@@ -154,6 +156,33 @@ export class AuthService {
     const hashPassword = await hash(newPassword, 10);
     await this.usersService.recoveryPassword(user.id, hashPassword);
     return { message: 'The Password was changed successfully' };
+  }
+
+  async googleLogin(req: Request) {
+    const googleUser: GoogleUserInterface | undefined = req.user;
+
+    if (!googleUser?.email) {
+      throw new UnauthorizedException('No user from google');
+    }
+
+    let user = await this.usersService.findUserByEmail(googleUser.email);
+
+    if (!user) {
+      const name =
+        [googleUser.firstName, googleUser.lastName]
+          .filter(Boolean)
+          .join(' ')
+          .trim() || 'User';
+
+      user = await this.usersService.createWithGoogle({
+        email: googleUser.email,
+        name,
+        avatarUrl: googleUser.picture,
+      });
+    }
+
+    const payload: Payload = { sub: user.id, profileId: user.profile.id };
+    return this.login(payload);
   }
 
   private generateHtmlEmail(name: string, linkChangePassword: string) {

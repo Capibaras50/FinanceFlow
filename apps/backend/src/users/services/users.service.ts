@@ -6,13 +6,14 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
-import { Repository } from 'typeorm';
+import { DeepPartial, Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CategoriesService } from 'src/categories/services/categories.service';
 import { WalletsService } from 'src/wallets/services/wallets.service';
 import { compare, hash } from 'bcrypt';
 import { ChangePasswordDto } from '../dto/change-password.dto';
+import { CreateUserGoogleDto } from '../dto/create-user-google.dto';
 
 @Injectable()
 export class UsersService {
@@ -71,6 +72,22 @@ export class UsersService {
     }
   }
 
+  async createWithGoogle(createUserGoogleDto: CreateUserGoogleDto) {
+    const newUser: DeepPartial<User> = {
+      email: createUserGoogleDto.email,
+      password: undefined,
+      profile: {
+        name: createUserGoogleDto.name,
+        avatarUrl: createUserGoogleDto.avatarUrl,
+      },
+    };
+    const user = this.usersRepository.create(newUser);
+    const savedUser = await this.usersRepository.save(user);
+    await this.categoriesService.createBaseCateogories(savedUser.profile.id);
+    await this.walletsService.createBaseWallets(savedUser.profile.id);
+    return this.findOne(savedUser.id);
+  }
+
   async saveRecoveryToken(id: number, hashRecoveryToken: string) {
     const user = await this.findOne(id);
     const recoveryTokenExpiresAt = new Date();
@@ -125,8 +142,8 @@ export class UsersService {
 
   async changePassword(id: number, changePasswordDto: ChangePasswordDto) {
     const user = await this.findOne(id);
-    if (!user) {
-      throw new NotFoundException('The User Not Found');
+    if (!user || !user.password) {
+      throw new UnauthorizedException();
     }
     const isMatch = await compare(
       changePasswordDto.currentPassword,
