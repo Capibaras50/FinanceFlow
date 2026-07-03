@@ -15,6 +15,7 @@ import { ReceiptStatus } from '../enums/receipt.enums';
 import { ReceiptService } from './receipt.service';
 import { TopCategoriesInterface } from '../interfaces/top-categories.interface';
 import { TotalExpensesInterface } from '../interfaces/monthly-summary.interface';
+import { FilterTransactionDto } from '../dto/filter-transaction.dto';
 
 @Injectable()
 export class ExpenseService {
@@ -56,15 +57,32 @@ export class ExpenseService {
     }
   }
 
-  async findAll(profileId: number) {
-    const expenses = await this.expensesRepository.find({
-      where: {
+  async findAll(profileId: number, filterTransactionDto: FilterTransactionDto) {
+    try {
+      const order = filterTransactionDto.sortBy
+        ? { [filterTransactionDto.sortBy]: filterTransactionDto.sortOrder }
+        : {};
+      const where = {
         profile: { id: profileId },
         deletedAt: undefined,
-      },
-      relations: ['categories', 'wallet'],
-    });
-    return expenses;
+      };
+      if (filterTransactionDto.category) {
+        where['categories'] = { name: filterTransactionDto.category };
+      }
+      if (filterTransactionDto.wallet) {
+        where['wallet'] = { name: filterTransactionDto.wallet };
+      }
+      const expenses = await this.expensesRepository.find({
+        where,
+        relations: ['categories', 'wallet'],
+        take: filterTransactionDto.limit || 10,
+        skip: ((filterTransactionDto.page ?? 1) - 1) * 10,
+        order,
+      });
+      return expenses;
+    } catch {
+      throw new BadRequestException('Couldnt Get Anyone Expense');
+    }
   }
 
   async findOne(id: number, profileId: number) {

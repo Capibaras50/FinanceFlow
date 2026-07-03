@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CategoriesService } from 'src/categories/services/categories.service';
+import { FilterTransactionDto } from 'src/transactions/dto/filter-transaction.dto';
 import { EarningService } from 'src/transactions/services/earning.service';
 import { ExpenseService } from 'src/transactions/services/expense.service';
 import { ReceiptService } from 'src/transactions/services/receipt.service';
@@ -42,8 +43,11 @@ export class FinancialToolsService {
   }
 
   // EXPENSES
-  async getAllExpenses(profileId: number) {
-    return await this.expenseService.findAll(profileId);
+  async getAllExpenses(
+    profileId: number,
+    filterTransactionDto: FilterTransactionDto,
+  ) {
+    return await this.expenseService.findAll(profileId, filterTransactionDto);
   }
 
   async getExpense(id: number, profileId: number) {
@@ -114,8 +118,11 @@ export class FinancialToolsService {
   }
 
   // EARNINGS
-  async getAllEarnings(profileId: number) {
-    return await this.earningService.findAll(profileId);
+  async getAllEarnings(
+    profileId: number,
+    filterTransactionDto: FilterTransactionDto,
+  ) {
+    return await this.earningService.findAll(profileId, filterTransactionDto);
   }
 
   async getEarningById(id: number, profileId: number) {

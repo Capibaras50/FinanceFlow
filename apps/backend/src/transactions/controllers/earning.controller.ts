@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -15,6 +16,7 @@ import { GetUser } from 'src/decorators/get-user.decorator';
 import { EarningService } from '../services/earning.service';
 import { CreateEarningDto } from '../dto/create-earning.dto';
 import { UpdateEarningDto } from '../dto/update-earning.dto';
+import { FilterTransactionDto } from '../dto/filter-transaction.dto';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('earnings')
@@ -22,8 +24,11 @@ export class EarningController {
   constructor(private earningService: EarningService) {}
 
   @Get()
-  findAll(@GetUser('profileId') profileId: number) {
-    return this.earningService.findAll(profileId);
+  findAll(
+    @GetUser('profileId') profileId: number,
+    @Query() filterTransactionDto: FilterTransactionDto,
+  ) {
+    return this.earningService.findAll(profileId, filterTransactionDto);
   }
 
   @Get(':id')

@@ -29,9 +29,11 @@ export class CategoriesService {
     }
   }
 
-  async findAll(profileId: number) {
-    const categories = this.categoriesRepository.find({
+  async findAll(profileId: number, take?: number, page?: number) {
+    const categories = await this.categoriesRepository.find({
       where: { profile: { id: profileId } },
+      take: take || 10,
+      skip: ((page ?? 1) - 1) * 10,
     });
     return categories;
   }
@@ -63,7 +65,9 @@ export class CategoriesService {
   }
 
   async findByName(name: string, profileId: number) {
-    const categories = await this.findAll(profileId);
+    const categories = await this.categoriesRepository.find({
+      where: { profile: { id: profileId } },
+    });
     const filteredCategories = categories.filter((category) =>
       category.name.toLowerCase().includes(name.toLowerCase()),
     );

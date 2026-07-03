@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from '../services/users.service';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -34,8 +35,8 @@ export class UsersController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Query('limit') limit?: number, @Query('page') page?: number) {
+    return this.usersService.findAll(limit, page);
   }
 
   @UseGuards(AuthGuard('jwt'))

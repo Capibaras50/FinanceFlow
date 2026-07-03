@@ -23,9 +23,11 @@ export class UsersService {
     private categoriesService: CategoriesService,
     private walletsService: WalletsService,
   ) {}
-  async findAll() {
+  async findAll(take?: number, page?: number) {
     const users = await this.usersRepository.find({
       where: { deletedAt: undefined },
+      take: take || 10,
+      skip: ((page ?? 1) - 1) * 10,
     });
     return users;
   }

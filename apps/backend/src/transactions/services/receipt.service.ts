@@ -37,10 +37,15 @@ export class ReceiptService {
     return receipt;
   }
 
-  async findAll(profileId: number) {
+  async findAll(profileId: number, page?: number, take?: number) {
     const receipts = await this.receiptRepository.find({
       where: {
         profile: { id: profileId },
+      },
+      take: take || 10,
+      skip: ((page ?? 1) - 1) * 10,
+      order: {
+        createdAt: 'DESC',
       },
     });
     return receipts;

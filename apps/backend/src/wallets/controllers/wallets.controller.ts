@@ -9,6 +9,7 @@ import {
   HttpCode,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { WalletsService } from '../services/wallets.service';
 import { CreateWalletDto } from '../dto/create-wallets.dto';
@@ -30,8 +31,12 @@ export class WalletsController {
   }
 
   @Get()
-  findAll(@GetUser('profileId') profileId: number) {
-    return this.walletsService.findAll(profileId);
+  findAll(
+    @GetUser('profileId') profileId: number,
+    @Query('limit') limit?: number,
+    @Query('page') page?: number,
+  ) {
+    return this.walletsService.findAll(profileId, limit, page);
   }
 
   @Get('balance')

@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ExpenseService } from '../services/expense.service';
@@ -14,6 +15,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from 'src/decorators/get-user.decorator';
 import { CreateExpenseDto } from '../dto/create-expense.dto';
 import { UpdateExpenseDto } from '../dto/update-expense.dto';
+import { FilterTransactionDto } from '../dto/filter-transaction.dto';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('expenses')
@@ -29,8 +31,11 @@ export class ExpenseController {
   }
 
   @Get()
-  findAll(@GetUser('profileId') profileId: number) {
-    return this.expenseService.findAll(profileId);
+  findAll(
+    @GetUser('profileId') profileId: number,
+    @Query() filterTransactionDto: FilterTransactionDto,
+  ) {
+    return this.expenseService.findAll(profileId, filterTransactionDto);
   }
 
   @Post()

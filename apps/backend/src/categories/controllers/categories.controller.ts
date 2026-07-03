@@ -9,12 +9,14 @@ import {
   ParseIntPipe,
   UseGuards,
   HttpCode,
+  Query,
 } from '@nestjs/common';
 import { CategoriesService } from '../services/categories.service';
 import { CreateCategoryDto } from '../dto/create-category.dto';
 import { UpdateCategoryDto } from '../dto/update-category.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from '../../decorators/get-user.decorator';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('categories')
@@ -30,8 +32,15 @@ export class CategoriesController {
   }
 
   @Get()
-  findAll(@GetUser('profileId') profileId: number) {
-    return this.categoriesService.findAll(profileId);
+  findAll(
+    @GetUser('profileId') profileId: number,
+    @Query() pagination: PaginationDto,
+  ) {
+    return this.categoriesService.findAll(
+      profileId,
+      pagination.limit,
+      pagination.page,
+    );
   }
 
   @Get(':id')

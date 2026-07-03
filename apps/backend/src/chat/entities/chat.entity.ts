@@ -19,7 +19,7 @@ export class Message {
   @Column({ type: 'enum', enum: RoleEnum, nullable: false })
   role: string;
 
-  @Column({ type: 'varchar', length: 512, nullable: false })
+  @Column({ type: 'text', nullable: false })
   message: string;
 
   @ManyToOne(() => Profile, (profile) => profile.id, { nullable: false })

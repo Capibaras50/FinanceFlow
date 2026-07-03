@@ -11,6 +11,7 @@ import { UpdateEarningDto } from '../dto/update-earning.dto';
 import { WalletsService } from 'src/wallets/services/wallets.service';
 import { CategoriesService } from 'src/categories/services/categories.service';
 import { TotalEarningsInterface } from '../interfaces/monthly-summary.interface';
+import { FilterTransactionDto } from '../dto/filter-transaction.dto';
 
 @Injectable()
 export class EarningService {
@@ -21,14 +22,27 @@ export class EarningService {
     private categoriesService: CategoriesService,
   ) {}
 
-  async findAll(profileId: number) {
+  async findAll(profileId: number, filterTransactionDto: FilterTransactionDto) {
     try {
+      const order = filterTransactionDto.sortBy
+        ? { [filterTransactionDto.sortBy]: filterTransactionDto.sortOrder }
+        : {};
+      const where = {
+        profile: { id: profileId },
+        deletedAt: undefined,
+      };
+      if (filterTransactionDto.category) {
+        where['categories'] = { name: filterTransactionDto.category };
+      }
+      if (filterTransactionDto.wallet) {
+        where['wallet'] = { name: filterTransactionDto.wallet };
+      }
       const earnings = await this.earningRepository.find({
-        where: {
-          profile: { id: profileId },
-          deletedAt: undefined,
-        },
+        where,
         relations: ['categories', 'wallet'],
+        take: filterTransactionDto.limit || 10,
+        skip: ((filterTransactionDto.page ?? 1) - 1) * 10,
+        order,
       });
 
       return earnings;
@@ -38,22 +52,18 @@ export class EarningService {
   }
 
   async findOne(id: number, profileId: number) {
-    try {
-      const earning = await this.earningRepository.findOne({
-        where: {
-          id,
-          profile: { id: profileId },
-          deletedAt: undefined,
-        },
-        relations: ['categories', 'wallet'],
-      });
-      if (!earning) {
-        throw new NotFoundException('The earning Not Found');
-      }
-      return earning;
-    } catch {
-      throw new BadRequestException('Couldnt Search The Earning');
+    const earning = await this.earningRepository.findOne({
+      where: {
+        id,
+        profile: { id: profileId },
+        deletedAt: undefined,
+      },
+      relations: ['categories', 'wallet'],
+    });
+    if (!earning) {
+      throw new NotFoundException('The earning Not Found');
     }
+    return earning;
   }
 
   async getTotalEarnings(profileId: number, month: number) {
@@ -133,7 +143,7 @@ export class EarningService {
       const mergedEarning = this.earningRepository.merge(earning, {
         deletedAt: new Date(),
       });
-      return this.earningRepository.save(mergedEarning);
+      return await this.earningRepository.save(mergedEarning);
     } catch {
       throw new BadRequestException('The Earning Couldnt Be Removed');
     }

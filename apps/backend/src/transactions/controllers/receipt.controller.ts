@@ -8,6 +8,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -35,8 +36,12 @@ export class ReceiptController {
   }
 
   @Get()
-  findAll(@GetUser('profileId') profileId: number) {
-    return this.receiptService.findAll(profileId);
+  findAll(
+    @GetUser('profileId') profileId: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.receiptService.findAll(profileId, page, limit);
   }
 
   @Post()

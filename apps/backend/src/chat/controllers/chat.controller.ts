@@ -33,9 +33,9 @@ export class ChatController {
   @Get()
   getRecord(
     @GetUser('profileId') profileId: number,
-    @Query('take') take?: number,
+    @Query('limit') limit?: number,
   ) {
-    return this.chatService.findAllMessages(profileId, take);
+    return this.chatService.findAllMessages(profileId, limit);
   }
 
   @Delete(':id')

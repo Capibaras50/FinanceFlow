@@ -33,9 +33,11 @@ export class WalletsService {
     }
   }
 
-  async findAll(profileId: number) {
+  async findAll(profileId: number, take?: number, page?: number) {
     const wallets = await this.walletRepository.find({
       where: { profile: { id: profileId } },
+      take: take || 10,
+      skip: ((page ?? 1) - 1) * 10,
     });
     return wallets;
   }
