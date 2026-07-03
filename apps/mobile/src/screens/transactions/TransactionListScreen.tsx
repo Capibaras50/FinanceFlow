@@ -1,18 +1,20 @@
 import { useState, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, TextInput, SectionList, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, SectionList, Modal, ScrollView, Alert } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { TransactionCard } from '../../components/ui/TransactionCard';
+import { FocusFadeIn } from '../../components/ui/FocusFadeIn';
 import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../utils/format';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { expensesApi, earningsApi } from '../../services/api';
+import { expensesApi, earningsApi, categoriesApi, walletsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import type { RootNavigationProp } from '../../navigation/types';
-import type { Expense, Earning } from '@finance-flow/shared-types';
+import type { Expense, Earning, Category, Wallet } from '@finance-flow/shared-types';
 
 type TransactionSection = {
   title: string;
@@ -29,22 +31,54 @@ export function TransactionListScreen() {
   const [earnings, setEarnings] = useState<Earning[]>([]);
   const [search, setSearch] = useState('');
 
-  useFocusEffect(
-    useCallback(() => { loadData(); }, [])
-  );
+  const [showFilters, setShowFilters] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [filterCategory, setFilterCategory] = useState<string | undefined>();
+  const [filterWallet, setFilterWallet] = useState<string | undefined>();
+  const [filterSortBy, setFilterSortBy] = useState<'value' | 'createdAt' | undefined>();
+  const [filterSortOrder, setFilterSortOrder] = useState<'ASC' | 'DESC' | undefined>();
 
-  const loadData = async () => {
+  const loadMeta = useCallback(async () => {
     try {
+      const [cats, wals] = await Promise.all([
+        categoriesApi.getAll(),
+        walletsApi.getAll(),
+      ]);
+      setCategories(cats);
+      setWallets(wals);
+    } catch {}
+  }, []);
+
+  const loadData = useCallback(async (filterOverrides?: { category?: string; wallet?: string; sortBy?: 'value' | 'createdAt'; sortOrder?: 'ASC' | 'DESC' }) => {
+    try {
+      const cat = filterOverrides?.category ?? filterCategory;
+      const wal = filterOverrides?.wallet ?? filterWallet;
+      const sb = filterOverrides?.sortBy ?? filterSortBy;
+      const so = filterOverrides?.sortOrder ?? filterSortOrder;
+      const params: Record<string, string | number | undefined> = {};
+      if (cat) params.category = cat;
+      if (wal) params.wallet = wal;
+      if (sb) params.sortBy = sb;
+      if (so) params.sortOrder = so;
+
       const [expData, earnData] = await Promise.all([
-        expensesApi.getAll(),
-        earningsApi.getAll(),
+        expensesApi.getAll(Object.keys(params).length > 0 ? params : undefined),
+        earningsApi.getAll(Object.keys(params).length > 0 ? params : undefined),
       ]);
       setExpenses(expData);
       setEarnings(earnData);
     } catch {
       showError('Error al cargar transacciones');
     }
-  };
+  }, [filterCategory, filterWallet, filterSortBy, filterSortOrder, showError]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadMeta();
+      loadData();
+    }, [loadMeta, loadData])
+  );
 
   const handleDelete = useCallback(async (item: Expense | Earning) => {
     Alert.alert('Eliminar transacción', `¿Eliminar "${item.name}"?`, [
@@ -66,7 +100,23 @@ export function TransactionListScreen() {
       },
       },
     ]);
-  }, [tab]);
+  }, [tab, loadData, showError]);
+
+  const applyFilters = () => {
+    setShowFilters(false);
+    loadData({ category: filterCategory, wallet: filterWallet, sortBy: filterSortBy, sortOrder: filterSortOrder });
+  };
+
+  const clearFilters = () => {
+    setShowFilters(false);
+    loadData({ category: undefined, wallet: undefined, sortBy: undefined, sortOrder: undefined });
+    setFilterCategory(undefined);
+    setFilterWallet(undefined);
+    setFilterSortBy(undefined);
+    setFilterSortOrder(undefined);
+  };
+
+  const hasActiveFilters = filterCategory !== undefined || filterWallet !== undefined || filterSortBy !== undefined;
 
   const data = useMemo(() => tab === 'expenses' ? expenses : earnings, [tab, expenses, earnings]);
   const filtered = useMemo(() => data.filter((t) =>
@@ -89,6 +139,7 @@ export function TransactionListScreen() {
   const totalAmount = useMemo(() => data.reduce((sum, t) => sum + t.value, 0), [data]);
 
   return (
+    <FocusFadeIn>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <LinearGradient
         colors={colors.gradient.primary}
@@ -174,10 +225,20 @@ export function TransactionListScreen() {
               { flex: 1, color: colors.onSurface, paddingVertical: spacing.sm + 2, marginLeft: spacing.sm },
             ]}
           />
-          <TouchableOpacity>
-            <Ionicons name="filter" size={18} color={colors.onSurfaceVariant} />
+          <TouchableOpacity onPress={() => setShowFilters(true)}>
+            <Ionicons
+              name="filter"
+              size={18}
+              color={hasActiveFilters ? colors.primary : colors.onSurfaceVariant}
+            />
           </TouchableOpacity>
         </View>
+
+        {hasActiveFilters && (
+          <Text style={[typography.bodySm, { color: colors.primary, marginBottom: spacing.sm }]}>
+            Filtros activos
+          </Text>
+        )}
 
         {totalAmount > 0 && (
           <GlassCard style={{ marginBottom: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -224,6 +285,214 @@ export function TransactionListScreen() {
           }
         />
       </View>
+
+      <Modal visible={showFilters} transparent animationType="slide">
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderTopLeftRadius: borderRadius['2xl'],
+              borderTopRightRadius: borderRadius['2xl'],
+              padding: spacing.container,
+              paddingBottom: spacing['2xl'],
+              maxHeight: '70%',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
+              <Text style={[typography.titleLg, { color: colors.onSurface }]}>Filtros</Text>
+              <TouchableOpacity onPress={() => setShowFilters(false)}>
+                <Ionicons name="close" size={24} color={colors.onSurface} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm }]}>Categoría</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md }}>
+                <TouchableOpacity
+                  onPress={() => setFilterCategory(undefined)}
+                  style={{
+                    paddingVertical: spacing.xs + 2,
+                    paddingHorizontal: spacing.md,
+                    borderRadius: borderRadius.full,
+                    backgroundColor: filterCategory === undefined ? colors.primary : colors.surfaceContainerHigh,
+                  }}
+                >
+                  <Text style={[typography.labelMd, { color: filterCategory === undefined ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                    Todas
+                  </Text>
+                </TouchableOpacity>
+                {categories.map((cat) => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    onPress={() => setFilterCategory(cat.name)}
+                    style={{
+                      paddingVertical: spacing.xs + 2,
+                      paddingHorizontal: spacing.md,
+                      borderRadius: borderRadius.full,
+                      backgroundColor: filterCategory === cat.name ? cat.color : colors.surfaceContainerHigh,
+                    }}
+                  >
+                    <Text style={[typography.labelMd, { color: filterCategory === cat.name ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm }]}>Cartera</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.lg }}>
+                <TouchableOpacity
+                  onPress={() => setFilterWallet(undefined)}
+                  style={{
+                    paddingVertical: spacing.xs + 2,
+                    paddingHorizontal: spacing.md,
+                    borderRadius: borderRadius.full,
+                    backgroundColor: filterWallet === undefined ? colors.primary : colors.surfaceContainerHigh,
+                  }}
+                >
+                  <Text style={[typography.labelMd, { color: filterWallet === undefined ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                    Todas
+                  </Text>
+                </TouchableOpacity>
+                {wallets.map((w) => (
+                  <TouchableOpacity
+                    key={w.id}
+                    onPress={() => setFilterWallet(w.name)}
+                    style={{
+                      paddingVertical: spacing.xs + 2,
+                      paddingHorizontal: spacing.md,
+                      borderRadius: borderRadius.full,
+                      backgroundColor: filterWallet === w.name ? colors.primary : colors.surfaceContainerHigh,
+                    }}
+                  >
+                    <Text style={[typography.labelMd, { color: filterWallet === w.name ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                      {w.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm }]}>Ordenar por</Text>
+              <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setFilterSortBy(filterSortBy === 'value' ? undefined : 'value');
+                    setFilterSortOrder('DESC');
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.xs,
+                    paddingVertical: spacing.xs + 2,
+                    paddingHorizontal: spacing.md,
+                    borderRadius: borderRadius.full,
+                    backgroundColor: filterSortBy === 'value' ? colors.primary : colors.surfaceContainerHigh,
+                  }}
+                >
+                  <Ionicons name="cash" size={16} color={filterSortBy === 'value' ? '#FFFFFF' : colors.onSurfaceVariant} />
+                  <Text style={[typography.labelMd, { color: filterSortBy === 'value' ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                    Monto
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setFilterSortBy(filterSortBy === 'createdAt' ? undefined : 'createdAt');
+                    setFilterSortOrder('DESC');
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.xs,
+                    paddingVertical: spacing.xs + 2,
+                    paddingHorizontal: spacing.md,
+                    borderRadius: borderRadius.full,
+                    backgroundColor: filterSortBy === 'createdAt' ? colors.primary : colors.surfaceContainerHigh,
+                  }}
+                >
+                  <Ionicons name="calendar" size={16} color={filterSortBy === 'createdAt' ? '#FFFFFF' : colors.onSurfaceVariant} />
+                  <Text style={[typography.labelMd, { color: filterSortBy === 'createdAt' ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                    Fecha
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {filterSortBy && (
+                <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.lg }}>
+                  <TouchableOpacity
+                    onPress={() => setFilterSortOrder('DESC')}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: spacing.xs,
+                      paddingVertical: spacing.xs + 2,
+                      paddingHorizontal: spacing.md,
+                      borderRadius: borderRadius.full,
+                      backgroundColor: filterSortOrder === 'DESC' ? colors.primary : colors.surfaceContainerHigh,
+                    }}
+                  >
+                    <Ionicons name="arrow-down" size={16} color={filterSortOrder === 'DESC' ? '#FFFFFF' : colors.onSurfaceVariant} />
+                    <Text style={[typography.labelMd, { color: filterSortOrder === 'DESC' ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                      Mayor a menor
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setFilterSortOrder('ASC')}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: spacing.xs,
+                      paddingVertical: spacing.xs + 2,
+                      paddingHorizontal: spacing.md,
+                      borderRadius: borderRadius.full,
+                      backgroundColor: filterSortOrder === 'ASC' ? colors.primary : colors.surfaceContainerHigh,
+                    }}
+                  >
+                    <Ionicons name="arrow-up" size={16} color={filterSortOrder === 'ASC' ? '#FFFFFF' : colors.onSurfaceVariant} />
+                    <Text style={[typography.labelMd, { color: filterSortOrder === 'ASC' ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                      Menor a mayor
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
+                <TouchableOpacity
+                  onPress={clearFilters}
+                  style={{
+                    flex: 1,
+                    paddingVertical: spacing.md,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: borderRadius.full,
+                    borderWidth: 1.5,
+                    borderColor: colors.outlineVariant,
+                  }}
+                >
+                  <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, fontWeight: '600' }]}>
+                    Limpiar
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={applyFilters}
+                  style={{
+                    flex: 1,
+                    paddingVertical: spacing.md,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: borderRadius.full,
+                    backgroundColor: colors.primary,
+                  }}
+                >
+                  <Text style={[typography.labelMd, { color: '#FFFFFF', fontWeight: '600' }]}>
+                    Aplicar
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
+    </FocusFadeIn>
   );
 }

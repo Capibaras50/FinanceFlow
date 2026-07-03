@@ -6,6 +6,7 @@ import type { RootNavigationProp } from '../../navigation/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../../components/ui/GlassCard';
+import { FocusFadeIn } from '../../components/ui/FocusFadeIn';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { typography, spacing, borderRadius } from '../../theme';
@@ -94,6 +95,7 @@ export function WalletsScreen() {
   const totalBalance = balances.reduce((sum, w) => sum + Number(w.balance), 0);
 
   return (
+    <FocusFadeIn>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -256,5 +258,6 @@ export function WalletsScreen() {
         </View>
       </Modal>
     </View>
+    </FocusFadeIn>
   );
 }

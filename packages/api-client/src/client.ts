@@ -40,10 +40,11 @@ export class ApiClient {
     return this.config.getToken?.() ?? null;
   }
 
-  async request<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown, formData?: FormData): Promise<T> {
+  async request<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown, formData?: FormData, params?: Record<string, string | number | undefined>): Promise<T> {
     const reqConfig: AxiosRequestConfig = {
       method,
       url: path,
+      params,
       data: formData || body,
       headers: formData ? {} : { 'Content-Type': 'application/json' },
     };
@@ -122,8 +123,8 @@ export class ApiClient {
     throw { message: msg, statusCode: 0 };
   }
 
-  get<T>(path: string): Promise<T> {
-    return this.request<T>('GET', path);
+  get<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+    return this.request<T>('GET', path, undefined, undefined, params);
   }
 
   post<T>(path: string, body?: unknown): Promise<T> {

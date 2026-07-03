@@ -9,11 +9,20 @@ export interface CreateEarningDto {
   categoriesId: number[];
 }
 
+export interface EarningFilterParams {
+  category?: string;
+  wallet?: string;
+  sortBy?: 'value' | 'createdAt';
+  sortOrder?: 'ASC' | 'DESC';
+  page?: number;
+  limit?: number;
+}
+
 export class EarningsApi {
   constructor(private client: ApiClient) {}
 
-  getAll(): Promise<Earning[]> {
-    return this.client.get<Earning[]>('/earnings');
+  getAll(params?: EarningFilterParams): Promise<Earning[]> {
+    return this.client.get<Earning[]>('/earnings', params as Record<string, string | number | undefined>);
   }
 
   getById(id: number): Promise<Earning> {

@@ -83,10 +83,10 @@ export function RootNavigator() {
           <Stack.Screen name="MainTabs" component={MainTabNavigator} />
         ) : (
           <>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Register" component={RegisterScreen} />
-            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="Register" component={RegisterScreen} options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ animation: 'slide_from_right' }} />
           </>
         )}
         <Stack.Screen name="AddExpense" component={AddExpenseScreen} options={{ animation: 'slide_from_bottom' }} />

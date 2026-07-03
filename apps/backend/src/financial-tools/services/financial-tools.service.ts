@@ -17,8 +17,8 @@ export class FinancialToolsService {
   ) {}
 
   // CATEGORIES
-  async getAllCategories(profileId: number) {
-    return await this.categoriesService.findAll(profileId);
+  async getAllCategories(profileId: number, limit?: number, page?: number) {
+    return await this.categoriesService.findAll(profileId, limit, page);
   }
 
   async getCategoryById(id: number, profileId: number) {
@@ -34,8 +34,8 @@ export class FinancialToolsService {
   }
 
   // RECEIPTS
-  async getAllReceipts(profileId: number) {
-    return await this.receiptService.findAll(profileId);
+  async getAllReceipts(profileId: number, limit?: number, page?: number) {
+    return await this.receiptService.findAll(profileId, page, limit);
   }
 
   async getReceipt(id: number, profileId: number) {
@@ -78,8 +78,8 @@ export class FinancialToolsService {
   }
 
   // WALLETS
-  async getAllWallets(profileId: number) {
-    return await this.walletsService.findAll(profileId);
+  async getAllWallets(profileId: number, limit?: number, page?: number) {
+    return await this.walletsService.findAll(profileId, limit, page);
   }
 
   async getWallet(id: number, profileId: number) {

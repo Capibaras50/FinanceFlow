@@ -10,11 +10,20 @@ export interface CreateExpenseDto {
   receiptId?: number;
 }
 
+export interface ExpenseFilterParams {
+  category?: string;
+  wallet?: string;
+  sortBy?: 'value' | 'createdAt';
+  sortOrder?: 'ASC' | 'DESC';
+  page?: number;
+  limit?: number;
+}
+
 export class ExpensesApi {
   constructor(private client: ApiClient) {}
 
-  getAll(): Promise<Expense[]> {
-    return this.client.get<Expense[]>('/expenses');
+  getAll(params?: ExpenseFilterParams): Promise<Expense[]> {
+    return this.client.get<Expense[]>('/expenses', params as Record<string, string | number | undefined>);
   }
 
   getById(id: number): Promise<Expense> {

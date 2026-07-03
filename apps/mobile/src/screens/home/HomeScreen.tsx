@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { TransactionCard } from '../../components/ui/TransactionCard';
+import { FocusFadeIn } from '../../components/ui/FocusFadeIn';
 import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../utils/format';
@@ -60,6 +61,7 @@ export function HomeScreen() {
   );
 
   return (
+    <FocusFadeIn>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -263,5 +265,6 @@ export function HomeScreen() {
         </View>
       </ScrollView>
     </View>
+    </FocusFadeIn>
   );
 }

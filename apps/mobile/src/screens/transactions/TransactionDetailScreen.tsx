@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,7 +10,7 @@ import { GradientButton } from '../../components/ui/GradientButton';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { expensesApi, earningsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect, type RouteProp } from '@react-navigation/native';
 import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
 import type { Expense, Earning } from '@finance-flow/shared-types';
 import type { ThemeColors } from '../../theme';
@@ -25,11 +25,7 @@ export function TransactionDetailScreen() {
   const { showError } = useSnackbar();
   const [transaction, setTransaction] = useState<Expense | Earning | null>(null);
 
-  useEffect(() => {
-    loadTransaction();
-  }, []);
-
-  const loadTransaction = async () => {
+  const loadTransaction = useCallback(async () => {
     try {
       const data = isExpense
         ? await expensesApi.getById(transactionId)
@@ -38,7 +34,13 @@ export function TransactionDetailScreen() {
     } catch {
       showError('Error al cargar detalle');
     }
-  };
+  }, [isExpense, transactionId, showError]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadTransaction();
+    }, [loadTransaction])
+  );
 
   const handleDelete = () => {
     Alert.alert(

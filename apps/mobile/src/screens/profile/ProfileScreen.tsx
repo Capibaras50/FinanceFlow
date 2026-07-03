@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../../components/ui/GlassCard';
+import { FocusFadeIn } from '../../components/ui/FocusFadeIn';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { getErrorMessage } from '../../utils/format';
@@ -12,7 +13,7 @@ import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
-import { uploadAvatarAsync } from '../../services/api';
+import { uploadAvatarAsync, usersApi } from '../../services/api';
 import { useNavigation } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 
@@ -110,6 +111,7 @@ export function ProfileScreen() {
   ];
 
   return (
+    <FocusFadeIn>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <LinearGradient
         colors={colors.gradient.primary}
@@ -264,6 +266,7 @@ export function ProfileScreen() {
         </View>
       </Modal>
     </View>
+    </FocusFadeIn>
   );
 }
 

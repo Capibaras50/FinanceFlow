@@ -149,11 +149,11 @@ export function RegisterScreen() {
 
         <TouchableOpacity
           onPress={handleGoogleLogin}
-          style={[styles.googleButton, { borderColor: colors.outlineVariant }]}
+          style={[styles.googleButton, { backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 }]}
           disabled={loading}
         >
-          <Ionicons name="logo-google" size={20} color={colors.onSurface} />
-          <Text style={[typography.labelLg, { color: colors.onSurface, marginLeft: spacing.sm }]}>
+          <Ionicons name="logo-google" size={20} color={colors.primary} />
+          <Text style={[typography.labelLg, { color: colors.onSurface, marginLeft: spacing.sm, fontWeight: '600' }]}>
             Registrarse con Google
           </Text>
         </TouchableOpacity>

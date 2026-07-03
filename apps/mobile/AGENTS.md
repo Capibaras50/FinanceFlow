@@ -2,7 +2,22 @@
 
 Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before writing any code.
 
-# Session Context (June 29, 2026)
+# Session Context (July 2, 2026)
+
+## Changes
+- **api-client**: `client.get()` now accepts optional `params` for query parameters; `ExpensesApi.getAll()` and `EarningsApi.getAll()` accept `ExpenseFilterParams`/`EarningFilterParams` (category, wallet, sortBy, sortOrder, page, limit)
+- **TransactionDetailScreen**: Changed `useEffect` → `useFocusEffect` with `useCallback` so data reloads after editing a transaction
+- **TransactionListScreen**: Added filter modal (category + wallet chip pickers), passes filter params to API calls, fixed `useFocusEffect` deps, added `loadData` filter overrides for correct closure behavior; added sortBy (Monto/Fecha) + sortOrder (Mayor a menor/Menor a mayor) toggle chips in filter modal
+- **ProfileScreen**: Added missing `usersApi` import (pre-existing TS error)
+- **TypeScript**: Both mobile and api-client compile cleanly
+
+## Smooth Transitions (July 2, 2026)
+- **FocusFadeIn** — new component (`src/components/ui/FocusFadeIn.tsx`) wraps tab screens and slides up content via `Animated.spring` each time the tab gains focus; no data gating, always renders content immediately
+- **Data-load reload** — useFocusEffect reloads data in background on each tab focus without blocking render
+- **Auth screen transitions** — Login, Register, ForgotPassword, ResetPassword now use `animation: 'slide_from_right'` for consistent stack navigation feel
+- **TabBarIcon bounce** — active tab icon scales up via `Animated.spring` for tactile feedback when switching tabs
+
+
 
 ## Setup
 - `node-linker=hoisted` in `.npmrc` (required for CMake path length)
