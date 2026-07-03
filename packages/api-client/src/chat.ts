@@ -4,8 +4,8 @@ import type { ApiClient } from './client';
 export class ChatApi {
   constructor(private client: ApiClient) {}
 
-  sendMessage(message: string): Promise<ChatMessage> {
-    return this.client.post<ChatMessage>('/chat', { message });
+  sendMessage(message: string, timezone?: string): Promise<ChatMessage> {
+    return this.client.post<ChatMessage>('/chat', { message, timezone });
   }
 
   getMessages(take?: number): Promise<ChatMessage[]> {

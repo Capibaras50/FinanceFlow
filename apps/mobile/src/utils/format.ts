@@ -1,4 +1,5 @@
 export function formatCurrency(value: number): string {
+  if (isNaN(value) || !isFinite(value)) return '$0.00';
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
@@ -8,12 +9,15 @@ export function formatCurrency(value: number): string {
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-  if (days === 0) return 'Hoy';
-  if (days === 1) return 'Ayer';
-  if (days < 7) return `Hace ${days} días`;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Hoy';
+  if (diffDays === 1) return 'Ayer';
+  if (diffDays < 7) return `Hace ${diffDays} días`;
+  if (diffDays === 7) return 'Hace 1 semana';
 
   return date.toLocaleDateString('es-MX', {
     day: 'numeric',

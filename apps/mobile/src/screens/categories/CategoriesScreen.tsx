@@ -157,7 +157,7 @@ export function CategoriesScreen() {
               </Text>
               {totalSpent > 0 && (
                 <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
-                  {categories.slice(0, 4).map((cat) => {
+                  {categories.map((cat) => {
                     const catExpenses = getCategoryExpenses(cat.id);
                     const catTotal = catExpenses.reduce((s, e) => s + Number(e.value), 0);
                     const percent = totalSpent > 0 ? (catTotal / totalSpent) * 100 : 0;
@@ -193,7 +193,7 @@ export function CategoriesScreen() {
         }
         renderItem={({ item }) => {
           const catExpenses = getCategoryExpenses(item.id);
-          const catTotal = catExpenses.reduce((s, e) => s + e.value, 0);
+          const catTotal = catExpenses.reduce((s, e) => s + Number(e.value), 0);
           return (
             <TouchableOpacity
               onPress={() => openEdit(item)}

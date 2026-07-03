@@ -21,7 +21,11 @@ export class ChatService {
 
   async sendMessage(createChatDto: CreateChatDto, profileId: number) {
     try {
-      const systemPrompt = `Eres un asistente financiero inteligente y amigable que ayuda a los usuarios a gestionar sus finanzas personales. Hablas solo en español. Puedes consultar gastos, ingresos, carteras, categorías y recibos del usuario usando las herramientas disponibles. Responde de forma clara, concisa y útil. Usa markdown para formatear tus respuestas cuando sea apropiado (negritas, listas, títulos).`;
+      const timezone = createChatDto.timezone;
+      const timezoneInstruction = timezone
+        ? `El usuario está en la zona horaria "${timezone}". Cuando muestres fechas, conviértelas siempre a esta zona horaria. Por ejemplo, si ves "2026-07-03T14:30:00.000Z" y el usuario está en "America/Mexico_City" (UTC-6), debes mostrarlo como "3 de julio de 2026, 08:30".`
+        : '';
+      const systemPrompt = `Eres un asistente financiero inteligente y amigable que ayuda a los usuarios a gestionar sus finanzas personales. Hablas solo en español. Puedes consultar gastos, ingresos, carteras, categorías y recibos del usuario usando las herramientas disponibles. Responde de forma clara, concisa y útil. Usa markdown para formatear tus respuestas cuando sea apropiado (negritas, listas, títulos).${timezoneInstruction ? `\n\n${timezoneInstruction}` : ''}`;
       const messagesHistory = await this.findAllMessages(profileId, 10);
       const newUserMessage: DeepPartial<Message> = {
         role: RoleEnum.USER,

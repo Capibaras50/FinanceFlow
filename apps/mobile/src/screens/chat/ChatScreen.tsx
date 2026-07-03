@@ -101,7 +101,8 @@ export function ChatScreen() {
     setLoading(true);
 
     try {
-      const response = await chatApi.sendMessage(text);
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const response = await chatApi.sendMessage(text, timezone);
       setMessages((prev) => [...prev, response]);
     } catch {
       const errorMsg: ChatMessage = {

@@ -7,7 +7,7 @@ import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
-import { formatCurrency, formatDate } from '../../utils/format';
+import { formatCurrency } from '../../utils/format';
 import { expensesApi, earningsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { useNavigation, useRoute, useFocusEffect, type RouteProp } from '@react-navigation/native';
@@ -163,7 +163,7 @@ export function TransactionDetailScreen() {
             )}
             <DetailRow label="Monto" value={`${sign}${formatCurrency(transaction.value)}`} valueColor={amountColor} colors={colors} />
             <DetailRow label="Cartera" value={transaction.wallet?.name ?? '-'} colors={colors} />
-            <DetailRow label="Fecha" value={formatDate(transaction.createdAt)} colors={colors} />
+            <DetailRow label="Fecha" value={new Date(transaction.createdAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} colors={colors} />
             {transaction.categories && transaction.categories.length > 0 && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>Categoría</Text>
