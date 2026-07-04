@@ -12,9 +12,9 @@ import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../utils/format';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
-import { expensesApi, earningsApi } from '../../services/api';
+import { expensesApi, earningsApi, walletsApi } from '../../services/api';
 import type { RootNavigationProp } from '../../navigation/types';
-import type { Expense, Earning } from '@finance-flow/shared-types';
+import type { Expense, Earning, WalletBalance } from '@finance-flow/shared-types';
 
 export function HomeScreen() {
   const navigation = useNavigation<RootNavigationProp>();
@@ -24,6 +24,7 @@ export function HomeScreen() {
   const { showError } = useSnackbar();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [earnings, setEarnings] = useState<Earning[]>([]);
+  const [balanceData, setBalanceData] = useState<WalletBalance[]>([]);
 
   useFocusEffect(
     useCallback(() => { loadData(); }, [])
@@ -31,19 +32,21 @@ export function HomeScreen() {
 
   const loadData = async () => {
     try {
-      const [expData, earnData] = await Promise.all([
-        expensesApi.getAll(),
-        earningsApi.getAll(),
+      const [balData, expData, earnData] = await Promise.all([
+        walletsApi.getBalance(),
+        expensesApi.getAll({ sortBy: 'createdAt', sortOrder: 'DESC', limit: 5 }),
+        earningsApi.getAll({ sortBy: 'createdAt', sortOrder: 'DESC', limit: 5 }),
       ]);
+      setBalanceData(balData);
       setExpenses(expData);
       setEarnings(earnData);
-    } catch (e) {
+    } catch {
       showError('Error al cargar datos del inicio');
     }
   };
 
-  const totalEarnings = useMemo(() => earnings.reduce((sum, e) => sum + Number(e.value), 0), [earnings]);
-  const totalExpenses = useMemo(() => expenses.reduce((sum, e) => sum + Number(e.value), 0), [expenses]);
+  const totalEarnings = useMemo(() => balanceData.reduce((sum, w) => sum + Number(w.totalEarnings), 0), [balanceData]);
+  const totalExpenses = useMemo(() => balanceData.reduce((sum, w) => sum + Number(w.totalExpenses), 0), [balanceData]);
   const balance = useMemo(() => totalEarnings - totalExpenses, [totalEarnings, totalExpenses]);
   const { incomeBarWidth, expenseBarWidth } = useMemo(() => {
     const maxVal = Math.max(totalEarnings, totalExpenses, 1);
@@ -54,8 +57,8 @@ export function HomeScreen() {
   }, [totalEarnings, totalExpenses]);
 
   const recentTransactions = useMemo(() =>
-    [...expenses.slice(0, 3).map(e => ({ ...e, _type: 'expense' as const })),
-    ...earnings.slice(0, 2).map(e => ({ ...e, _type: 'earning' as const })),
+    [...expenses.map(e => ({ ...e, _type: 'expense' as const })),
+    ...earnings.map(e => ({ ...e, _type: 'earning' as const })),
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
     [expenses, earnings]
   );

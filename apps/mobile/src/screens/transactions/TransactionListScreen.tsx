@@ -39,6 +39,13 @@ export function TransactionListScreen() {
   const [filterSortBy, setFilterSortBy] = useState<'value' | 'createdAt' | undefined>();
   const [filterSortOrder, setFilterSortOrder] = useState<'ASC' | 'DESC' | undefined>();
 
+  const PAGE_SIZE = 10;
+  const [expensesPage, setExpensesPage] = useState(1);
+  const [earningsPage, setEarningsPage] = useState(1);
+  const [hasMoreExpenses, setHasMoreExpenses] = useState(true);
+  const [hasMoreEarnings, setHasMoreEarnings] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const loadMeta = useCallback(async () => {
     try {
       const [cats, wals] = await Promise.all([
@@ -50,28 +57,67 @@ export function TransactionListScreen() {
     } catch {}
   }, []);
 
+  const buildParams = (overrides?: { page?: number; category?: string; wallet?: string; sortBy?: 'value' | 'createdAt'; sortOrder?: 'ASC' | 'DESC' }) => {
+    const params: Record<string, string | number | undefined> = {
+      page: overrides?.page ?? 1,
+      limit: PAGE_SIZE,
+    };
+    const cat = overrides?.category ?? filterCategory;
+    const wal = overrides?.wallet ?? filterWallet;
+    const sb = overrides?.sortBy ?? filterSortBy;
+    const so = overrides?.sortOrder ?? filterSortOrder;
+    if (cat) params.category = cat;
+    if (wal) params.wallet = wal;
+    if (sb) params.sortBy = sb;
+    if (so) params.sortOrder = so;
+    return params;
+  };
+
   const loadData = useCallback(async (filterOverrides?: { category?: string; wallet?: string; sortBy?: 'value' | 'createdAt'; sortOrder?: 'ASC' | 'DESC' }) => {
     try {
-      const cat = filterOverrides?.category ?? filterCategory;
-      const wal = filterOverrides?.wallet ?? filterWallet;
-      const sb = filterOverrides?.sortBy ?? filterSortBy;
-      const so = filterOverrides?.sortOrder ?? filterSortOrder;
-      const params: Record<string, string | number | undefined> = {};
-      if (cat) params.category = cat;
-      if (wal) params.wallet = wal;
-      if (sb) params.sortBy = sb;
-      if (so) params.sortOrder = so;
+      const params = buildParams({ ...filterOverrides, page: 1 });
 
       const [expData, earnData] = await Promise.all([
-        expensesApi.getAll(Object.keys(params).length > 0 ? params : undefined),
-        earningsApi.getAll(Object.keys(params).length > 0 ? params : undefined),
+        expensesApi.getAll(params),
+        earningsApi.getAll(params),
       ]);
       setExpenses(expData);
       setEarnings(earnData);
+      setExpensesPage(1);
+      setEarningsPage(1);
+      setHasMoreExpenses(expData.length >= PAGE_SIZE);
+      setHasMoreEarnings(earnData.length >= PAGE_SIZE);
     } catch {
       showError('Error al cargar transacciones');
     }
   }, [filterCategory, filterWallet, filterSortBy, filterSortOrder, showError]);
+
+  const loadMore = async () => {
+    if (loadingMore) return;
+    const nextPage = (tab === 'expenses' ? expensesPage : earningsPage) + 1;
+    const hasMore = tab === 'expenses' ? hasMoreExpenses : hasMoreEarnings;
+    if (!hasMore) return;
+
+    setLoadingMore(true);
+    try {
+      const params = buildParams({ page: nextPage });
+      if (tab === 'expenses') {
+        const newData = await expensesApi.getAll(params);
+        setExpenses(prev => [...prev, ...newData]);
+        setExpensesPage(nextPage);
+        if (newData.length < PAGE_SIZE) setHasMoreExpenses(false);
+      } else {
+        const newData = await earningsApi.getAll(params);
+        setEarnings(prev => [...prev, ...newData]);
+        setEarningsPage(nextPage);
+        if (newData.length < PAGE_SIZE) setHasMoreEarnings(false);
+      }
+    } catch {
+      showError('Error al cargar más transacciones');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -253,7 +299,7 @@ export function TransactionListScreen() {
 
         <SectionList
           sections={sections}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => `${item.id}-${tab}`}
           renderSectionHeader={({ section: { title } }) => (
             <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm, marginTop: spacing.md }]}>
               {title}
@@ -273,6 +319,13 @@ export function TransactionListScreen() {
           )}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: spacing['2xl'] }}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={loadingMore ? (
+            <View style={{ paddingVertical: spacing.md, alignItems: 'center' }}>
+              <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>Cargando...</Text>
+            </View>
+          ) : null}
           ListEmptyComponent={
             <GlassCard style={{ marginTop: spacing.lg }}>
               <View style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }}>
