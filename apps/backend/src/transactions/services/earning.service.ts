@@ -26,7 +26,7 @@ export class EarningService {
     try {
       const order = filterTransactionDto.sortBy
         ? { [filterTransactionDto.sortBy]: filterTransactionDto.sortOrder }
-        : {};
+        : undefined;
       const where = {
         profile: { id: profileId },
         deletedAt: undefined,
@@ -42,7 +42,7 @@ export class EarningService {
         relations: ['categories', 'wallet'],
         take: filterTransactionDto.limit || 10,
         skip: ((filterTransactionDto.page ?? 1) - 1) * 10,
-        order,
+        order: order ? order : { createdAt: 'DESC' },
       });
 
       return earnings;

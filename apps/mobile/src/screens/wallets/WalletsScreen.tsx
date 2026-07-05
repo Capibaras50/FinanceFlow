@@ -60,21 +60,44 @@ export function WalletsScreen() {
   };
 
   const handleDelete = (w: WalletBalance) => {
-    Alert.alert('Eliminar cartera', `¿Eliminar "${w.name}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await walletsApi.delete(w.id);
-            loadData();
-          } catch {
-            showError('Error al eliminar cartera');
-          }
+    const hasTransactions = Number(w.totalExpenses) > 0 || Number(w.totalEarnings) > 0;
+    if (hasTransactions) {
+      Alert.alert(
+        'Eliminar cartera',
+        `Si borras "${w.name}", también se eliminarán todos los ingresos y gastos asociados a esta cartera.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Eliminar todo',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await walletsApi.delete(w.id);
+                loadData();
+              } catch {
+                showError('Error al eliminar cartera');
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert('Eliminar cartera', `¿Eliminar "${w.name}"?`, [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await walletsApi.delete(w.id);
+              loadData();
+            } catch {
+              showError('Error al eliminar cartera');
+            }
+          },
         },
-      },
-    ]);
+      ]);
+    }
   };
 
   const handleSave = async () => {
@@ -246,9 +269,16 @@ export function WalletsScreen() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: borderRadius['2xl'], borderTopRightRadius: borderRadius['2xl'], padding: spacing.container, paddingBottom: insets.bottom + spacing.md }}>
             <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.outlineVariant, alignSelf: 'center', marginBottom: spacing.lg }} />
-            <Text style={[typography.titleLg, { color: colors.onSurface, marginBottom: spacing.lg }]}>
-              {editWallet ? 'Editar cartera' : 'Nueva cartera'}
-            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
+              <Text style={[typography.titleLg, { color: colors.onSurface }]}>
+                {editWallet ? 'Editar cartera' : 'Nueva cartera'}
+              </Text>
+              {editWallet && (
+                <TouchableOpacity onPress={() => { setModalVisible(false); handleDelete(editWallet); }}>
+                  <Ionicons name="trash-outline" size={24} color={colors.error} />
+                </TouchableOpacity>
+              )}
+            </View>
             <Input label="Nombre" placeholder="Ej: Efectivo, Bancolombia" value={walletName} onChangeText={setWalletName} />
             <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
               <GradientButton title="Cancelar" variant="outlined" onPress={() => setModalVisible(false)} style={{ flex: 1 }} />

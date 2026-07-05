@@ -10,8 +10,8 @@ export interface CreateCategoryDto {
 export class CategoriesApi {
   constructor(private client: ApiClient) {}
 
-  getAll(): Promise<Category[]> {
-    return this.client.get<Category[]>('/categories');
+  getAll(params?: Record<string, string | number | undefined>): Promise<Category[]> {
+    return this.client.get<Category[]>('/categories', params);
   }
 
   getById(id: number): Promise<Category> {

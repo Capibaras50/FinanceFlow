@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,7 +10,7 @@ import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { categoriesApi, expensesApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 import { formatCurrency } from '../../utils/format';
 import type { Category, Expense } from '@finance-flow/shared-types';
@@ -22,28 +22,50 @@ export function CategoriesScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { showError } = useSnackbar();
+  const PAGE_SIZE = 100;
   const [categories, setCategories] = useState<Category[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formColor, setFormColor] = useState(presetColors[0]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => { loadFirstPage(); }, [])
+  );
 
-  const loadData = async () => {
+  const loadFirstPage = async () => {
     try {
       const [catData, expData] = await Promise.all([
-        categoriesApi.getAll(),
-        expensesApi.getAll(),
+        categoriesApi.getAll({ limit: PAGE_SIZE, page: 1 }),
+        expensesApi.getAll({ limit: 100 }),
       ]);
       setCategories(catData);
       setExpenses(expData);
+      setPage(1);
+      setHasMore(catData.length >= PAGE_SIZE);
     } catch {
       showError('Error al cargar categorías');
+    }
+  };
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    try {
+      const newData = await categoriesApi.getAll({ limit: PAGE_SIZE, page: nextPage });
+      setCategories(prev => [...prev, ...newData]);
+      setPage(nextPage);
+      if (newData.length < PAGE_SIZE) setHasMore(false);
+    } catch {
+      showError('Error al cargar más categorías');
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -70,21 +92,44 @@ export function CategoriesScreen() {
   };
 
   const handleDelete = (cat: Category) => {
-    Alert.alert('Eliminar categoría', `¿Eliminar "${cat.name}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await categoriesApi.delete(cat.id);
-            loadCategories();
-          } catch {
-            showError('Error al eliminar categoría');
-          }
+    const catExpenses = getCategoryExpenses(cat.id);
+    if (catExpenses.length > 0) {
+      Alert.alert(
+        'Eliminar categoría',
+        `Si borras "${cat.name}", también se eliminarán todos los gastos asociados a esta categoría.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Eliminar todo',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await categoriesApi.delete(cat.id);
+                loadFirstPage();
+              } catch {
+                showError('Error al eliminar categoría');
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert('Eliminar categoría', `¿Eliminar "${cat.name}"?`, [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await categoriesApi.delete(cat.id);
+              loadFirstPage();
+            } catch {
+              showError('Error al eliminar categoría');
+            }
+          },
         },
-      },
-    ]);
+      ]);
+    }
   };
 
   const handleSave = async () => {
@@ -96,18 +141,9 @@ export function CategoriesScreen() {
         await categoriesApi.create({ name: formName, description: formDescription || undefined, color: formColor });
       }
       setModalVisible(false);
-      loadCategories();
+      loadFirstPage();
     } catch {
       showError('Error al guardar categoría');
-    }
-  };
-
-  const loadCategories = async () => {
-    try {
-      const data = await categoriesApi.getAll();
-      setCategories(data);
-    } catch {
-      showError('Error al cargar categorías');
     }
   };
 
@@ -195,10 +231,7 @@ export function CategoriesScreen() {
           const catExpenses = getCategoryExpenses(item.id);
           const catTotal = catExpenses.reduce((s, e) => s + Number(e.value), 0);
           return (
-            <TouchableOpacity
-              onPress={() => openEdit(item)}
-              onLongPress={() => handleDelete(item)}
-            >
+            <TouchableOpacity onPress={() => openEdit(item)}>
               <GlassCard>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
                   <View
@@ -224,12 +257,21 @@ export function CategoriesScreen() {
                   <Text style={[typography.titleMd, { color: colors.onSurface }]}>
                     {formatCurrency(catTotal)}
                   </Text>
-                  <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceVariant} />
+                  <TouchableOpacity onPress={() => handleDelete(item)} style={{ padding: spacing.xs }}>
+                    <Ionicons name="trash-outline" size={20} color={colors.error} />
+                  </TouchableOpacity>
                 </View>
               </GlassCard>
             </TouchableOpacity>
           );
         }}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={loadingMore ? (
+          <View style={{ paddingVertical: spacing.md, alignItems: 'center' }}>
+            <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>Cargando...</Text>
+          </View>
+        ) : null}
         ListEmptyComponent={
           <GlassCard>
             <View style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }}>
