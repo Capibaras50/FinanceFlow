@@ -50,6 +50,7 @@ export class AiService {
     }
     messages.push({ role: 'user', content: userContent });
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return messages;
   }
 
