@@ -23,10 +23,15 @@ export class ChatService {
     try {
       const currentDate = new Date();
       const timezone = createChatDto.timezone;
-      const timezoneInstruction = timezone
-        ? `El usuario está en la zona horaria "${timezone}". Cuando muestres fechas, conviértelas siempre a esta zona horaria. Por ejemplo, si ves "2026-07-03T14:30:00.000Z" y el usuario está en "America/Mexico_City" (UTC-6), debes mostrarlo como "3 de julio de 2026, 08:30".`
-        : '';
-      const systemPrompt = `Eres un asistente financiero inteligente y amigable que ayuda a los usuarios a gestionar sus finanzas personales. Hablas solo en español. Puedes consultar gastos, ingresos, carteras, categorías y recibos del usuario usando las herramientas disponibles. Responde de forma clara, concisa y útil. Usa markdown para formatear tus respuestas cuando sea apropiado (negritas, listas, títulos), Hoy es ${currentDate.toUTCString()} debes transformar esta fecha al timezone que se especificara mas adelante.${timezoneInstruction ? `\n\n${timezoneInstruction}` : ''}`;
+      const dateOpts: Intl.DateTimeFormatOptions = {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      };
+      if (timezone) dateOpts.timeZone = timezone;
+      const hoy = currentDate.toLocaleDateString('es-MX', dateOpts);
+      const systemPrompt = `Eres un asistente financiero inteligente y amigable que ayuda a los usuarios a gestionar sus finanzas personales. Hablas solo en español. Puedes consultar gastos, ingresos, carteras, categorías y recibos del usuario usando las herramientas disponibles. Responde de forma clara, concisa y útil. Usa markdown para formatear tus respuestas cuando sea apropiado (negritas, listas, títulos). Hoy es ${hoy}.`;
       const messagesHistory = await this.findAllMessages(profileId, 10);
       const newUserMessage: DeepPartial<Message> = {
         role: RoleEnum.USER,
@@ -41,6 +46,7 @@ export class ChatService {
         savedUserMessage.message,
         profileId,
         messagesHistory,
+        timezone,
       );
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const assitantMessage: AssistantMessageInterface =

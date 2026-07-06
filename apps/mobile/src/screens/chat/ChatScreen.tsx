@@ -173,6 +173,7 @@ export function ChatScreen() {
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={{ padding: spacing.container, paddingBottom: spacing.md }}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+        ListFooterComponent={loading ? <TypingIndicator /> : null}
         renderItem={({ item }) => (
           <View
             style={{
@@ -251,8 +252,6 @@ export function ChatScreen() {
           </View>
         }
       />
-
-      {loading && <TypingIndicator />}
 
       <View
         style={{

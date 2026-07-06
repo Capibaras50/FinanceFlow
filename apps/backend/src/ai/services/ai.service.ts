@@ -89,11 +89,58 @@ export class AiService {
     }
   }
 
+  private formatDatesInResult(data: unknown, timezone?: string): unknown {
+    if (Array.isArray(data)) {
+      return data.map((item) => this.formatDatesInObject(item, timezone));
+    }
+    if (data && typeof data === 'object') {
+      return this.formatDatesInObject(data, timezone);
+    }
+    return data;
+  }
+
+  private formatDatesInObject(obj: unknown, timezone?: string): unknown {
+    if (!obj || typeof obj !== 'object') return obj;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const result = { ...obj } as Record<string, unknown>;
+    const dateFields = ['createdAt', 'updatedAt', 'deletedAt'];
+    for (const key of Object.keys(result)) {
+      const value = result[key];
+      if (
+        dateFields.includes(key) &&
+        typeof value === 'string' &&
+        !isNaN(Date.parse(value))
+      ) {
+        const date = new Date(value);
+        const options: Intl.DateTimeFormatOptions = {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        };
+        if (timezone) {
+          try {
+            options.timeZone = timezone;
+            result[key] = date.toLocaleDateString('es-MX', options);
+            continue;
+          } catch {
+            // fallback sin timezone si el valor es inválido
+          }
+        }
+        result[key] = date.toLocaleDateString('es-MX', options);
+      }
+    }
+    return result;
+  }
+
   async createChatWithTools(
     systemPrompt: string,
     userMessage: string,
     profileId: number,
     messagesHistory?: Message[],
+    timezone?: string,
   ) {
     try {
       const messages = this.buildMessages(
@@ -155,11 +202,12 @@ export class AiService {
           profileId,
           args,
         );
+        const formattedResult = this.formatDatesInResult(result, timezone);
         toolResults.push({
           role: 'tool',
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           tool_call_id: tc.id,
-          content: JSON.stringify(result),
+          content: JSON.stringify(formattedResult),
         });
       }
 
