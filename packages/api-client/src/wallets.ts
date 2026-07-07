@@ -8,8 +8,8 @@ export interface CreateWalletDto {
 export class WalletsApi {
   constructor(private client: ApiClient) {}
 
-  getAll(): Promise<Wallet[]> {
-    return this.client.get<Wallet[]>('/wallets');
+  getAll(params?: Record<string, string | number | undefined>): Promise<Wallet[]> {
+    return this.client.get<Wallet[]>('/wallets', params);
   }
 
   getById(id: number): Promise<Wallet> {

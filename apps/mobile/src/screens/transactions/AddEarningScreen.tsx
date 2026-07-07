@@ -40,8 +40,8 @@ export function AddEarningScreen() {
   const loadData = async () => {
     try {
       const [catData, walData] = await Promise.all([
-        categoriesApi.getAll(),
-        walletsApi.getAll(),
+        categoriesApi.getAll({ limit: 100 }),
+        walletsApi.getAll({ limit: 100 }),
       ]);
       setCategories(catData);
       setWallets(walData);

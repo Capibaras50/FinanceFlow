@@ -49,8 +49,8 @@ export function TransactionListScreen() {
   const loadMeta = useCallback(async () => {
     try {
       const [cats, wals] = await Promise.all([
-        categoriesApi.getAll(),
-        walletsApi.getAll(),
+        categoriesApi.getAll({ limit: 100 }),
+        walletsApi.getAll({ limit: 100 }),
       ]);
       setCategories(cats);
       setWallets(wals);
