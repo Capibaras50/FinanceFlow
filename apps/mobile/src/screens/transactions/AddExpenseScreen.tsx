@@ -28,7 +28,7 @@ export function AddExpenseScreen() {
   const [description, setDescription] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [wallets, setWallets] = useState<Wallet[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<number | null>(null);
   const { showError } = useSnackbar();
   const [loading, setLoading] = useState(false);
@@ -52,7 +52,7 @@ export function AddExpenseScreen() {
         setValue(String(expense.value));
         setDescription(expense.description ?? '');
         if (expense.wallet) setSelectedWallet(expense.wallet.id);
-        if (expense.categories.length > 0) setSelectedCategory(expense.categories[0].id);
+        if (expense.categories.length > 0) setSelectedCategories(expense.categories.map((c) => c.id));
       } else if (walData.length > 0) {
         setSelectedWallet(walData[0].id);
       }
@@ -62,7 +62,7 @@ export function AddExpenseScreen() {
   };
 
   const handleSave = async () => {
-    if (!name || !value || !selectedCategory || !selectedWallet) return;
+    if (!name || !value || selectedCategories.length === 0 || !selectedWallet) return;
     setLoading(true);
     try {
       const dto = {
@@ -70,7 +70,7 @@ export function AddExpenseScreen() {
         value: parseFloat(value),
         description: description || undefined,
         walletId: selectedWallet,
-        categoriesId: [selectedCategory],
+        categoriesId: selectedCategories,
       };
       if (isEditing) {
         await expensesApi.update(expenseId, dto);
@@ -154,15 +154,19 @@ export function AddExpenseScreen() {
 
         <View style={{ gap: spacing.sm }}>
           <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4 }]}>
-            Categoría
+            Categorías
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
             {categories.map((cat) => (
               <CategoryChip
                 key={cat.id}
                 category={cat}
-                selected={selectedCategory === cat.id}
-                onPress={() => setSelectedCategory(cat.id)}
+                selected={selectedCategories.includes(cat.id)}
+                onPress={() =>
+                  setSelectedCategories((prev) =>
+                    prev.includes(cat.id) ? prev.filter((c) => c !== cat.id) : [...prev, cat.id],
+                  )
+                }
               />
             ))}
           </ScrollView>
@@ -207,7 +211,7 @@ export function AddExpenseScreen() {
         <GradientButton
           title={isEditing ? 'Actualizar Gasto' : 'Guardar Gasto'}
           onPress={handleSave}
-          disabled={loading || !name || !value || !selectedCategory}
+          disabled={loading || !name || !value || selectedCategories.length === 0}
         />
       </ScrollView>
     </View>
