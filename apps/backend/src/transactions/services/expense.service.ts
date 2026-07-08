@@ -195,14 +195,6 @@ export class ExpenseService {
         changes.wallet = { id: wallet.id };
       }
 
-      if (updateExpenseDto.categoriesId !== undefined) {
-        const categories = await this.categoriesService.findByIds(
-          updateExpenseDto.categoriesId,
-          profileId,
-        );
-        changes.categories = categories;
-      }
-
       if (updateExpenseDto.receiptId !== undefined) {
         const receipt = await this.receiptsService.findOne(
           updateExpenseDto.receiptId,
@@ -212,6 +204,13 @@ export class ExpenseService {
       }
 
       const mergedExpense = this.expensesRepository.merge(expense, changes);
+      if (updateExpenseDto.categoriesId !== undefined) {
+        const categories = await this.categoriesService.findByIds(
+          updateExpenseDto.categoriesId,
+          profileId,
+        );
+        mergedExpense.categories = categories;
+      }
       const savedExpense = await this.expensesRepository.save(mergedExpense);
       return savedExpense;
     } catch {

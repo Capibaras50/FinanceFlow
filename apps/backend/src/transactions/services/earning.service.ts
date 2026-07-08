@@ -122,15 +122,14 @@ export class EarningService {
         changes.wallet = { id: wallet.id };
       }
 
+      const mergedEarning = this.earningRepository.merge(earning, changes);
       if (updateEarningDto.categoriesId !== undefined) {
         const categories = await this.categoriesService.findByIds(
           updateEarningDto.categoriesId,
           profileId,
         );
-        changes.categories = categories;
+        mergedEarning.categories = categories;
       }
-
-      const mergedEarning = this.earningRepository.merge(earning, changes);
       return await this.earningRepository.save(mergedEarning);
     } catch {
       throw new BadRequestException('The Earning Couldnt Be Updated');
