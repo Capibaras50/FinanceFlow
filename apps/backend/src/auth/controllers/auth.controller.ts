@@ -128,7 +128,7 @@ export class AuthController {
     @Res() res: Response,
   ) {
     const userAgent = req.get('user-agent') || '';
-    const isMobile = /mobile|android|iphone/i.test(userAgent);
+    const isMobile = /mobile|android/i.test(userAgent);
     const encodedToken = encodeURIComponent(recoveryToken || '');
     if (isMobile) {
       const deepLink = `finance-flow://reset-password?token=${encodedToken}`;
@@ -158,7 +158,7 @@ export class AuthController {
   async googleAuthRedirect(@Req() req: express.Request, @Res() res: Response) {
     const tokens = await this.authService.googleLogin(req);
     const userAgent = req.get('user-agent') || '';
-    const isMobile = /mobile|android|iphone/i.test(userAgent);
+    const isMobile = /mobile|android/i.test(userAgent);
     const encodedAccessToken = encodeURIComponent(tokens.accessToken || '');
     const encodedRefreshToken = encodeURIComponent(tokens.refreshToken || '');
     if (isMobile) {
@@ -175,7 +175,7 @@ export class AuthController {
       tokens.refreshToken,
       this.cookieOpts(7 * 24 * 60 * 60 * 1000),
     );
-    const webLink = `${this.configService.get('WEB_URL', { infer: true })}/home`;
+    const webLink = `${this.configService.get('WEB_URL', { infer: true })}/home?accessToken=${encodedAccessToken}&refreshToken=${encodedRefreshToken}`;
     return res.redirect(302, webLink);
   }
 }
