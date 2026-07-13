@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { Payload } from 'src/models/payload.model';
 import { ConfigService } from '@nestjs/config';
 import { Env } from 'src/models/env.model';
+import { Request } from 'express';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -31,7 +32,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw Error('Expires Time Of Refresh Token is not configured');
     }
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        (req: Request) => req?.cookies?.accessToken ?? null,
+      ]),
       ignoreExpiration: false,
       secretOrKey: secretAccessToken,
     });

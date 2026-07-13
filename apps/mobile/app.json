@@ -11,7 +11,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Finance Flow necesita acceso a la cámara para escanear recibos.",
-        "NSPhotoLibraryUsageDescription": "Finance Flow necesita acceso a la galería para seleccionar imágenes de recibos."
+        "NSPhotoLibraryUsageDescription": "Finance Flow necesita acceso a la galería para seleccionar imágenes de recibos.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.financeflow.app"
     },
@@ -24,7 +25,6 @@
       "package": "com.financeflow.app",
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -44,7 +44,10 @@
           "photosPermission": "Finance Flow necesita acceso a la galería para seleccionar imágenes de recibos."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font",
+      "expo-splash-screen",
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

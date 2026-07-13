@@ -38,6 +38,11 @@ export function ReceiptScannerScreen() {
   };
 
   const pickFromGallery = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      showError('Se necesita acceso a la galería');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.8,
@@ -129,6 +134,7 @@ export function ReceiptScannerScreen() {
                 shadowOffset: { width: 0, height: 0 },
                 shadowOpacity: 0.3,
                 shadowRadius: 20,
+                elevation: 6,
               }}
             />
           </View>

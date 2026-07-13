@@ -8,10 +8,11 @@ import {
   Body,
   Res,
   HttpCode,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type express from 'express';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
 import { User } from 'src/users/entities/user.entity';
 import { Throttle } from '@nestjs/throttler';
@@ -20,28 +21,98 @@ import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { LogoutDto } from '../dto/logout.dto';
 import { RefreshDto } from '../dto/refresh.dto';
 import { GoogleOAuthGuard } from '../guards/google-oauth.guard';
+import { ConfigService } from '@nestjs/config';
+import { Env } from 'src/models/env.model';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private configService: ConfigService<Env>,
+  ) {}
+
+  private cookieOpts(maxAge: number) {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite:
+        process.env.NODE_ENV === 'production'
+          ? ('strict' as const)
+          : ('lax' as const),
+      path: '/',
+      maxAge,
+    };
+  }
 
   @UseGuards(AuthGuard('local'))
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('login')
-  login(@Req() req: express.Request) {
+  async login(
+    @Req() req: express.Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const user = req.user as User;
-    return this.authService.login({ sub: user.id, profileId: user.profile.id });
+    const tokens = await this.authService.login({
+      sub: user.id,
+      profileId: user.profile.id,
+    });
+    res.cookie(
+      'accessToken',
+      tokens.accessToken,
+      this.cookieOpts(15 * 60 * 1000),
+    );
+    res.cookie(
+      'refreshToken',
+      tokens.refreshToken,
+      this.cookieOpts(7 * 24 * 60 * 60 * 1000),
+    );
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
   }
 
   @Post('refresh')
-  refresh(@Body() refreshDto: RefreshDto) {
-    return this.authService.refreshToken(refreshDto.refreshToken);
+  async refresh(
+    @Body() refreshDto: RefreshDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const refreshToken: string | null =
+      refreshDto?.refreshToken || req.cookies?.refreshToken;
+    if (!refreshToken) {
+      throw new UnauthorizedException();
+    }
+    const tokens = await this.authService.refreshToken(refreshToken);
+    res.cookie(
+      'accessToken',
+      tokens.accessToken,
+      this.cookieOpts(15 * 60 * 1000),
+    );
+    res.cookie(
+      'refreshToken',
+      tokens.refreshToken,
+      this.cookieOpts(7 * 24 * 60 * 60 * 1000),
+    );
+    return tokens;
   }
 
   @Post('logout')
   @HttpCode(204)
-  logout(@Body() logoutDto: LogoutDto) {
-    return this.authService.revokeRefreshToken(logoutDto.refreshToken);
+  async logout(
+    @Body() logoutDto: LogoutDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const refreshToken: string | null =
+      req.cookies?.refreshToken || logoutDto?.refreshToken;
+    res.clearCookie('accessToken', { path: '/' });
+    res.clearCookie('refreshToken', { path: '/' });
+    if (refreshToken) {
+      await this.authService.revokeRefreshToken(refreshToken);
+    }
   }
 
   @Throttle({ default: { ttl: 60000, limit: 5 } })
@@ -53,10 +124,18 @@ export class AuthController {
   @Get('recovery-password')
   recoveryPasswordRedirect(
     @Query('token') recoveryToken: string,
+    @Req() req: Request,
     @Res() res: Response,
   ) {
-    const deepLink = `finance-flow://reset-password?token=${encodeURIComponent(recoveryToken || '')}`;
-    res.redirect(302, deepLink);
+    const userAgent = req.get('user-agent') || '';
+    const isMobile = /mobile|android|iphone/i.test(userAgent);
+    const encodedToken = encodeURIComponent(recoveryToken || '');
+    if (isMobile) {
+      const deepLink = `finance-flow://reset-password?token=${encodedToken}`;
+      return res.redirect(302, deepLink);
+    }
+    const webLink = `${this.configService.get('WEB_URL', { infer: true })}/reset-password?token=${encodedToken}`;
+    return res.redirect(302, webLink);
   }
 
   @Post('reset-password')
@@ -78,7 +157,25 @@ export class AuthController {
   @Get('google-redirect')
   async googleAuthRedirect(@Req() req: express.Request, @Res() res: Response) {
     const tokens = await this.authService.googleLogin(req);
-    const deepLink = `finance-flow://oauth?accessToken=${encodeURIComponent(tokens.accessToken)}&refreshToken=${encodeURIComponent(tokens.refreshToken)}`;
-    res.redirect(302, deepLink);
+    const userAgent = req.get('user-agent') || '';
+    const isMobile = /mobile|android|iphone/i.test(userAgent);
+    const encodedAccessToken = encodeURIComponent(tokens.accessToken || '');
+    const encodedRefreshToken = encodeURIComponent(tokens.refreshToken || '');
+    if (isMobile) {
+      const deepLink = `finance-flow://oauth?accessToken=${encodedAccessToken}&refreshToken=${encodedRefreshToken}`;
+      return res.redirect(302, deepLink);
+    }
+    res.cookie(
+      'accessToken',
+      tokens.accessToken,
+      this.cookieOpts(15 * 60 * 1000),
+    );
+    res.cookie(
+      'refreshToken',
+      tokens.refreshToken,
+      this.cookieOpts(7 * 24 * 60 * 60 * 1000),
+    );
+    const webLink = `${this.configService.get('WEB_URL', { infer: true })}/home`;
+    return res.redirect(302, webLink);
   }
 }

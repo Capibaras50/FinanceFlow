@@ -339,7 +339,7 @@ export function TransactionListScreen() {
         />
       </View>
 
-      <Modal visible={showFilters} transparent animationType="slide">
+      <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <View
             style={{

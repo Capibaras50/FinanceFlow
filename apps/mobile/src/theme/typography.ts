@@ -1,92 +1,90 @@
 import { Platform } from 'react-native';
 
 const fontFamily = {
-  outfit: Platform.select({
-    ios: 'Outfit',
-    android: 'Outfit',
+  outfitBold: Platform.select({
+    ios: 'Outfit_700Bold',
+    android: 'Outfit_700Bold',
     default: 'System',
   }),
-  inter: Platform.select({
-    ios: 'Inter',
-    android: 'Inter',
+  outfitSemiBold: Platform.select({
+    ios: 'Outfit_600SemiBold',
+    android: 'Outfit_600SemiBold',
+    default: 'System',
+  }),
+  interRegular: Platform.select({
+    ios: 'Inter_400Regular',
+    android: 'Inter_400Regular',
+    default: 'System',
+  }),
+  interSemiBold: Platform.select({
+    ios: 'Inter_600SemiBold',
+    android: 'Inter_600SemiBold',
     default: 'System',
   }),
 };
 
 export const typography = {
   displayLg: {
-    fontFamily: fontFamily.outfit,
+    fontFamily: fontFamily.outfitBold,
     fontSize: 40,
-    fontWeight: '700' as const,
     lineHeight: 48,
     letterSpacing: -0.02,
   },
   displayMd: {
-    fontFamily: fontFamily.outfit,
+    fontFamily: fontFamily.outfitBold,
     fontSize: 32,
-    fontWeight: '700' as const,
     lineHeight: 40,
     letterSpacing: -0.01,
   },
   headlineLg: {
-    fontFamily: fontFamily.outfit,
+    fontFamily: fontFamily.outfitBold,
     fontSize: 28,
-    fontWeight: '700' as const,
     lineHeight: 36,
   },
   headlineMd: {
-    fontFamily: fontFamily.outfit,
+    fontFamily: fontFamily.outfitSemiBold,
     fontSize: 24,
-    fontWeight: '600' as const,
     lineHeight: 32,
   },
   headlineSm: {
-    fontFamily: fontFamily.outfit,
+    fontFamily: fontFamily.outfitSemiBold,
     fontSize: 20,
-    fontWeight: '600' as const,
     lineHeight: 28,
   },
   titleLg: {
-    fontFamily: fontFamily.outfit,
+    fontFamily: fontFamily.outfitSemiBold,
     fontSize: 18,
-    fontWeight: '600' as const,
     lineHeight: 24,
   },
   titleMd: {
-    fontFamily: fontFamily.outfit,
+    fontFamily: fontFamily.outfitSemiBold,
     fontSize: 16,
-    fontWeight: '600' as const,
     lineHeight: 22,
   },
   bodyLg: {
-    fontFamily: fontFamily.inter,
+    fontFamily: fontFamily.interRegular,
     fontSize: 16,
-    fontWeight: '400' as const,
     lineHeight: 24,
   },
   bodyMd: {
-    fontFamily: fontFamily.inter,
+    fontFamily: fontFamily.interRegular,
     fontSize: 14,
-    fontWeight: '400' as const,
     lineHeight: 20,
   },
   bodySm: {
-    fontFamily: fontFamily.inter,
+    fontFamily: fontFamily.interRegular,
     fontSize: 12,
-    fontWeight: '400' as const,
     lineHeight: 16,
   },
   labelLg: {
-    fontFamily: fontFamily.inter,
+    fontFamily: fontFamily.interSemiBold,
     fontSize: 14,
-    fontWeight: '600' as const,
     lineHeight: 20,
     letterSpacing: 0.01,
   },
   labelMd: {
-    fontFamily: fontFamily.inter,
+    fontFamily: fontFamily.interSemiBold,
     fontSize: 12,
-    fontWeight: '600' as const,
     lineHeight: 16,
     letterSpacing: 0.01,
   },

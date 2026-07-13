@@ -1,8 +1,8 @@
-import { IsJWT, IsNotEmpty, IsString } from 'class-validator';
+import { IsJWT, IsOptional, IsString } from 'class-validator';
 
 export class LogoutDto {
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @IsJWT()
   refreshToken: string;
 }

@@ -117,7 +117,7 @@ export function ProfileScreen() {
         colors={colors.gradient.primary}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
+        style={[styles.headerGradient, { paddingTop: insets.top + spacing.md }]}
       >
         <TouchableOpacity onPress={handlePickAvatar} disabled={uploading}>
           <LinearGradient
@@ -272,7 +272,7 @@ export function ProfileScreen() {
 
 const styles = StyleSheet.create({
   headerGradient: {
-    paddingTop: 60,
+    paddingTop: 0,
     paddingBottom: spacing['2xl'],
     alignItems: 'center',
   },
