@@ -10,6 +10,7 @@ services:
     environment:
       - HOST_DB=host.docker.internal
       - HOST_QUEUE=host.docker.internal
+      - AI_URL=http://host.docker.internal:11434/v1/chat/completions
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

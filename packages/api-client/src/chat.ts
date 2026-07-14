@@ -9,8 +9,7 @@ export class ChatApi {
   }
 
   getMessages(take?: number): Promise<ChatMessage[]> {
-    const query = take ? `?take=${take}` : '';
-    return this.client.get<ChatMessage[]>(`/chat${query}`);
+    return this.client.get<ChatMessage[]>('/chat', take ? { limit: take } : undefined);
   }
 
   deleteMessage(id: number): Promise<void> {

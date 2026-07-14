@@ -73,10 +73,23 @@ export function ChatScreen() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const hasScrolledToBottom = useRef(false);
 
   useEffect(() => {
     loadMessages();
   }, []);
+
+  useEffect(() => {
+    if (messages.length === 0 || hasScrolledToBottom.current) return;
+    let attempts = 0;
+    const tryScroll = () => {
+      if (attempts >= 10 || hasScrolledToBottom.current) return;
+      attempts++;
+      flatListRef.current?.scrollToEnd({ animated: true });
+      if (attempts < 10) setTimeout(tryScroll, 300);
+    };
+    tryScroll();
+  }, [messages]);
 
   const loadMessages = async () => {
     try {
@@ -99,6 +112,7 @@ export function ChatScreen() {
     };
     setMessages((prev) => [...prev, tempUser]);
     setLoading(true);
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -172,7 +186,9 @@ export function ChatScreen() {
         data={messages}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={{ padding: spacing.container, paddingBottom: spacing.md }}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+        initialNumToRender={messages.length}
+        maxToRenderPerBatch={messages.length}
+        windowSize={messages.length + 1}
         ListFooterComponent={loading ? <TypingIndicator /> : null}
         renderItem={({ item }) => (
           <View

@@ -56,7 +56,14 @@ export const earningsApi = new EarningsApi(client);
 export const receiptsApi = new ReceiptsApi(client);
 export const chatApi = new ChatApi(client);
 
-export async function uploadAvatarAsync(uri: string) {
+export async function uploadAvatarAsync(uri: string, fileName?: string, mimeType?: string) {
+  const name = fileName || uri.split('/').pop() || 'avatar.jpg';
+  const type = mimeType || 'image/jpeg';
+
+  if (isWeb) {
+    return usersApi.uploadAvatar({ uri, name, type });
+  }
+
   const token = getTokenSync();
   const baseUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
   const result = await uploadAsync(`${baseUrl}/users/upload-avatar`, uri, {

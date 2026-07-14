@@ -80,6 +80,7 @@ export function useAuthProvider(): AuthContextType {
     }
 
     const accessToken = await getToken();
+    await getRefreshToken();
 
     if (!accessToken) {
       setState({ user: null, isLoading: false, isAuthenticated: false });

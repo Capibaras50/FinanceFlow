@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 import { getTokenSync } from '../../services/storage';
 import { getErrorMessage } from '../../utils/format';
+import { receiptsApi } from '../../services/api';
 
 export function ReceiptScannerScreen() {
   const navigation = useNavigation<RootNavigationProp>();
@@ -57,17 +58,25 @@ export function ReceiptScannerScreen() {
     if (!capturedImage) return;
     setUploading(true);
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
-      const token = getTokenSync();
-      const headers: Record<string, string> = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      await uploadAsync(`${apiUrl}/receipts`, capturedImage, {
-        fieldName: 'receipt',
-        httpMethod: 'POST',
-        uploadType: FileSystemUploadType.MULTIPART,
-        headers,
-        mimeType: 'image/jpeg',
-      });
+      if (Platform.OS === 'web') {
+        await receiptsApi.upload({ uri: capturedImage, name: 'receipt.jpg', type: 'image/jpeg' });
+      } else {
+        const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+        const token = getTokenSync();
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const result = await uploadAsync(`${apiUrl}/receipts`, capturedImage, {
+          fieldName: 'receipt',
+          httpMethod: 'POST',
+          uploadType: FileSystemUploadType.MULTIPART,
+          headers,
+          mimeType: 'image/jpeg',
+        });
+        if (result.status >= 400) {
+          const data = JSON.parse(result.body) as Record<string, unknown>;
+          throw { message: data?.message || 'Upload failed', statusCode: result.status };
+        }
+      }
       showSuccess('Recibo enviado. El asistente IA lo está procesando.');
       navigation.goBack();
     } catch (err) {
@@ -120,25 +129,7 @@ export function ReceiptScannerScreen() {
           ref={cameraRef}
           style={{ flex: 1 }}
           facing="back"
-        >
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <View
-              style={{
-                width: 250,
-                height: 350,
-                borderWidth: 2,
-                borderColor: colors.tertiary,
-                borderRadius: borderRadius.lg,
-                backgroundColor: 'transparent',
-                shadowColor: colors.tertiary,
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.3,
-                shadowRadius: 20,
-                elevation: 6,
-              }}
-            />
-          </View>
-        </CameraView>
+        />
       </View>
 
       {showConfirm && capturedImage ? (

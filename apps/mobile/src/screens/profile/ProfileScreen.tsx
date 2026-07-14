@@ -75,7 +75,7 @@ export function ProfileScreen() {
   const uploadAvatar = async (asset: ImagePicker.ImagePickerAsset) => {
     setUploading(true);
     try {
-      await uploadAvatarAsync(asset.uri);
+      await uploadAvatarAsync(asset.uri, asset.fileName ?? undefined, asset.mimeType ?? undefined);
       await refreshUser();
       showSuccess('Foto de perfil actualizada');
     } catch (e) {
