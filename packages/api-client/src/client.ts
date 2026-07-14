@@ -7,6 +7,7 @@ export interface ApiConfig {
   getRefreshToken?: () => string | null;
   onTokenRefreshed?: (accessToken: string, refreshToken: string) => void;
   onForceLogout?: () => void;
+  withCredentials?: boolean;
 }
 
 interface QueueItem {
@@ -21,7 +22,10 @@ export class ApiClient {
   private failedQueue: QueueItem[] = [];
 
   constructor(private config: ApiConfig) {
-    this.instance = axios.create({ baseURL: config.baseUrl });
+    this.instance = axios.create({
+      baseURL: config.baseUrl,
+      withCredentials: config.withCredentials ?? false,
+    });
 
     this.instance.interceptors.request.use((reqConfig) => {
       const token = config.getToken?.();
@@ -53,19 +57,12 @@ export class ApiClient {
       const response = await this.instance.request<T>(reqConfig);
       return response.data;
     } catch (error) {
-      if (!axios.isAxiosError(error) || error.response?.status !== 401 || !error.config?.headers?.Authorization) {
+      if (!axios.isAxiosError(error) || error.response?.status !== 401 || error.config?.url === '/auth/refresh') {
         return this.throwApiError(error);
       }
 
       const refreshFn = this.config.getRefreshToken;
-      if (!refreshFn || !this.config.onTokenRefreshed) {
-        return this.throwApiError(error);
-      }
-
-      const refreshToken = refreshFn();
-      if (!refreshToken) {
-        return this.throwApiError(error);
-      }
+      const refreshToken = refreshFn?.();
 
       if (this.isRefreshing) {
         return new Promise<T>((resolve, reject) => {
@@ -82,10 +79,11 @@ export class ApiClient {
       try {
         const { data } = await axios.post<AuthResponse>(
           `${this.config.baseUrl}/auth/refresh`,
-          { refreshToken },
+          refreshToken ? { refreshToken } : {},
+          { withCredentials: this.config.withCredentials ?? false },
         );
 
-        this.config.onTokenRefreshed(data.accessToken, data.refreshToken);
+        this.config.onTokenRefreshed?.(data.accessToken, data.refreshToken);
 
         this.failedQueue.forEach((item) => {
           item.config.headers!.Authorization = `Bearer ${data.accessToken}`;
@@ -93,9 +91,9 @@ export class ApiClient {
         });
         this.failedQueue = [];
 
-        error.config.headers!.Authorization = `Bearer ${data.accessToken}`;
-        const response = await this.instance.request<T>(error.config);
-        return response.data;
+        error.config!.headers!.Authorization = `Bearer ${data.accessToken}`;
+        const response = await this.instance.request<T>(error.config!);
+        return response.data as T;
       } catch (refreshError) {
         this.failedQueue.forEach((item) => item.reject(refreshError));
         this.failedQueue = [];

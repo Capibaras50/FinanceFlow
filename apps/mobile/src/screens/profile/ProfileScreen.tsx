@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, Switch, Modal, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Switch, Modal, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +13,7 @@ import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
+import { showAlert } from '../../components/ui/AppAlert';
 import { uploadAvatarAsync, usersApi } from '../../services/api';
 import { useNavigation } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
@@ -30,11 +31,14 @@ export function ProfileScreen() {
   const [uploading, setUploading] = useState(false);
 
   const handlePickAvatar = () => {
-    Alert.alert('Foto de perfil', 'Selecciona una opción', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Cámara',
-        onPress: async () => {
+    showAlert({
+      title: 'Foto de perfil',
+      message: 'Selecciona una opción',
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cámara',
+          onPress: async () => {
           const perm = await ImagePicker.requestCameraPermissionsAsync();
           if (!perm.granted) {
             showError('Se requiere permiso de la cámara');
@@ -64,7 +68,8 @@ export function ProfileScreen() {
           if (!result.canceled) await uploadAvatar(result.assets[0]);
         },
       },
-    ]);
+    ],
+    });
   };
 
   const uploadAvatar = async (asset: ImagePicker.ImagePickerAsset) => {
@@ -80,14 +85,14 @@ export function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro de que quieres cerrar sesión?',
-      [
+    showAlert({
+      title: 'Cerrar Sesión',
+      message: '¿Estás seguro de que quieres cerrar sesión?',
+      buttons: [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Cerrar Sesión', style: 'destructive', onPress: logout },
-      ]
-    );
+      ],
+    });
   };
 
   const handleChangePassword = async () => {

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Platform } from 'react-native';
 import axios from 'axios';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
@@ -15,6 +16,7 @@ import {
 import type { User } from '@finance-flow/shared-types';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+const isWeb = Platform.OS === 'web';
 
 interface AuthState {
   user: User | null;
@@ -47,15 +49,19 @@ export function useAuthProvider(): AuthContextType {
 
   useEffect(() => {
     setForceLogoutHandler(() => {
-      removeToken();
-      removeRefreshToken();
+      if (!isWeb) {
+        removeToken();
+        removeRefreshToken();
+      }
       setState({ user: null, isLoading: false, isAuthenticated: false });
     });
 
     checkAuth().catch((err) => {
       console.warn('[Auth] checkAuth unhandled:', err);
-      removeToken();
-      removeRefreshToken();
+      if (!isWeb) {
+        removeToken();
+        removeRefreshToken();
+      }
       setState({ user: null, isLoading: false, isAuthenticated: false });
     });
 
@@ -63,40 +69,44 @@ export function useAuthProvider(): AuthContextType {
   }, []);
 
   const checkAuth = async () => {
+    if (isWeb) {
+      try {
+        const user = await usersApi.me();
+        setState({ user, isLoading: false, isAuthenticated: true });
+      } catch {
+        setState({ user: null, isLoading: false, isAuthenticated: false });
+      }
+      return;
+    }
+
     const accessToken = await getToken();
-    console.log('[Auth] checkAuth accessToken:', accessToken ? accessToken.slice(0, 20) + '...' : 'null');
 
     if (!accessToken) {
-      console.log('[Auth] no access token -> login');
       setState({ user: null, isLoading: false, isAuthenticated: false });
       return;
     }
 
-    const refreshToken = await getRefreshToken();
-    console.log('[Auth] checkAuth refreshToken:', refreshToken ? refreshToken.slice(0, 20) + '...' : 'null');
-
     try {
       const user = await usersApi.me();
-      console.log('[Auth] checkAuth /me succeeded');
       setState({ user, isLoading: false, isAuthenticated: true });
-    } catch (e) {
-      const code = e && typeof e === 'object' && 'statusCode' in e ? (e as { statusCode: unknown }).statusCode : '?';
-      const msg = e && typeof e === 'object' && 'message' in e ? (e as { message: unknown }).message : e;
-      console.warn('[Auth] checkAuth /me failed: statusCode=' + code + ' msg=' + JSON.stringify(msg));
-
+    } catch {
       await removeToken();
       setState({ user: null, isLoading: false, isAuthenticated: false });
     }
   };
 
   const login = useCallback(async (email: string, password: string) => {
-    console.log('[Auth] login start');
+    if (isWeb) {
+      await authApi.login(email, password);
+      const user = await usersApi.me();
+      setState({ user, isLoading: false, isAuthenticated: true });
+      return;
+    }
+
     const { accessToken, refreshToken } = await authApi.login(email, password);
-    console.log('[Auth] login got tokens:', accessToken?.slice(0, 20) + '...', refreshToken?.slice(0, 20) + '...');
     await saveToken(accessToken);
     await saveRefreshToken(refreshToken);
     const user = await usersApi.me();
-    console.log('[Auth] login /me succeeded');
     setState({ user, isLoading: false, isAuthenticated: true });
   }, []);
 
@@ -110,6 +120,11 @@ export function useAuthProvider(): AuthContextType {
   }, [login]);
 
   const loginWithGoogle = useCallback(async () => {
+    if (isWeb) {
+      window.location.href = `${API_URL}/auth`;
+      return;
+    }
+
     const redirectUri = Linking.createURL('oauth');
     const authUrl = `${API_URL}/auth?redirect_uri=${encodeURIComponent(redirectUri)}`;
 
@@ -135,6 +150,14 @@ export function useAuthProvider(): AuthContextType {
   }, []);
 
   const logout = useCallback(async () => {
+    if (isWeb) {
+      try {
+        await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+      } catch {}
+      setState({ user: null, isLoading: false, isAuthenticated: false });
+      return;
+    }
+
     const currentRefreshToken = getRefreshTokenSync();
     if (currentRefreshToken) {
       try {

@@ -128,7 +128,7 @@ export class AuthController {
     @Res() res: Response,
   ) {
     const userAgent = req.get('user-agent') || '';
-    const isMobile = /mobile|android/i.test(userAgent);
+    const isMobile = /android/i.test(userAgent);
     const encodedToken = encodeURIComponent(recoveryToken || '');
     if (isMobile) {
       const deepLink = `finance-flow://reset-password?token=${encodedToken}`;
@@ -158,7 +158,7 @@ export class AuthController {
   async googleAuthRedirect(@Req() req: express.Request, @Res() res: Response) {
     const tokens = await this.authService.googleLogin(req);
     const userAgent = req.get('user-agent') || '';
-    const isMobile = /mobile|android/i.test(userAgent);
+    const isMobile = /android/i.test(userAgent);
     const encodedAccessToken = encodeURIComponent(tokens.accessToken || '');
     const encodedRefreshToken = encodeURIComponent(tokens.refreshToken || '');
     if (isMobile) {

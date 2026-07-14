@@ -1,10 +1,11 @@
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { TabBarIcon } from '../components/ui/TabBarIcon';
 import { typography, borderRadius } from '../theme';
 import { useTheme } from '../hooks/useTheme';
+import { showAlert } from '../components/ui/AppAlert';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { WalletsScreen } from '../screens/wallets/WalletsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
@@ -46,11 +47,15 @@ export function MainTabNavigator() {
   const { colors } = useTheme();
 
   const handleAddPress = (navigation: any) => {
-    Alert.alert('Nuevo movimiento', '¿Qué tipo de movimiento quieres registrar?', [
-      { text: 'Gasto', onPress: () => navigation.getParent()?.navigate('AddExpense') },
-      { text: 'Ingreso', onPress: () => navigation.getParent()?.navigate('AddEarning') },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
+    showAlert({
+      title: 'Nuevo movimiento',
+      message: '¿Qué tipo de movimiento quieres registrar?',
+      buttons: [
+        { text: 'Gasto', onPress: () => navigation.getParent()?.navigate('AddExpense') },
+        { text: 'Ingreso', onPress: () => navigation.getParent()?.navigate('AddEarning') },
+        { text: 'Cancelar', style: 'cancel' },
+      ],
+    });
   };
 
   return (

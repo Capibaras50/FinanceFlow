@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Modal, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { categoriesApi, expensesApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
+import { showAlert } from '../../components/ui/AppAlert';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 import { formatCurrency } from '../../utils/format';
@@ -94,10 +95,10 @@ export function CategoriesScreen() {
   const handleDelete = (cat: Category) => {
     const catExpenses = getCategoryExpenses(cat.id);
     if (catExpenses.length > 0) {
-      Alert.alert(
-        'Eliminar categoría',
-        `Si borras "${cat.name}", también se eliminarán todos los gastos asociados a esta categoría.`,
-        [
+      showAlert({
+        title: 'Eliminar categoría',
+        message: `Si borras "${cat.name}", también se eliminarán todos los gastos asociados a esta categoría.`,
+        buttons: [
           { text: 'Cancelar', style: 'cancel' },
           {
             text: 'Eliminar todo',
@@ -111,24 +112,28 @@ export function CategoriesScreen() {
               }
             },
           },
-        ]
-      );
+        ],
+      });
     } else {
-      Alert.alert('Eliminar categoría', `¿Eliminar "${cat.name}"?`, [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await categoriesApi.delete(cat.id);
-              loadFirstPage();
-            } catch {
-              showError('Error al eliminar categoría');
-            }
+      showAlert({
+        title: 'Eliminar categoría',
+        message: `¿Eliminar "${cat.name}"?`,
+        buttons: [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Eliminar',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await categoriesApi.delete(cat.id);
+                loadFirstPage();
+              } catch {
+                showError('Error al eliminar categoría');
+              }
+            },
           },
-        },
-      ]);
+        ],
+      });
     }
   };
 

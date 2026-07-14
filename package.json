@@ -8,5 +8,13 @@
     "mobile": "pnpm --filter @finance-flow/mobile",
     "backend:dev": "pnpm --filter @finance-flow/backend start:dev",
     "mobile:start": "pnpm --filter @finance-flow/mobile start"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "bcrypt",
+      "msgpackr-extract",
+      "unrs-resolver"
+    ]
   }
 }

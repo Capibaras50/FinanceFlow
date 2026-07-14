@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, TextInput, SectionList, Modal, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, SectionList, Modal, ScrollView } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +13,7 @@ import { formatCurrency } from '../../utils/format';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { expensesApi, earningsApi, categoriesApi, walletsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
+import { showAlert } from '../../components/ui/AppAlert';
 import type { RootNavigationProp } from '../../navigation/types';
 import type { Expense, Earning, Category, Wallet } from '@finance-flow/shared-types';
 
@@ -127,25 +128,29 @@ export function TransactionListScreen() {
   );
 
   const handleDelete = useCallback(async (item: Expense | Earning) => {
-    Alert.alert('Eliminar transacción', `¿Eliminar "${item.name}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            if (tab === 'expenses') {
-            await expensesApi.delete(item.id);
-          } else {
-            await earningsApi.delete(item.id);
+    showAlert({
+      title: 'Eliminar transacción',
+      message: `¿Eliminar "${item.name}"?`,
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (tab === 'expenses') {
+              await expensesApi.delete(item.id);
+            } else {
+              await earningsApi.delete(item.id);
+            }
+            loadData();
+          } catch {
+            showError('Error al eliminar transacción');
           }
-          loadData();
-        } catch {
-          showError('Error al eliminar transacción');
-        }
-      },
-      },
-    ]);
+        },
+        },
+      ],
+    });
   }, [tab, loadData, showError]);
 
   const applyFilters = () => {

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { GradientButton } from '../../components/ui/GradientButton';
 import { formatCurrency } from '../../utils/format';
 import { expensesApi, earningsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
+import { showAlert } from '../../components/ui/AppAlert';
 import { useNavigation, useRoute, useFocusEffect, type RouteProp } from '@react-navigation/native';
 import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
 import type { Expense, Earning } from '@finance-flow/shared-types';
@@ -43,10 +44,10 @@ export function TransactionDetailScreen() {
   );
 
   const handleDelete = () => {
-    Alert.alert(
-      'Eliminar transacción',
-      `¿Estás seguro de eliminar "${transaction?.name}"?`,
-      [
+    showAlert({
+      title: 'Eliminar transacción',
+      message: `¿Estás seguro de eliminar "${transaction?.name}"?`,
+      buttons: [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar',
@@ -64,8 +65,8 @@ export function TransactionDetailScreen() {
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   if (!transaction) return null;

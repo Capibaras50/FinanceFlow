@@ -2,6 +2,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthContext, useAuthProvider } from './src/hooks/useAuth';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { SnackbarProvider } from './src/context/SnackbarContext';
+import { AppAlertProvider } from './src/components/ui/AppAlert';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { StatusBar } from 'react-native';
@@ -46,7 +47,9 @@ function AppContent() {
   return (
     <AuthContext.Provider value={auth}>
       <SnackbarProvider>
-        <RootNavigator />
+        <AppAlertProvider>
+          <RootNavigator />
+        </AppAlertProvider>
       </SnackbarProvider>
       <ExpoStatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <StatusBar backgroundColor={colors.background} />

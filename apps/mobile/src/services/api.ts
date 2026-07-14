@@ -1,4 +1,5 @@
 import type { User } from '@finance-flow/shared-types';
+import { Platform } from 'react-native';
 import {
   createApiClient,
   AuthApi,
@@ -26,17 +27,22 @@ export function setForceLogoutHandler(handler: (() => void) | null) {
   forceLogoutHandler = handler;
 }
 
+const isWeb = Platform.OS === 'web';
+
 const client = createApiClient({
   baseUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000',
-  getToken: getTokenSync,
-  getRefreshToken: getRefreshTokenSync,
-  onTokenRefreshed: (accessToken, refreshToken) => {
+  getToken: isWeb ? undefined : getTokenSync,
+  getRefreshToken: isWeb ? undefined : getRefreshTokenSync,
+  withCredentials: isWeb,
+  onTokenRefreshed: isWeb ? undefined : (accessToken, refreshToken) => {
     saveToken(accessToken);
     saveRefreshToken(refreshToken);
   },
   onForceLogout: () => {
-    removeToken();
-    removeRefreshToken();
+    if (!isWeb) {
+      removeToken();
+      removeRefreshToken();
+    }
     forceLogoutHandler?.();
   },
 });

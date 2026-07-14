@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
@@ -15,6 +15,7 @@ import { formatCurrency } from '../../utils/format';
 import { useFocusEffect } from '@react-navigation/native';
 import { walletsApi, expensesApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
+import { showAlert } from '../../components/ui/AppAlert';
 import type { WalletBalance, Expense } from '@finance-flow/shared-types';
 
 const walletColors = ['#7C3AED', '#EC4899', '#06B6D4', '#4ADE80', '#F59E0B', '#8B5CF6'];
@@ -62,10 +63,10 @@ export function WalletsScreen() {
   const handleDelete = (w: WalletBalance) => {
     const hasTransactions = Number(w.totalExpenses) > 0 || Number(w.totalEarnings) > 0;
     if (hasTransactions) {
-      Alert.alert(
-        'Eliminar cartera',
-        `Si borras "${w.name}", también se eliminarán todos los ingresos y gastos asociados a esta cartera.`,
-        [
+      showAlert({
+        title: 'Eliminar cartera',
+        message: `Si borras "${w.name}", también se eliminarán todos los ingresos y gastos asociados a esta cartera.`,
+        buttons: [
           { text: 'Cancelar', style: 'cancel' },
           {
             text: 'Eliminar todo',
@@ -79,24 +80,28 @@ export function WalletsScreen() {
               }
             },
           },
-        ]
-      );
+        ],
+      });
     } else {
-      Alert.alert('Eliminar cartera', `¿Eliminar "${w.name}"?`, [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await walletsApi.delete(w.id);
-              loadData();
-            } catch {
-              showError('Error al eliminar cartera');
-            }
+      showAlert({
+        title: 'Eliminar cartera',
+        message: `¿Eliminar "${w.name}"?`,
+        buttons: [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Eliminar',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await walletsApi.delete(w.id);
+                loadData();
+              } catch {
+                showError('Error al eliminar cartera');
+              }
+            },
           },
-        },
-      ]);
+        ],
+      });
     }
   };
 
