@@ -18,6 +18,10 @@ export class ReceiptsApi {
     return this.client.uploadFile<Receipt>('/receipts', formData);
   }
 
+  uploadFile(formData: FormData): Promise<Receipt> {
+    return this.client.uploadFile<Receipt>('/receipts', formData);
+  }
+
   delete(id: number): Promise<void> {
     return this.client.delete<void>(`/receipts/${id}`);
   }
