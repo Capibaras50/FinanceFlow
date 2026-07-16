@@ -14,6 +14,7 @@ import { hash } from 'bcrypt';
 import { Exclude } from 'class-transformer';
 import { Profile } from './profile.entity';
 import { RefreshToken } from 'src/auth/entities/refresh-tokens.entity';
+import { UserRoleEnum } from '../enums/role.enum';
 
 @Entity('users')
 export class User {
@@ -34,6 +35,14 @@ export class User {
   })
   @JoinColumn({ name: 'profile_id', referencedColumnName: 'id' })
   profile: Profile;
+
+  @Column({
+    type: 'enum',
+    enum: UserRoleEnum,
+    nullable: false,
+    default: UserRoleEnum.USER,
+  })
+  role: string;
 
   @Column({ name: 'recovery_token_hash', type: 'text', nullable: true })
   recoveryTokenHash: string;

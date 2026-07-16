@@ -55,6 +55,7 @@ export class AuthController {
     const tokens = await this.authService.login({
       sub: user.id,
       profileId: user.profile.id,
+      role: user.role,
     });
     res.cookie(
       'accessToken',

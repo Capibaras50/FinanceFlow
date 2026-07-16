@@ -61,6 +61,7 @@ export class AuthService {
     const payload: Payload = {
       sub: revokedRefreshToken.user.id,
       profileId: revokedRefreshToken.user.profile.id,
+      role: revokedRefreshToken.user.role,
     };
     const accessToken = await this.signAccessToken(payload);
     const newRefreshToken = await this.signRefreshToken(payload);
@@ -181,7 +182,11 @@ export class AuthService {
       });
     }
 
-    const payload: Payload = { sub: user.id, profileId: user.profile.id };
+    const payload: Payload = {
+      sub: user.id,
+      profileId: user.profile.id,
+      role: user.role,
+    };
     return this.login(payload);
   }
 

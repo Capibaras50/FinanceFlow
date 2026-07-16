@@ -20,6 +20,8 @@ import { GetUser } from '../../decorators/get-user.decorator';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from 'src/cloudinary/services/cloudinary.service';
+import { RolesGuard } from '../guards/roles.guard';
+import { Roles } from 'src/decorators/roles.decorator';
 
 @Controller('users')
 export class UsersController {
@@ -33,7 +35,8 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(['admin'])
   @Get()
   findAll(@Query('limit') limit?: number, @Query('page') page?: number) {
     return this.usersService.findAll(limit, page);
