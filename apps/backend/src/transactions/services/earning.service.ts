@@ -80,12 +80,25 @@ export class EarningService {
 
   async create(newEarning: CreateEarningDto, profileId: number) {
     try {
+      const wallet = await this.walletsService.findOne(
+        newEarning.walletId,
+        profileId,
+      );
+      const categories = await this.categoriesService.findByIds(
+        newEarning.categoriesId,
+        profileId,
+      );
       const earning: DeepPartial<Earning> = {
-        ...newEarning,
-        wallet: { id: newEarning.walletId },
-        categories: newEarning.categoriesId.map((id) => ({ id })),
+        name: newEarning.name,
+        description: newEarning.description,
+        value: newEarning.value,
+        wallet: { id: wallet.id },
+        categories,
         profile: { id: profileId },
       };
+      if (newEarning.createdAt) {
+        earning.createdAt = newEarning.createdAt;
+      }
       const createdEarning = this.earningRepository.create(earning);
       return await this.earningRepository.save(createdEarning);
     } catch {

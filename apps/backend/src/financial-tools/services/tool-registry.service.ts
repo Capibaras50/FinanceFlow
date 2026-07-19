@@ -19,6 +19,8 @@ import { GetWalletBalanceTool } from '../tools/get-wallet-balance.tool';
 import { GetWalletByNameTool } from '../tools/get-wallet-by-name.tool';
 import { GetWalletTool } from '../tools/get-wallet.tool';
 import { ToolParameters } from '../interfaces/tool.interface';
+import { CreateExpenseTool } from '../tools/create-expense.tool';
+import { CreateEarningTool } from '../tools/create-earning.tool';
 
 interface OpenAiToolDefinition {
   type: 'function';
@@ -52,6 +54,8 @@ export class ToolRegistryService {
     getWalletBalance: GetWalletBalanceTool,
     getWalletByName: GetWalletByNameTool,
     getWallet: GetWalletTool,
+    createEarning: CreateEarningTool,
+    createExpense: CreateExpenseTool,
   ) {
     this.toolsRegistry = [
       getAllCategories,
@@ -72,6 +76,8 @@ export class ToolRegistryService {
       getWalletBalance,
       getWalletByName,
       getWallet,
+      createExpense,
+      createEarning,
     ];
   }
 

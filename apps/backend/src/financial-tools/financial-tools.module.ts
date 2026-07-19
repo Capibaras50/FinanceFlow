@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { FinancialToolsService } from './services/financial-tools.service';
 import { ToolRegistryService } from './services/tool-registry.service';
 import { GetAllCategoriesTool } from './tools/get-all-categories.tool';
@@ -22,9 +22,17 @@ import { GetWalletTool } from './tools/get-wallet.tool';
 import { TransactionsBaseModule } from 'src/transactions/transactions-base.module';
 import { WalletsModule } from 'src/wallets/wallets.module';
 import { CategoriesModule } from 'src/categories/categories.module';
+import { CreateExpenseTool } from './tools/create-expense.tool';
+import { CreateEarningTool } from './tools/create-earning.tool';
+import { AiModule } from 'src/ai/ai.module';
 
 @Module({
-  imports: [TransactionsBaseModule, WalletsModule, CategoriesModule],
+  imports: [
+    TransactionsBaseModule,
+    WalletsModule,
+    CategoriesModule,
+    forwardRef(() => AiModule),
+  ],
   providers: [
     FinancialToolsService,
     ToolRegistryService,
@@ -46,6 +54,8 @@ import { CategoriesModule } from 'src/categories/categories.module';
     GetWalletBalanceTool,
     GetWalletByNameTool,
     GetWalletTool,
+    CreateExpenseTool,
+    CreateEarningTool,
   ],
   exports: [ToolRegistryService],
 })

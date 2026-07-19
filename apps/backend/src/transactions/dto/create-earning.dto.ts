@@ -17,7 +17,7 @@ export class CreateEarningDto {
 
   @IsString()
   @IsOptional()
-  description: string;
+  description?: string;
 
   @IsNumber()
   @IsPositive()
@@ -32,4 +32,8 @@ export class CreateEarningDto {
   @IsNumber({}, { each: true })
   @ArrayNotEmpty()
   categoriesId: number[];
+
+  @IsString()
+  @IsOptional()
+  createdAt?: Date;
 }

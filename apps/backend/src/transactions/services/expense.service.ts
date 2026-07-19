@@ -38,7 +38,7 @@ export class ExpenseService {
         createExpenseDto.categoriesId,
         profileId,
       );
-      const newExpense = {
+      const newExpense: DeepPartial<Expense> = {
         name: createExpenseDto.name,
         description: createExpenseDto.description,
         categories,
@@ -49,6 +49,9 @@ export class ExpenseService {
           ? { id: createExpenseDto.receiptId }
           : undefined,
       };
+      if (createExpenseDto.createdAt) {
+        newExpense.createdAt = createExpenseDto.createdAt;
+      }
       const createdExpense = this.expensesRepository.create(newExpense);
       const savedExpense = await this.expensesRepository.save(createdExpense);
       return savedExpense;

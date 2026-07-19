@@ -31,8 +31,22 @@ export class ChatService {
       };
       if (timezone) dateOpts.timeZone = timezone;
       const hoy = currentDate.toLocaleDateString('es-MX', dateOpts);
-      const systemPrompt = `Eres un asistente financiero inteligente y amigable que ayuda a los usuarios a gestionar sus finanzas personales. Hablas solo en español. Puedes consultar gastos, ingresos, carteras, categorías y recibos del usuario usando las herramientas disponibles. Responde de forma clara, concisa y útil. Usa markdown para formatear tus respuestas cuando sea apropiado (negritas, listas, títulos). Hoy es ${hoy}.`;
-      const messagesHistory = await this.findAllMessages(profileId, 10);
+      const systemPrompt = `Eres un asistente financiero inteligente que ayuda a usuarios a gestionar sus finanzas personales. Hablas solo español.
+
+## Reglas de creación de transacciones
+
+1. Crea un gasto o ingreso **solo cuando el usuario lo solicite explícitamente en su mensaje actual**. Ignora el historial anterior — si el usuario no pide crear algo en este mensaje, no lo hagas.
+2. No preguntes confirmación. Si el usuario dice "crea un gasto de $50 en comida", ejecútalo directamente.
+3. Usa el nombre de la transacción que el usuario proporcionó para que el sistema infiera automaticamente la categoria y cartera.
+4. Si el usuario te pide una creacion debes crear el gasto obligatoriamente.
+
+## Formato de respuestas
+
+- Usa markdown (negritas, listas, títulos) cuando sea apropiado.
+- Sé conciso a la hora de crear gastos o ingresos. Ej: "✅ Gasto creado: *Comida* por **$50**".
+- Si una herramienta devuelve error, explícale al usuario qué pasó y cómo solucionarlo.
+
+Hoy es ${hoy}.`;
       const newUserMessage: DeepPartial<Message> = {
         role: RoleEnum.USER,
         message: createChatDto.message,
@@ -45,7 +59,6 @@ export class ChatService {
         systemPrompt,
         savedUserMessage.message,
         profileId,
-        messagesHistory,
         timezone,
       );
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

@@ -2,16 +2,20 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { isObject, isString, validate } from 'class-validator';
+import { CategoriesService } from 'src/categories/services/categories.service';
 import { Message } from 'src/chat/entities/chat.entity';
 import { ToolRegistryService } from 'src/financial-tools/services/tool-registry.service';
 import { Env } from 'src/models/env.model';
 import { ExtractDataDto } from 'src/transactions/dto/extract-data.dto';
+import { WalletsService } from 'src/wallets/services/wallets.service';
 
 @Injectable()
 export class AiService {
   constructor(
     private configService: ConfigService<Env>,
     private toolRegistry: ToolRegistryService,
+    private categoriesService: CategoriesService,
+    private walletsService: WalletsService,
   ) {
     const aiUrl = this.configService.get('AI_URL', { infer: true });
     if (typeof aiUrl !== 'string' || !aiUrl.startsWith('http://')) {
@@ -139,15 +143,10 @@ export class AiService {
     systemPrompt: string,
     userMessage: string,
     profileId: number,
-    messagesHistory?: Message[],
     timezone?: string,
   ) {
     try {
-      const messages = this.buildMessages(
-        systemPrompt,
-        userMessage,
-        messagesHistory,
-      );
+      const messages = this.buildMessages(systemPrompt, userMessage);
 
       const tools = this.toolRegistry.getTools();
       const aiUrl = this.configService.get('AI_URL', { infer: true }) as string;
@@ -196,12 +195,19 @@ export class AiService {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           tc.function.arguments as string,
         );
-        const result = await this.toolRegistry.executeTool(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          tc.function.name as string,
-          profileId,
-          args,
-        );
+
+        let result: unknown;
+        try {
+          result = await this.toolRegistry.executeTool(
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            tc.function.name as string,
+            profileId,
+            args,
+          );
+        } catch (toolErr) {
+          result = { error: (toolErr as Error).message };
+        }
+
         const formattedResult = this.formatDatesInResult(result, timezone);
         toolResults.push({
           role: 'tool',
@@ -283,5 +289,67 @@ export class AiService {
     } catch {
       throw new BadRequestException('The Process Of Extract Data Failed');
     }
+  }
+
+  async inferBestCategoryTransaction(
+    profileId: number,
+    nameTransaction: string,
+  ): Promise<number> {
+    const systemPrompt = `Eres un sistema de matching financiero. Tu tarea es seleccionar la categoría más adecuada de la lista proporcionada basándote en la descripción de una transacción.
+
+Reglas:
+- Devuelve ÚNICAMENTE el ID numérico de la categoría, sin texto adicional, sin formato, sin markdown, sin explicaciones.
+- Si ninguna categoría coincide exactamente, elige la más cercana por contexto semántico.
+- Si hay múltiples candidatos, elige el más relevante para la transacción.`;
+
+    const categories = await this.categoriesService.findAll(profileId);
+    const categoriesList = categories
+      .map((category) => `${category.id}: ${category.name}`)
+      .join('\n');
+
+    const aiResponse = await this.createResponseModel(
+      systemPrompt,
+      `Categorías del usuario:\n${categoriesList}\n\nNombre de la transacción: "${nameTransaction}"\n\n¿Cuál es el ID de la categoría más adecuada? Responde solo con el número.`,
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const content: string = aiResponse.data.choices?.[0]?.message?.content;
+    if (!content) {
+      return categories[0]?.id;
+    }
+
+    const parsedId = Number(content.trim());
+    return isNaN(parsedId) ? categories[0]?.id : parsedId;
+  }
+
+  async inferBestWalletTransaction(
+    profileId: number,
+    nameTransaction: string,
+  ): Promise<number> {
+    const systemPrompt = `Eres un sistema de matching financiero. Tu tarea es seleccionar la cartera (wallet) más adecuada de la lista proporcionada basándote en la descripción de una transacción.
+
+Reglas:
+- Devuelve ÚNICAMENTE el ID numérico de la cartera, sin texto adicional, sin formato, sin markdown, sin explicaciones.
+- Si ninguna cartera coincide exactamente, elige la más cercana por contexto semántico.
+- Si hay múltiples candidatos, elige el más relevante para la transacción.`;
+
+    const wallets = await this.walletsService.findAll(profileId);
+    const walletsList = wallets
+      .map((wallet) => `${wallet.id}: ${wallet.name}`)
+      .join('\n');
+
+    const aiResponse = await this.createResponseModel(
+      systemPrompt,
+      `Carteras del usuario:\n${walletsList}\n\nNombre de la transacción: "${nameTransaction}"\n\n¿Cuál es el ID de la cartera más adecuada? Responde solo con el número.`,
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const content: string = aiResponse.data.choices?.[0]?.message?.content;
+    if (!content) {
+      return wallets[0]?.id;
+    }
+
+    const parsedId = Number(content.trim());
+    return isNaN(parsedId) ? wallets[0]?.id : parsedId;
   }
 }

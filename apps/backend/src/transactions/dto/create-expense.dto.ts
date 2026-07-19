@@ -17,7 +17,7 @@ export class CreateExpenseDto {
 
   @IsString()
   @IsOptional()
-  description: string;
+  description?: string;
 
   @IsNumber()
   @IsPositive()
@@ -36,4 +36,8 @@ export class CreateExpenseDto {
   @IsNumber()
   @IsOptional()
   receiptId?: number;
+
+  @IsString()
+  @IsOptional()
+  createdAt?: Date;
 }

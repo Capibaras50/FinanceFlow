@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CategoriesService } from 'src/categories/services/categories.service';
+import { CreateEarningDto } from 'src/transactions/dto/create-earning.dto';
+import { CreateExpenseDto } from 'src/transactions/dto/create-expense.dto';
 import { FilterTransactionDto } from 'src/transactions/dto/filter-transaction.dto';
 import { EarningService } from 'src/transactions/services/earning.service';
 import { ExpenseService } from 'src/transactions/services/expense.service';
@@ -77,6 +79,10 @@ export class FinancialToolsService {
     return await this.expenseService.getTopCategories(profileId, take);
   }
 
+  async createExpense(profileId: number, newExpense: CreateExpenseDto) {
+    return await this.expenseService.create(newExpense, profileId);
+  }
+
   // WALLETS
   async getAllWallets(profileId: number, limit?: number, page?: number) {
     return await this.walletsService.findAll(profileId, limit, page);
@@ -127,5 +133,9 @@ export class FinancialToolsService {
 
   async getEarningById(id: number, profileId: number) {
     return await this.earningService.findOne(id, profileId);
+  }
+
+  async createEarning(profileId: number, newEarning: CreateEarningDto) {
+    return await this.earningService.create(newEarning, profileId);
   }
 }
