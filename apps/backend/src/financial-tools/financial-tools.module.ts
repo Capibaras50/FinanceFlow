@@ -24,7 +24,7 @@ import { WalletsModule } from 'src/wallets/wallets.module';
 import { CategoriesModule } from 'src/categories/categories.module';
 import { CreateExpenseTool } from './tools/create-expense.tool';
 import { CreateEarningTool } from './tools/create-earning.tool';
-import { TransactionInferenceModule } from 'src/transaction-inference/transaction-inference.module';
+import { TransactionInferenceModule } from 'src/transactions/transaction-inference.module';
 
 @Module({
   imports: [

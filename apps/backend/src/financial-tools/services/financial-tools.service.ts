@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CategoriesService } from 'src/categories/services/categories.service';
-import { TransactionInferenceService } from 'src/transaction-inference/services/transaction-inference.service';
+import { TransactionInferenceService } from 'src/transactions/services/transaction-inference.service';
 import { CreateEarningDto } from 'src/transactions/dto/create-earning.dto';
 import { CreateExpenseDto } from 'src/transactions/dto/create-expense.dto';
 import { FilterTransactionDto } from 'src/transactions/dto/filter-transaction.dto';
