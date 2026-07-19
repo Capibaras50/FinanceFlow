@@ -1,9 +1,8 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Tool, ToolParameters } from '../interfaces/tool.interface';
 import { FinancialToolsService } from '../services/financial-tools.service';
 import { Earning } from 'src/transactions/entities/earning.entity';
 import { CreateEarningDto } from 'src/transactions/dto/create-earning.dto';
-import { AiService } from 'src/ai/services/ai.service';
 
 interface CreateEarningArgs {
   name: string;
@@ -14,11 +13,7 @@ interface CreateEarningArgs {
 
 @Injectable()
 export class CreateEarningTool implements Tool<CreateEarningArgs, Earning> {
-  constructor(
-    private readonly financialToolsService: FinancialToolsService,
-    @Inject(forwardRef(() => AiService))
-    private readonly aiService: AiService,
-  ) {}
+  constructor(private readonly financialToolsService: FinancialToolsService) {}
 
   readonly name: string = 'createEarning';
 
@@ -51,14 +46,16 @@ export class CreateEarningTool implements Tool<CreateEarningArgs, Earning> {
   };
 
   async execute(profileId: number, args: CreateEarningArgs): Promise<Earning> {
-    const categoryId = await this.aiService.inferBestCategoryTransaction(
-      profileId,
-      args.name,
-    );
-    const walletId = await this.aiService.inferBestWalletTransaction(
-      profileId,
-      args.name,
-    );
+    const categoryId =
+      await this.financialToolsService.inferBestCategoryTransaction(
+        profileId,
+        args.name,
+      );
+    const walletId =
+      await this.financialToolsService.inferBestWalletTransaction(
+        profileId,
+        args.name,
+      );
     const newEarning: CreateEarningDto = {
       name: args.name,
       description: args.description ? args.description : undefined,

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CategoriesService } from 'src/categories/services/categories.service';
+import { TransactionInferenceService } from 'src/transaction-inference/services/transaction-inference.service';
 import { CreateEarningDto } from 'src/transactions/dto/create-earning.dto';
 import { CreateExpenseDto } from 'src/transactions/dto/create-expense.dto';
 import { FilterTransactionDto } from 'src/transactions/dto/filter-transaction.dto';
@@ -16,6 +17,7 @@ export class FinancialToolsService {
     private receiptService: ReceiptService,
     private expenseService: ExpenseService,
     private earningService: EarningService,
+    private inferenceService: TransactionInferenceService,
   ) {}
 
   // CATEGORIES
@@ -33,6 +35,16 @@ export class FinancialToolsService {
 
   async getCategoryByName(name: string, profileId: number) {
     return await this.categoriesService.findByName(name, profileId);
+  }
+
+  async inferBestCategoryTransaction(
+    profileId: number,
+    nameTransaction: string,
+  ): Promise<number> {
+    return await this.inferenceService.inferBestCategoryTransaction(
+      profileId,
+      nameTransaction,
+    );
   }
 
   // RECEIPTS
@@ -121,6 +133,16 @@ export class FinancialToolsService {
       numEarnings: earnings?.numEarnings,
       numTransactions,
     };
+  }
+
+  async inferBestWalletTransaction(
+    profileId: number,
+    nameTransaction: string,
+  ): Promise<number> {
+    return await this.inferenceService.inferBestWalletTransaction(
+      profileId,
+      nameTransaction,
+    );
   }
 
   // EARNINGS

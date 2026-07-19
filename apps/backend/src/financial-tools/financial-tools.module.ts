@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { FinancialToolsService } from './services/financial-tools.service';
 import { ToolRegistryService } from './services/tool-registry.service';
 import { GetAllCategoriesTool } from './tools/get-all-categories.tool';
@@ -24,14 +24,14 @@ import { WalletsModule } from 'src/wallets/wallets.module';
 import { CategoriesModule } from 'src/categories/categories.module';
 import { CreateExpenseTool } from './tools/create-expense.tool';
 import { CreateEarningTool } from './tools/create-earning.tool';
-import { AiModule } from 'src/ai/ai.module';
+import { TransactionInferenceModule } from 'src/transaction-inference/transaction-inference.module';
 
 @Module({
   imports: [
     TransactionsBaseModule,
     WalletsModule,
     CategoriesModule,
-    forwardRef(() => AiModule),
+    TransactionInferenceModule,
   ],
   providers: [
     FinancialToolsService,
