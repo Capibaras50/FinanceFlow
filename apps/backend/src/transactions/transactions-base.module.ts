@@ -10,6 +10,7 @@ import { EarningService } from './services/earning.service';
 import { WalletsModule } from 'src/wallets/wallets.module';
 import { CategoriesModule } from 'src/categories/categories.module';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
+import { TransactionService } from './services/transaction.service';
 
 @Module({
   imports: [
@@ -21,7 +22,12 @@ import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
     CategoriesModule,
     CloudinaryModule,
   ],
-  providers: [ExpenseService, ReceiptService, EarningService],
+  providers: [
+    ExpenseService,
+    ReceiptService,
+    EarningService,
+    TransactionService,
+  ],
   exports: [ExpenseService, ReceiptService, EarningService],
 })
 export class TransactionsBaseModule {}

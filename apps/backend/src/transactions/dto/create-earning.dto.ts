@@ -1,6 +1,4 @@
 import {
-  ArrayNotEmpty,
-  IsArray,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -28,10 +26,10 @@ export class CreateEarningDto {
   @IsNotEmpty()
   walletId: number;
 
-  @IsArray()
-  @IsNumber({}, { each: true })
-  @ArrayNotEmpty()
-  categoriesId: number[];
+  @IsNumber()
+  @IsPositive()
+  @IsNotEmpty()
+  categoryId: number;
 
   @IsString()
   @IsOptional()

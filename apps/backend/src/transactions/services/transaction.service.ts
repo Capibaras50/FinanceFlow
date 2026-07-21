@@ -1,0 +1,59 @@
+import { Injectable } from '@nestjs/common';
+import { FilterTransactionDto } from '../dto/filter-transaction.dto';
+import { DataSource, DeepPartial } from 'typeorm';
+import { TransactionTimelineInterface } from '../interfaces/transaction-timeline.interface';
+
+@Injectable()
+export class TransactionService {
+  constructor(private dataSource: DataSource) {}
+
+  async getTransactionsTimeline(
+    profileId: number,
+    filterTransactionDto: FilterTransactionDto,
+  ) {
+    const page = filterTransactionDto.page || 1;
+    const limit = filterTransactionDto.limit || 10;
+    const offset = (page - 1) * limit;
+    const sortBy = filterTransactionDto.sortBy || 'createdAt';
+    const sortOrder = filterTransactionDto.sortOrder || 'DESC';
+    const params: (number | string)[] = [
+      profileId,
+      sortBy,
+      sortOrder,
+      limit,
+      offset,
+    ];
+    let query1 = `
+        SELECT expenses.id, expenses.name, expenses.description, expenses.amount, expenses.createdAt, categories.type FROM expenses
+        INNER JOIN categories
+          ON categories.id = expenses.category_id
+        WHERE expenses.profile_id = $1
+      `;
+    let query2 = `
+        SELECT earnings.id, earnings.name earnings.description, earnings.amount, earnings.createdAt, categories.type FROM earnings
+        INNER JOIN categories
+          ON categories.id = earnings.category_id
+        WHERE earnings.profile_id = $1
+    `;
+    if (filterTransactionDto.wallet) {
+      query1 += ` AND expenses.wallet_id = $6`;
+      query2 += ` AND earnings.wallet_id = $6`;
+      params.push(filterTransactionDto.wallet);
+    }
+    if (filterTransactionDto.category) {
+      query1 += ` AND expenses.category_id = $7`;
+      query2 += ` AND earnings.category_id = $7`;
+      params.push(filterTransactionDto.category);
+    }
+    const query = `
+      ${query1} 
+      UNION ALL 
+      ${query2} 
+      ORDER BY $2 $3
+      LIMIT $4 OFFSET $5
+    `;
+    const timeline: DeepPartial<TransactionTimelineInterface> =
+      await this.dataSource.query(query, params);
+    return timeline;
+  }
+}

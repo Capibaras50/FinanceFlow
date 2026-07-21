@@ -1,6 +1,10 @@
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class ExtractDataDto {
+  @IsBoolean()
+  @IsNotEmpty()
+  isReceipt: boolean;
+
   @IsString()
   @IsNotEmpty()
   name: string;

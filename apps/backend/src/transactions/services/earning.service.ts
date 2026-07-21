@@ -32,14 +32,14 @@ export class EarningService {
         deletedAt: undefined,
       };
       if (filterTransactionDto.category) {
-        where['categories'] = { name: filterTransactionDto.category };
+        where['category'] = { name: filterTransactionDto.category };
       }
       if (filterTransactionDto.wallet) {
         where['wallet'] = { name: filterTransactionDto.wallet };
       }
       const earnings = await this.earningRepository.find({
         where,
-        relations: ['categories', 'wallet'],
+        relations: ['category', 'wallet'],
         take: filterTransactionDto.limit || 10,
         skip: ((filterTransactionDto.page ?? 1) - 1) * 10,
         order: order ? order : { createdAt: 'DESC' },
@@ -58,7 +58,7 @@ export class EarningService {
         profile: { id: profileId },
         deletedAt: undefined,
       },
-      relations: ['categories', 'wallet'],
+      relations: ['category', 'wallet'],
     });
     if (!earning) {
       throw new NotFoundException('The earning Not Found');
@@ -84,8 +84,8 @@ export class EarningService {
         newEarning.walletId,
         profileId,
       );
-      const categories = await this.categoriesService.findByIds(
-        newEarning.categoriesId,
+      const category = await this.categoriesService.findOne(
+        newEarning.categoryId,
         profileId,
       );
       const earning: DeepPartial<Earning> = {
@@ -93,7 +93,7 @@ export class EarningService {
         description: newEarning.description,
         value: newEarning.value,
         wallet: { id: wallet.id },
-        categories,
+        category: { id: category.id },
         profile: { id: profileId },
       };
       if (newEarning.createdAt) {
@@ -136,12 +136,12 @@ export class EarningService {
       }
 
       const mergedEarning = this.earningRepository.merge(earning, changes);
-      if (updateEarningDto.categoriesId !== undefined) {
-        const categories = await this.categoriesService.findByIds(
-          updateEarningDto.categoriesId,
+      if (updateEarningDto.categoryId !== undefined) {
+        const category = await this.categoriesService.findOne(
+          updateEarningDto.categoryId,
           profileId,
         );
-        mergedEarning.categories = categories;
+        mergedEarning.category = category;
       }
       return await this.earningRepository.save(mergedEarning);
     } catch {

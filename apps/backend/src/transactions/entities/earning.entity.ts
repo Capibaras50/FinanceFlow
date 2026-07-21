@@ -44,6 +44,10 @@ export class Earning {
   @JoinColumn({ name: 'profile_id' })
   profile: Profile;
 
+  @ManyToOne(() => Category, (category) => category.id, { nullable: false })
+  @JoinColumn({ name: 'category_id' })
+  category: Category;
+
   @CreateDateColumn({
     name: 'created_at',
     type: 'timestamp with time zone',

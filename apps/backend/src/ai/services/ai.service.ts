@@ -199,6 +199,7 @@ export class AiService {
       const extractDataDto = new ExtractDataDto();
       if (
         isObject(parsedContent) &&
+        'isReceipt' in parsedContent &&
         'name' in parsedContent &&
         'value' in parsedContent &&
         'description' in parsedContent &&
@@ -207,6 +208,7 @@ export class AiService {
         'walletName' in parsedContent &&
         'categoryName' in parsedContent
       ) {
+        extractDataDto.isReceipt = Boolean(parsedContent.isReceipt);
         extractDataDto.name = String(parsedContent.name);
         extractDataDto.value = Number(parsedContent.value);
         extractDataDto.description = String(parsedContent.description);
@@ -218,7 +220,7 @@ export class AiService {
         extractDataDto.categoryName = String(parsedContent.categoryName);
       }
       const errors = await validate(extractDataDto);
-      if (errors.length > 0) {
+      if (errors.length > 0 || !extractDataDto.isReceipt) {
         throw new BadRequestException('The Process Of Extract Data Failed');
       }
       return extractDataDto;

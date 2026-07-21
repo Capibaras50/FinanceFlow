@@ -34,14 +34,14 @@ export class ExpenseService {
         createExpenseDto.walletId,
         profileId,
       );
-      const categories = await this.categoriesService.findByIds(
-        createExpenseDto.categoriesId,
+      const category = await this.categoriesService.findOne(
+        createExpenseDto.categoryId,
         profileId,
       );
       const newExpense: DeepPartial<Expense> = {
         name: createExpenseDto.name,
         description: createExpenseDto.description,
-        categories,
+        category: { id: category.id },
         profile: { id: profileId },
         wallet: { id: wallet.id },
         value: createExpenseDto.value,
@@ -70,14 +70,14 @@ export class ExpenseService {
         deletedAt: undefined,
       };
       if (filterTransactionDto.category) {
-        where['categories'] = { name: filterTransactionDto.category };
+        where['category'] = { name: filterTransactionDto.category };
       }
       if (filterTransactionDto.wallet) {
         where['wallet'] = { name: filterTransactionDto.wallet };
       }
       const expenses = await this.expensesRepository.find({
         where,
-        relations: ['categories', 'wallet'],
+        relations: ['category', 'wallet'],
         take: filterTransactionDto.limit || 10,
         skip: ((filterTransactionDto.page ?? 1) - 1) * 10,
         order: order ? order : { createdAt: 'DESC' },
@@ -95,7 +95,7 @@ export class ExpenseService {
         profile: { id: profileId },
         deletedAt: undefined,
       },
-      relations: ['categories', 'wallet'],
+      relations: ['category', 'wallet'],
     });
     if (!expense) {
       throw new NotFoundException('The Expense Not Found');
@@ -106,21 +106,23 @@ export class ExpenseService {
   async findExpensesByCategory(categoriesIds: number[], profileId: number) {
     const [expenses, total] = await this.expensesRepository.findAndCount({
       where: {
-        categories: In(categoriesIds),
+        category: { id: In(categoriesIds) },
         profile: { id: profileId },
         deletedAt: undefined,
       },
-      relations: ['categories', 'wallet'],
+      relations: ['category', 'wallet'],
     });
-    const addition = await this.expensesRepository.sum('value', {
-      categories: In(categoriesIds),
-      profile: { id: profileId },
-      deletedAt: undefined,
-    });
+    const addition = await this.expensesRepository
+      .createQueryBuilder('expense')
+      .select('COALESCE(SUM(expense.value), 0)', 'sum')
+      .where('expense.category_id IN (:...categoriesIds)', { categoriesIds })
+      .andWhere('expense.profile_id = :profileId', { profileId })
+      .andWhere('expense.deletedAt IS NULL')
+      .getRawOne<{ sum: string }>();
     return {
       expenses,
       totalExpenses: total,
-      addition,
+      addition: addition?.sum ? Number(addition.sum) : 0,
     };
   }
 
@@ -134,7 +136,7 @@ export class ExpenseService {
         createdAt: Between(startDate, endDate),
         profile: { id: profileId },
       },
-      relations: ['categories', 'wallet'],
+      relations: ['category', 'wallet'],
     });
     return expenses;
   }
@@ -142,12 +144,12 @@ export class ExpenseService {
   async getTopCategories(profileId: number, take: number) {
     const categories = await this.expensesRepository
       .createQueryBuilder('expense')
-      .leftJoin('expense.categories', 'category')
+      .innerJoin('expense.category', 'category')
       .select('category.id', 'id')
       .addSelect('category.name', 'name')
       .addSelect('SUM(expense.value)', 'total')
       .addSelect('COUNT(expense.id)', 'count')
-      .where('expense.profile.id = :profileId', { profileId })
+      .where('expense.profile_id = :profileId', { profileId })
       .groupBy('category.id')
       .addGroupBy('category.name')
       .orderBy({
@@ -207,12 +209,12 @@ export class ExpenseService {
       }
 
       const mergedExpense = this.expensesRepository.merge(expense, changes);
-      if (updateExpenseDto.categoriesId !== undefined) {
-        const categories = await this.categoriesService.findByIds(
-          updateExpenseDto.categoriesId,
+      if (updateExpenseDto.categoryId !== undefined) {
+        const category = await this.categoriesService.findOne(
+          updateExpenseDto.categoryId,
           profileId,
         );
-        mergedExpense.categories = categories;
+        mergedExpense.category = category;
       }
       const savedExpense = await this.expensesRepository.save(mergedExpense);
       return savedExpense;
@@ -251,7 +253,7 @@ export class ExpenseService {
           name: nameExpense,
           description: descriptionExpense,
           value: valueExpense,
-          categories: categoriesId.map((id) => ({ id })),
+          category: { id: categoriesId[0] },
           wallet: { id: walletId },
           receipt: undefined,
           profile: { id: profileId },

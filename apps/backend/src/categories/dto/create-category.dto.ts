@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
+import { CategoryType } from '../enums/category-type.enum';
 
 export class CreateCategoryDto {
   @IsString()
@@ -14,4 +21,8 @@ export class CreateCategoryDto {
   @MaxLength(7)
   @IsNotEmpty()
   color: string;
+
+  @IsEnum(CategoryType)
+  @IsNotEmpty()
+  type: CategoryType;
 }

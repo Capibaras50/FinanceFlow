@@ -49,6 +49,10 @@ export class Expense {
   @OneToOne(() => Receipt, (receipt) => receipt.expense, { nullable: true })
   receipt: Receipt;
 
+  @ManyToOne(() => Category, (category) => category.id, { nullable: false })
+  @JoinColumn({ name: 'category_id' })
+  category: Category;
+
   @CreateDateColumn({
     name: 'created_at',
     type: 'timestamp with time zone',

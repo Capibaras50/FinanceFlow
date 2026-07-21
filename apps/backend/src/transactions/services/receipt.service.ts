@@ -57,6 +57,7 @@ export class ReceiptService {
       const categories = await this.categoriesService.findAll(profileId);
       const systemPrompt = `Eres un asistente experto en extracción de datos de recibos y facturas. Analiza la imagen y extrae ÚNICAMENTE un objeto JSON con esta estructura exacta, sin texto adicional ni formato markdown:
       {
+        "isReceipt": "true o false dependiendo si es un recibo o no",
         "fileName": "nombre del comercio junto con la fecha del dia",
         "name": "nombre del comercio o establecimiento",
         "value": monto_total_numerico,

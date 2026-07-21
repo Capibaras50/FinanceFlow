@@ -8,10 +8,12 @@ import {
   JoinColumn,
   ManyToMany,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
+import { CategoryType } from '../enums/category-type.enum';
 
 @Entity('categories')
 @Unique(['name', 'profile'])
@@ -28,9 +30,22 @@ export class Category {
   @Column({ type: 'varchar', length: 7, nullable: false })
   color: string;
 
+  @Column({ type: 'enum', enum: CategoryType, nullable: false })
+  type: CategoryType;
+
   @ManyToOne(() => Profile, (profile) => profile.categories)
   @JoinColumn({ name: 'profile_id', referencedColumnName: 'id' })
   profile: Profile;
+
+  @OneToMany(() => Expense, (expense) => expense.category, {
+    onDelete: 'CASCADE',
+  })
+  expense: Expense[];
+
+  @OneToMany(() => Earning, (earning) => earning.category, {
+    onDelete: 'CASCADE',
+  })
+  earning: Earning[];
 
   @ManyToMany(() => Earning, (earning) => earning.categories)
   earnings: Earning[];

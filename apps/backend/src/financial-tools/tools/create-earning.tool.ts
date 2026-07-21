@@ -61,7 +61,7 @@ export class CreateEarningTool implements Tool<CreateEarningArgs, Earning> {
       description: args.description ? args.description : undefined,
       value: args.value,
       walletId,
-      categoriesId: [categoryId],
+      categoryId,
       createdAt: args.createdAt ? new Date(args.createdAt) : undefined,
     };
     return await this.financialToolsService.createEarning(
