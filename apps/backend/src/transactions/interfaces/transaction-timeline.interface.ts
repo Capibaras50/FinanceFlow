@@ -1,8 +1,8 @@
 export interface TransactionTimelineInterface {
   id: number;
-  amount: number;
+  value: number;
   name: string;
   description: string;
-  createdAt: Date;
+  created_at: Date;
   type: 'expense' | 'earning';
 }

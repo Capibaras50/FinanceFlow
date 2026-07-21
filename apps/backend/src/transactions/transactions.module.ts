@@ -7,6 +7,7 @@ import { ReceiptProcessor } from './processors/receipt.processor';
 import { AiModule } from 'src/ai/ai.module';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 import { TransactionController } from './controllers/transaction.controller';
+import { TransactionService } from './services/transaction.service';
 
 @Module({
   imports: [TransactionsBaseModule, AiModule, CloudinaryModule],
@@ -16,7 +17,7 @@ import { TransactionController } from './controllers/transaction.controller';
     EarningController,
     TransactionController,
   ],
-  providers: [ReceiptProcessor],
+  providers: [ReceiptProcessor, TransactionService],
   exports: [TransactionsBaseModule],
 })
 export class TransactionsModule {}

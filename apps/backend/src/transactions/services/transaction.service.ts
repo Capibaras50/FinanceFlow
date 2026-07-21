@@ -24,25 +24,29 @@ export class TransactionService {
       offset,
     ];
     let query1 = `
-        SELECT expenses.id, expenses.name, expenses.description, expenses.amount, expenses.createdAt, categories.type FROM expenses
+        SELECT expenses.id, expenses.name, expenses.description, expenses.value, expenses.created_at, categories.type FROM expenses
         INNER JOIN categories
           ON categories.id = expenses.category_id
+        INNER JOIN wallets
+          ON wallets.id = expenses.wallet_id
         WHERE expenses.profile_id = $1
       `;
     let query2 = `
-        SELECT earnings.id, earnings.name earnings.description, earnings.amount, earnings.createdAt, categories.type FROM earnings
+        SELECT earnings.id, earnings.name, earnings.description, earnings.value, earnings.created_at, categories.type FROM earnings
         INNER JOIN categories
           ON categories.id = earnings.category_id
+        INNER JOIN wallets
+          ON wallets.id = earnings.wallet_id
         WHERE earnings.profile_id = $1
     `;
     if (filterTransactionDto.wallet) {
-      query1 += ` AND expenses.wallet_id = $6`;
-      query2 += ` AND earnings.wallet_id = $6`;
+      query1 += ` AND wallets.name = $6`;
+      query2 += ` AND wallets.name = $6`;
       params.push(filterTransactionDto.wallet);
     }
     if (filterTransactionDto.category) {
-      query1 += ` AND expenses.category_id = $7`;
-      query2 += ` AND earnings.category_id = $7`;
+      query1 += ` AND categories.name = $7`;
+      query2 += ` AND categories.name = $7`;
       params.push(filterTransactionDto.category);
     }
     const query = `

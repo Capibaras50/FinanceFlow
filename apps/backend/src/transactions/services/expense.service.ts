@@ -117,7 +117,7 @@ export class ExpenseService {
       .select('COALESCE(SUM(expense.value), 0)', 'sum')
       .where('expense.category_id IN (:...categoriesIds)', { categoriesIds })
       .andWhere('expense.profile_id = :profileId', { profileId })
-      .andWhere('expense.deletedAt IS NULL')
+      .andWhere('expense.deleted_at IS NULL')
       .getRawOne<{ sum: string }>();
     return {
       expenses,
@@ -166,9 +166,9 @@ export class ExpenseService {
       .createQueryBuilder('expenses')
       .select('COALESCE(SUM(expenses.value), 0)', 'totalExpenses')
       .addSelect('COUNT(expenses.id)', 'numExpenses')
-      .where('expenses.profile.id = :profileId', { profileId, month })
-      .andWhere('EXTRACT(MONTH FROM expenses.createdAt) = :month', { month })
-      .andWhere('expenses.deletedAt IS NULL')
+      .where('expenses.profile_id = :profileId', { profileId })
+      .andWhere('EXTRACT(MONTH FROM expenses.created_at) = :month', { month })
+      .andWhere('expenses.deleted_at IS NULL')
       .getRawOne<TotalExpensesInterface>();
     return totalExpenses;
   }

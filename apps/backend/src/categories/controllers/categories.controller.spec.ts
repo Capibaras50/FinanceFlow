@@ -6,6 +6,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Category } from '../entities/category.entity';
 import { Repository } from 'typeorm';
 import { Profile } from 'src/users/entities/profile.entity';
+import { CategoryType } from '../enums/category-type.enum';
 
 const makeCategory = (overrides?: Partial<Category>): Category => {
   return {
@@ -18,6 +19,7 @@ const makeCategory = (overrides?: Partial<Category>): Category => {
     expenses: [],
     createdAt: new Date(),
     updatedAt: new Date(),
+    type: CategoryType.EXPENSE,
     ...overrides,
   };
 };

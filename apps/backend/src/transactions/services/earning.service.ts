@@ -71,9 +71,9 @@ export class EarningService {
       .createQueryBuilder('earnings')
       .select('COALESCE(SUM(earnings.value), 0)', 'totalEarnings')
       .addSelect('COUNT(earnings.id)', 'numEarnings')
-      .where('earnings.profile.id = :profileId', { profileId, month })
-      .andWhere('EXTRACT(MONTH FROM earnings.createdAt) = :month', { month })
-      .andWhere('earnings.deletedAt IS NULL')
+      .where('earnings.profile_id = :profileId', { profileId })
+      .andWhere('EXTRACT(MONTH FROM earnings.created_at) = :month', { month })
+      .andWhere('earnings.deleted_at IS NULL')
       .getRawOne<TotalEarningsInterface>();
     return totalEarnings;
   }

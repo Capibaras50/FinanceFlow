@@ -7,8 +7,6 @@ import {
   DeleteDateColumn,
   Entity,
   JoinColumn,
-  JoinTable,
-  ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -31,14 +29,6 @@ export class Earning {
   @ManyToOne(() => Wallet, (wallet) => wallet.earnings)
   @JoinColumn({ name: 'wallet_id' })
   wallet: Wallet;
-
-  @ManyToMany(() => Category, (category) => category.earnings)
-  @JoinTable({
-    name: 'earning_categories',
-    joinColumn: { name: 'earning_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'category_id', referencedColumnName: 'id' },
-  })
-  categories: Category[];
 
   @ManyToOne(() => Profile, (profile) => profile.earnings)
   @JoinColumn({ name: 'profile_id' })

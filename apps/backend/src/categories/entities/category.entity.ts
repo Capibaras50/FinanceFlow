@@ -6,7 +6,6 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
-  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -30,7 +29,11 @@ export class Category {
   @Column({ type: 'varchar', length: 7, nullable: false })
   color: string;
 
-  @Column({ type: 'enum', enum: CategoryType, nullable: false })
+  @Column({
+    type: 'enum',
+    enum: CategoryType,
+    nullable: false,
+  })
   type: CategoryType;
 
   @ManyToOne(() => Profile, (profile) => profile.categories)
@@ -40,18 +43,12 @@ export class Category {
   @OneToMany(() => Expense, (expense) => expense.category, {
     onDelete: 'CASCADE',
   })
-  expense: Expense[];
+  expenses: Expense[];
 
   @OneToMany(() => Earning, (earning) => earning.category, {
     onDelete: 'CASCADE',
   })
-  earning: Earning[];
-
-  @ManyToMany(() => Earning, (earning) => earning.categories)
   earnings: Earning[];
-
-  @ManyToMany(() => Expense, (expense) => expense.categories)
-  expenses: Expense[];
 
   @CreateDateColumn({
     name: 'created_at',
