@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { FilterTransactionDto } from '../dto/filter-transaction.dto';
-import { DataSource, DeepPartial } from 'typeorm';
+import { DataSource } from 'typeorm';
+import { Expense } from '../entities/expense.entity';
+import { Earning } from '../entities/earning.entity';
 import { TransactionTimelineInterface } from '../interfaces/transaction-timeline.interface';
+
+const SORT_COLUMNS = new Set(['created_at', 'value']);
+const SORT_ORDERS = new Set(['ASC', 'DESC']);
 
 @Injectable()
 export class TransactionService {
@@ -14,50 +19,74 @@ export class TransactionService {
     const page = filterTransactionDto.page || 1;
     const limit = filterTransactionDto.limit || 10;
     const offset = (page - 1) * limit;
-    const sortBy = filterTransactionDto.sortBy || 'createdAt';
-    const sortOrder = filterTransactionDto.sortOrder || 'DESC';
-    const params: (number | string)[] = [
-      profileId,
-      sortBy,
-      sortOrder,
+
+    const sortColumn = SORT_COLUMNS.has(filterTransactionDto.sortBy ?? '')
+      ? filterTransactionDto.sortBy
+      : 'created_at';
+    const sortOrder = SORT_ORDERS.has(filterTransactionDto.sortOrder ?? '')
+      ? filterTransactionDto.sortOrder
+      : 'DESC';
+
+    const expensesQb = this.dataSource
+      .createQueryBuilder(Expense, 'expense')
+      .select('expense.id', 'id')
+      .addSelect('expense.name', 'name')
+      .addSelect('expense.description', 'description')
+      .addSelect('expense.value', 'value')
+      .addSelect('expense.created_at', 'created_at')
+      .addSelect('category.type', 'type')
+      .innerJoin('expense.category', 'category')
+      .innerJoin('expense.wallet', 'wallet')
+      .where('expense.profile_id = :profileId', { profileId });
+
+    const earningsQb = this.dataSource
+      .createQueryBuilder(Earning, 'earning')
+      .select('earning.id', 'id')
+      .addSelect('earning.name', 'name')
+      .addSelect('earning.description', 'description')
+      .addSelect('earning.value', 'value')
+      .addSelect('earning.created_at', 'created_at')
+      .addSelect('category.type', 'type')
+      .innerJoin('earning.category', 'category')
+      .innerJoin('earning.wallet', 'wallet')
+      .where('earning.profile_id = :profileId', { profileId });
+
+    if (filterTransactionDto.wallet) {
+      expensesQb.andWhere('wallet.name = :walletName', {
+        walletName: filterTransactionDto.wallet,
+      });
+      earningsQb.andWhere('wallet.name = :walletName', {
+        walletName: filterTransactionDto.wallet,
+      });
+    }
+
+    if (filterTransactionDto.category) {
+      expensesQb.andWhere('category.name = :categoryName', {
+        categoryName: filterTransactionDto.category,
+      });
+      earningsQb.andWhere('category.name = :categoryName', {
+        categoryName: filterTransactionDto.category,
+      });
+    }
+
+    const [expensesSql, expensesParams]: [string, unknown[]] =
+      expensesQb.getQueryAndParameters();
+    const [earningsSql, earningsParams]: [string, unknown[]] =
+      earningsQb.getQueryAndParameters();
+
+    const offsetEarningsSql = earningsSql.replace(
+      /\$(\d+)/g,
+      (_, num) => `$${Number(num) + expensesParams.length}`,
+    );
+
+    const paramCount = expensesParams.length + earningsParams.length;
+    const query = `(${expensesSql}) UNION ALL (${offsetEarningsSql}) ORDER BY "${sortColumn}" ${sortOrder} LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+
+    return this.dataSource.query<TransactionTimelineInterface[]>(query, [
+      ...expensesParams,
+      ...earningsParams,
       limit,
       offset,
-    ];
-    let query1 = `
-        SELECT expenses.id, expenses.name, expenses.description, expenses.value, expenses.created_at, categories.type FROM expenses
-        INNER JOIN categories
-          ON categories.id = expenses.category_id
-        INNER JOIN wallets
-          ON wallets.id = expenses.wallet_id
-        WHERE expenses.profile_id = $1
-      `;
-    let query2 = `
-        SELECT earnings.id, earnings.name, earnings.description, earnings.value, earnings.created_at, categories.type FROM earnings
-        INNER JOIN categories
-          ON categories.id = earnings.category_id
-        INNER JOIN wallets
-          ON wallets.id = earnings.wallet_id
-        WHERE earnings.profile_id = $1
-    `;
-    if (filterTransactionDto.wallet) {
-      query1 += ` AND wallets.name = $6`;
-      query2 += ` AND wallets.name = $6`;
-      params.push(filterTransactionDto.wallet);
-    }
-    if (filterTransactionDto.category) {
-      query1 += ` AND categories.name = $7`;
-      query2 += ` AND categories.name = $7`;
-      params.push(filterTransactionDto.category);
-    }
-    const query = `
-      ${query1} 
-      UNION ALL 
-      ${query2} 
-      ORDER BY $2 $3
-      LIMIT $4 OFFSET $5
-    `;
-    const timeline: DeepPartial<TransactionTimelineInterface> =
-      await this.dataSource.query(query, params);
-    return timeline;
+    ]);
   }
 }
