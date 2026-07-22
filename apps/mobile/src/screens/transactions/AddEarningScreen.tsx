@@ -83,7 +83,10 @@ export function AddEarningScreen() {
       } else {
         await earningsApi.create(dto);
       }
-      navigation.popToTop();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      });
     } catch (e) {
       showError(getErrorMessage(e, 'Error al guardar ingreso'));
     } finally {

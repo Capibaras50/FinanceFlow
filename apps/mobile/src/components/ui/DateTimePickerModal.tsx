@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, FlatList } from 'react-native';
+import { useState, useMemo, useRef, useCallback } from 'react';
+import { View, Text, TouchableOpacity, Modal, ScrollView, FlatList, type ListRenderItemInfo } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +18,8 @@ const MONTHS_ES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
+const HOUR_ITEMS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+const MINUTE_ITEMS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -25,6 +27,99 @@ function getDaysInMonth(year: number, month: number) {
 
 function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
+}
+
+const ITEM_HEIGHT = 40;
+const VISIBLE_COUNT = 5;
+const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_COUNT;
+
+interface ScrollPickerProps {
+  items: string[];
+  selectedIndex: number;
+  onIndexChange: (index: number) => void;
+  colors: any;
+}
+
+function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPickerProps) {
+  const flatListRef = useRef<FlatList>(null);
+
+  const handleMomentumScrollEnd = useCallback(
+    (e: any) => {
+      const index = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
+      const clamped = Math.max(0, Math.min(index, items.length - 1));
+      onIndexChange(clamped);
+    },
+    [items.length, onIndexChange],
+  );
+
+  const renderItem = useCallback(
+    ({ item, index }: ListRenderItemInfo<string>) => {
+      const isSelected = index === selectedIndex;
+      return (
+        <View
+          style={{
+            height: ITEM_HEIGHT,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Text
+            style={{
+              fontSize: isSelected ? 20 : 15,
+              fontWeight: isSelected ? '700' : '400',
+              color: isSelected ? colors.primary : colors.onSurfaceVariant + '55',
+            }}
+          >
+            {item}
+          </Text>
+        </View>
+      );
+    },
+    [selectedIndex, colors],
+  );
+
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: ITEM_HEIGHT,
+      offset: ITEM_HEIGHT * index,
+      index,
+    }),
+    [],
+  );
+
+  return (
+    <View style={{ height: PICKER_HEIGHT, overflow: 'hidden' }}>
+      <View
+        style={{
+          position: 'absolute',
+          top: ITEM_HEIGHT * 2,
+          left: 0,
+          right: 0,
+          height: ITEM_HEIGHT,
+          backgroundColor: colors.surfaceContainerHigh,
+          borderRadius: borderRadius.lg,
+          borderWidth: 1,
+          borderColor: colors.outlineVariant,
+          zIndex: 0,
+        }}
+      />
+      <FlatList
+        ref={flatListRef}
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={(_, i) => String(i)}
+        getItemLayout={getItemLayout}
+        snapToInterval={ITEM_HEIGHT}
+        decelerationRate="fast"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        initialScrollIndex={selectedIndex}
+        style={{ zIndex: 1 }}
+        contentContainerStyle={{ paddingVertical: ITEM_HEIGHT * 2 }}
+      />
+    </View>
+  );
 }
 
 export function DateTimePickerModal({ visible, value, onClose, onConfirm }: DateTimePickerModalProps) {
@@ -61,24 +156,6 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm }: Date
     const d = new Date(year, month + 1, 1);
     setViewDate(d);
     setSelectedDay(Math.min(selectedDay, getDaysInMonth(d.getFullYear(), d.getMonth())));
-  };
-
-  const adjustHour = (delta: number) => {
-    setHour((h) => {
-      let next = h + delta;
-      if (next < 1) next = 12;
-      if (next > 12) next = 1;
-      return next;
-    });
-  };
-
-  const adjustMinute = (delta: number) => {
-    setMinute((m) => {
-      let next = m + delta;
-      if (next < 0) next = 55;
-      if (next > 55) next = 0;
-      return next;
-    });
   };
 
   const buildDate = () => {
@@ -234,33 +311,27 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm }: Date
 
             <View style={isDisabled ? disabledStyle : undefined} pointerEvents={isDisabled ? 'none' : 'auto'}>
               <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginBottom: spacing.sm }]}>Hora</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm }}>
-                <View style={{ alignItems: 'center' }}>
-                  <TouchableOpacity onPress={() => adjustHour(1)} style={{ padding: 6 }}>
-                    <Ionicons name="chevron-up" size={18} color={colors.onSurfaceVariant} />
-                  </TouchableOpacity>
-                  <View style={{ width: 52, height: 44, borderRadius: borderRadius.lg, backgroundColor: colors.surfaceContainerHigh, borderWidth: 1, borderColor: colors.outlineVariant, alignItems: 'center', justifyContent: 'center', marginVertical: 4 }}>
-                    <Text style={[typography.titleLg, { color: colors.primary }]}>{String(hour).padStart(2, '0')}</Text>
-                  </View>
-                  <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, fontSize: 10 }]}>Hora</Text>
-                  <TouchableOpacity onPress={() => adjustHour(-1)} style={{ padding: 6 }}>
-                    <Ionicons name="chevron-down" size={18} color={colors.onSurfaceVariant} />
-                  </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs }}>
+                <View style={{ alignItems: 'center', flex: 1 }}>
+                  <ScrollPicker
+                    items={HOUR_ITEMS}
+                    selectedIndex={hour - 1}
+                    onIndexChange={(i) => setHour(i + 1)}
+                    colors={colors}
+                  />
+                  <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, fontSize: 10, marginTop: spacing.xs }]}>Hora</Text>
                 </View>
 
-                <Text style={[typography.titleLg, { color: colors.onSurfaceVariant }]}>,</Text>
+                <Text style={[typography.titleLg, { color: colors.onSurfaceVariant }]}>:</Text>
 
-                <View style={{ alignItems: 'center' }}>
-                  <TouchableOpacity onPress={() => adjustMinute(1)} style={{ padding: 6 }}>
-                    <Ionicons name="chevron-up" size={18} color={colors.onSurfaceVariant} />
-                  </TouchableOpacity>
-                  <View style={{ width: 52, height: 44, borderRadius: borderRadius.lg, backgroundColor: colors.surfaceContainerHigh, borderWidth: 1, borderColor: colors.outlineVariant, alignItems: 'center', justifyContent: 'center', marginVertical: 4 }}>
-                    <Text style={[typography.titleLg, { color: colors.primary }]}>{String(minute).padStart(2, '0')}</Text>
-                  </View>
-                  <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, fontSize: 10 }]}>Min</Text>
-                  <TouchableOpacity onPress={() => adjustMinute(-1)} style={{ padding: 6 }}>
-                    <Ionicons name="chevron-down" size={18} color={colors.onSurfaceVariant} />
-                  </TouchableOpacity>
+                <View style={{ alignItems: 'center', flex: 1 }}>
+                  <ScrollPicker
+                    items={MINUTE_ITEMS}
+                    selectedIndex={Math.round(minute / 5)}
+                    onIndexChange={(i) => setMinute(i * 5)}
+                    colors={colors}
+                  />
+                  <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, fontSize: 10, marginTop: spacing.xs }]}>Min</Text>
                 </View>
 
                 <View style={{ gap: 6, marginLeft: spacing.sm }}>

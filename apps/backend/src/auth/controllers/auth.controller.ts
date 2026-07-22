@@ -176,7 +176,7 @@ export class AuthController {
       tokens.refreshToken,
       this.cookieOpts(7 * 24 * 60 * 60 * 1000),
     );
-    const webLink = `${this.configService.get('WEB_URL', { infer: true })}/home?accessToken=${encodedAccessToken}&refreshToken=${encodedRefreshToken}`;
+    const webLink = `${this.configService.get('WEB_URL', { infer: true })}/home`;
     return res.redirect(302, webLink);
   }
 }
