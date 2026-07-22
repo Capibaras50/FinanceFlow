@@ -69,14 +69,18 @@ export function MainTabNavigator() {
           borderTopColor: colors.surfaceContainer,
           borderTopWidth: 0,
           elevation: 0,
-          height: 60 + insets.bottom,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 16,
+          height: 72 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
           paddingTop: 8,
           shadowOpacity: 0,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.onSurfaceVariant,
-        tabBarLabelStyle: [typography.labelMd, { fontSize: 11, marginTop: 2 }],
+        tabBarLabelStyle: {
+          fontFamily: typography.labelMd.fontFamily,
+          fontSize: 10,
+          marginTop: 2,
+        },
       }}
     >
       <Tab.Screen

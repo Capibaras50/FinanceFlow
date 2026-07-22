@@ -83,8 +83,13 @@ export class CategoriesService {
     const filteredCategories = categories.filter((category) =>
       category.name.toLowerCase().includes(name.toLowerCase()),
     );
-    const idsCategories = filteredCategories.map((category) => category.id);
-    return idsCategories ?? [categories[0].id];
+    if (filteredCategories.length > 0) {
+      return filteredCategories.map((category) => category.id);
+    }
+    if (categories.length > 0) {
+      return [categories[0].id];
+    }
+    throw new NotFoundException('No categories found for this profile');
   }
 
   async createBaseCateogories(profileId: number) {

@@ -56,7 +56,9 @@ export class WalletsService {
   }
 
   async findByName(name: string, profileId: number) {
-    const wallets = await this.findAll(profileId);
+    const wallets = await this.walletRepository.find({
+      where: { profile: { id: profileId } },
+    });
     const filteredWallets = wallets.filter((wallet) =>
       wallet.name.toLowerCase().includes(name.toLowerCase()),
     );

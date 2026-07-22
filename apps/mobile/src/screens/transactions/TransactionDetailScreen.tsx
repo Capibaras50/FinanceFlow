@@ -52,14 +52,14 @@ export function TransactionDetailScreen() {
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: async () => {
+              onPress: async () => {
             try {
               if (isExpense) {
                 await expensesApi.delete(transactionId);
               } else {
                 await earningsApi.delete(transactionId);
               }
-              navigation.goBack();
+              navigation.popToTop();
             } catch {
               showError('Error al eliminar transacción');
             }

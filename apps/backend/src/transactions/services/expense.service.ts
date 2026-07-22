@@ -67,7 +67,6 @@ export class ExpenseService {
         : undefined;
       const where = {
         profile: { id: profileId },
-        deletedAt: undefined,
       };
       if (filterTransactionDto.category) {
         where['category'] = { name: filterTransactionDto.category };
@@ -79,7 +78,9 @@ export class ExpenseService {
         where,
         relations: ['category', 'wallet'],
         take: filterTransactionDto.limit || 10,
-        skip: ((filterTransactionDto.page ?? 1) - 1) * 10,
+        skip:
+          ((filterTransactionDto.page ?? 1) - 1) *
+          (filterTransactionDto.limit || 10),
         order: order ? order : { createdAt: 'DESC' },
       });
       return expenses;
@@ -93,7 +94,6 @@ export class ExpenseService {
       where: {
         id,
         profile: { id: profileId },
-        deletedAt: undefined,
       },
       relations: ['category', 'wallet'],
     });
@@ -108,7 +108,6 @@ export class ExpenseService {
       where: {
         category: { id: In(categoriesIds) },
         profile: { id: profileId },
-        deletedAt: undefined,
       },
       relations: ['category', 'wallet'],
     });
@@ -249,15 +248,21 @@ export class ExpenseService {
           walletName,
           profileId,
         );
-        const categoriesId = await this.categoriesService.findByName(
+        if (!walletId) {
+          throw new BadRequestException('Wallet not found for receipt');
+        }
+        const categoryIds = await this.categoriesService.findByName(
           categoryName,
           profileId,
         );
+        if (!categoryIds || categoryIds.length === 0) {
+          throw new BadRequestException('Category not found for receipt');
+        }
         const newExpense: DeepPartial<Expense> = {
           name: nameExpense,
           description: descriptionExpense,
           value: valueExpense,
-          category: { id: categoriesId[0] },
+          category: { id: categoryIds[0] },
           wallet: { id: walletId },
           receipt: undefined,
           profile: { id: profileId },
@@ -270,7 +275,7 @@ export class ExpenseService {
           fileUrl: receiptUrl,
           fileSizeBytes: sizeBytes,
           mimeType,
-          status: ReceiptStatus.PENDING,
+          status: ReceiptStatus.PROCESSED,
           jobId,
           attempts,
           lastError,

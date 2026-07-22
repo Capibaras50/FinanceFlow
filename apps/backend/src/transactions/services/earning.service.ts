@@ -29,7 +29,6 @@ export class EarningService {
         : undefined;
       const where = {
         profile: { id: profileId },
-        deletedAt: undefined,
       };
       if (filterTransactionDto.category) {
         where['category'] = { name: filterTransactionDto.category };
@@ -41,7 +40,9 @@ export class EarningService {
         where,
         relations: ['category', 'wallet'],
         take: filterTransactionDto.limit || 10,
-        skip: ((filterTransactionDto.page ?? 1) - 1) * 10,
+        skip:
+          ((filterTransactionDto.page ?? 1) - 1) *
+          (filterTransactionDto.limit || 10),
         order: order ? order : { createdAt: 'DESC' },
       });
 
@@ -56,7 +57,6 @@ export class EarningService {
       where: {
         id,
         profile: { id: profileId },
-        deletedAt: undefined,
       },
       relations: ['category', 'wallet'],
     });

@@ -83,7 +83,7 @@ export function AddExpenseScreen() {
       } else {
         await expensesApi.create(dto);
       }
-      navigation.goBack();
+      navigation.popToTop();
     } catch (e) {
       showError(getErrorMessage(e, 'Error al guardar gasto'));
     } finally {

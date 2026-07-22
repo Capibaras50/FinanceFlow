@@ -83,7 +83,7 @@ export function AddEarningScreen() {
       } else {
         await earningsApi.create(dto);
       }
-      navigation.goBack();
+      navigation.popToTop();
     } catch (e) {
       showError(getErrorMessage(e, 'Error al guardar ingreso'));
     } finally {
