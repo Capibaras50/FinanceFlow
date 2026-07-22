@@ -7,17 +7,27 @@ import { Env } from 'src/models/env.model';
 @Injectable()
 export class LlmService {
   private readonly aiUrl: string;
+  private readonly model: string;
 
   constructor(private configService: ConfigService<Env>) {
     const url = this.configService.get('AI_URL', { infer: true });
+    const model = this.configService.get('MODEL_AI', { infer: true });
     if (typeof url !== 'string' || !url.startsWith('http://')) {
       throw new Error('Put a Ai Url valid');
     }
+    if (!model) {
+      throw new Error('Put a Model Name');
+    }
     this.aiUrl = url;
+    this.model = model;
   }
 
   getAiUrl(): string {
     return this.aiUrl;
+  }
+
+  getModelName(): string {
+    return this.model;
   }
 
   buildMessages(
@@ -63,6 +73,8 @@ export class LlmService {
     imageBase64?: string,
   ) {
     try {
+      const model = this.getModelName();
+
       const messages = this.buildMessages(
         systemPrompt,
         userMessage,
@@ -74,7 +86,7 @@ export class LlmService {
       const response = await axios.post(
         this.aiUrl,
         {
-          model: 'google/gemma4:e2b',
+          model,
           messages,
           temperature: 0.7,
         },

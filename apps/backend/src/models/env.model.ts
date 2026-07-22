@@ -24,4 +24,5 @@ export interface Env {
   GOOGLE_CLIENT_SECRET: string;
   GOOGLE_CALLBACK_URL: string;
   WEB_URL: string;
+  MODEL_AI: string;
 }
