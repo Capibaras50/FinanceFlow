@@ -50,8 +50,10 @@ export class ApiClient {
       url: path,
       params,
       data: formData || body,
-      headers: formData ? {} : { 'Content-Type': 'application/json' },
     };
+    if (!formData) {
+      reqConfig.headers = { 'Content-Type': 'application/json' };
+    }
 
     try {
       const response = await this.instance.request<T>(reqConfig);

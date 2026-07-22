@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, FlatList, type ListRenderItemInfo } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -42,21 +42,74 @@ interface ScrollPickerProps {
 
 function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPickerProps) {
   const flatListRef = useRef<FlatList>(null);
+  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialScroll = useRef(true);
+
+  const snapToNearest = useCallback(
+    (offsetY: number) => {
+      const index = Math.round(offsetY / ITEM_HEIGHT);
+      const clamped = Math.max(0, Math.min(index, items.length - 1));
+      onIndexChange(clamped);
+      flatListRef.current?.scrollToOffset({
+        offset: clamped * ITEM_HEIGHT,
+        animated: true,
+      });
+    },
+    [items.length, onIndexChange],
+  );
+
+  const handleScroll = useCallback(
+    (e: any) => {
+      if (isInitialScroll.current) return;
+      if (scrollTimer.current) clearTimeout(scrollTimer.current);
+      scrollTimer.current = setTimeout(() => {
+        const offsetY = e.nativeEvent.contentOffset.y;
+        snapToNearest(offsetY);
+      }, 80);
+    },
+    [snapToNearest],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimer.current) clearTimeout(scrollTimer.current);
+    };
+  }, []);
 
   const handleMomentumScrollEnd = useCallback(
     (e: any) => {
-      const index = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
+      if (isInitialScroll.current) {
+        isInitialScroll.current = false;
+        return;
+      }
+      if (scrollTimer.current) clearTimeout(scrollTimer.current);
+      const offsetY = e.nativeEvent.contentOffset.y;
+      const index = Math.round(offsetY / ITEM_HEIGHT);
       const clamped = Math.max(0, Math.min(index, items.length - 1));
       onIndexChange(clamped);
     },
     [items.length, onIndexChange],
   );
 
+  const handleItemPress = useCallback(
+    (index: number) => {
+      if (scrollTimer.current) clearTimeout(scrollTimer.current);
+      flatListRef.current?.scrollToOffset({
+        offset: index * ITEM_HEIGHT,
+        animated: true,
+      });
+      onIndexChange(index);
+    },
+    [onIndexChange],
+  );
+
   const renderItem = useCallback(
     ({ item, index }: ListRenderItemInfo<string>) => {
       const isSelected = index === selectedIndex;
       return (
-        <View
+        <TouchableOpacity
+          onPress={() => handleItemPress(index)}
+          activeOpacity={0.6}
           style={{
             height: ITEM_HEIGHT,
             justifyContent: 'center',
@@ -72,10 +125,10 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
           >
             {item}
           </Text>
-        </View>
+        </TouchableOpacity>
       );
     },
-    [selectedIndex, colors],
+    [selectedIndex, colors, handleItemPress],
   );
 
   const getItemLayout = useCallback(
@@ -114,6 +167,8 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
         showsVerticalScrollIndicator={false}
         bounces={false}
         onMomentumScrollEnd={handleMomentumScrollEnd}
+        onScroll={handleScroll}
+        scrollEventThrottle={100}
         initialScrollIndex={selectedIndex}
         style={{ zIndex: 1 }}
         contentContainerStyle={{ paddingVertical: ITEM_HEIGHT * 2 }}

@@ -10,6 +10,7 @@ import {
   EarningsApi,
   ReceiptsApi,
   ChatApi,
+  TransactionsApi,
 } from '@finance-flow/api-client';
 import {
   getTokenSync,
@@ -19,8 +20,7 @@ import {
   removeToken,
   removeRefreshToken,
 } from './storage';
-import { uploadAsync, FileSystemUploadType } from 'expo-file-system/legacy';
-
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 let forceLogoutHandler: (() => void) | null = null;
 
 export function setForceLogoutHandler(handler: (() => void) | null) {
@@ -55,26 +55,23 @@ export const expensesApi = new ExpensesApi(client);
 export const earningsApi = new EarningsApi(client);
 export const receiptsApi = new ReceiptsApi(client);
 export const chatApi = new ChatApi(client);
+export const transactionsApi = new TransactionsApi(client);
 
 export async function uploadAvatarAsync(uri: string, fileName?: string, mimeType?: string) {
-  const name = fileName || uri.split('/').pop() || 'avatar.jpg';
+  const manipulated = await manipulateAsync(
+    uri,
+    [{ resize: { width: 800, height: 800 } }],
+    { compress: 0.8, format: SaveFormat.JPEG },
+  );
+
+  const name = fileName || 'avatar.jpg';
   const type = mimeType || 'image/jpeg';
 
-  if (isWeb) {
-    return usersApi.uploadAvatar({ uri, name, type });
-  }
+  const response = await fetch(manipulated.uri);
+  const blob = await response.blob();
 
-  const token = getTokenSync();
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
-  const result = await uploadAsync(`${baseUrl}/users/upload-avatar`, uri, {
-    httpMethod: 'POST',
-    uploadType: FileSystemUploadType.MULTIPART,
-    fieldName: 'avatar',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (result.status >= 400) {
-    const data = JSON.parse(result.body) as Record<string, unknown>;
-    throw { message: data?.message || 'Upload failed', statusCode: result.status };
-  }
-  return JSON.parse(result.body) as User;
+  const formData = new FormData();
+  formData.append('avatar', blob, name);
+
+  return client.uploadFile<User>('/users/upload-avatar', formData);
 }

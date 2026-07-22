@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, SectionList, Modal, ScrollView } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
@@ -11,15 +11,18 @@ import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../utils/format';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { expensesApi, earningsApi, categoriesApi, walletsApi } from '../../services/api';
+import { expensesApi, earningsApi, transactionsApi, categoriesApi, walletsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { showAlert } from '../../components/ui/AppAlert';
 import type { RootNavigationProp } from '../../navigation/types';
 import type { Expense, Earning, Category, Wallet } from '@finance-flow/shared-types';
+import type { TransactionTimelineItem } from '@finance-flow/api-client';
+
+type TabType = 'all' | 'expenses' | 'earnings';
 
 type TransactionSection = {
   title: string;
-  data: (Expense | (Earning & { _type?: 'earning' }))[];
+  data: (Expense | (Earning & { _type?: 'earning' }) | (TransactionTimelineItem & { createdAt: string }))[];
 };
 
 export function TransactionListScreen() {
@@ -27,9 +30,10 @@ export function TransactionListScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { showError } = useSnackbar();
-  const [tab, setTab] = useState<'expenses' | 'earnings'>('expenses');
+  const [tab, setTab] = useState<TabType>('all');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [earnings, setEarnings] = useState<Earning[]>([]);
+  const [allTransactions, setAllTransactions] = useState<(TransactionTimelineItem & { createdAt: string })[]>([]);
   const [search, setSearch] = useState('');
 
   const [showFilters, setShowFilters] = useState(false);
@@ -43,8 +47,10 @@ export function TransactionListScreen() {
   const PAGE_SIZE = 10;
   const [expensesPage, setExpensesPage] = useState(1);
   const [earningsPage, setEarningsPage] = useState(1);
+  const [allPage, setAllPage] = useState(1);
   const [hasMoreExpenses, setHasMoreExpenses] = useState(true);
   const [hasMoreEarnings, setHasMoreEarnings] = useState(true);
+  const [hasMoreAll, setHasMoreAll] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
   const loadMeta = useCallback(async () => {
@@ -78,23 +84,52 @@ export function TransactionListScreen() {
     try {
       const params = buildParams({ ...filterOverrides, page: 1 });
 
-      const [expData, earnData] = await Promise.all([
-        expensesApi.getAll(params),
-        earningsApi.getAll(params),
-      ]);
-      setExpenses(expData);
-      setEarnings(earnData);
-      setExpensesPage(1);
-      setEarningsPage(1);
-      setHasMoreExpenses(expData.length >= PAGE_SIZE);
-      setHasMoreEarnings(earnData.length >= PAGE_SIZE);
+      if (tab === 'all') {
+        const allData = await transactionsApi.getAll(params);
+        const mapped = allData.map(t => ({ ...t, createdAt: t.created_at }));
+        setAllTransactions(mapped);
+        setAllPage(1);
+        setHasMoreAll(allData.length >= PAGE_SIZE);
+      } else {
+        const [expData, earnData] = await Promise.all([
+          expensesApi.getAll(params),
+          earningsApi.getAll(params),
+        ]);
+        setExpenses(expData);
+        setEarnings(earnData);
+        setExpensesPage(1);
+        setEarningsPage(1);
+        setHasMoreExpenses(expData.length >= PAGE_SIZE);
+        setHasMoreEarnings(earnData.length >= PAGE_SIZE);
+      }
     } catch {
       showError('Error al cargar transacciones');
     }
-  }, [filterCategory, filterWallet, filterSortBy, filterSortOrder, showError]);
+  }, [tab, filterCategory, filterWallet, filterSortBy, filterSortOrder, showError]);
 
   const loadMore = async () => {
     if (loadingMore) return;
+
+    if (tab === 'all') {
+      const hasMore = hasMoreAll;
+      if (!hasMore) return;
+      const nextPage = allPage + 1;
+      setLoadingMore(true);
+      try {
+        const params = buildParams({ page: nextPage });
+        const newData = await transactionsApi.getAll(params);
+        const mapped = newData.map(t => ({ ...t, createdAt: t.created_at }));
+        setAllTransactions(prev => [...prev, ...mapped]);
+        setAllPage(nextPage);
+        if (newData.length < PAGE_SIZE) setHasMoreAll(false);
+      } catch {
+        showError('Error al cargar más transacciones');
+      } finally {
+        setLoadingMore(false);
+      }
+      return;
+    }
+
     const nextPage = (tab === 'expenses' ? expensesPage : earningsPage) + 1;
     const hasMore = tab === 'expenses' ? hasMoreExpenses : hasMoreEarnings;
     if (!hasMore) return;
@@ -127,7 +162,11 @@ export function TransactionListScreen() {
     }, [loadMeta, loadData])
   );
 
-  const handleDelete = useCallback(async (item: Expense | Earning) => {
+  useEffect(() => {
+    loadData();
+  }, [tab]);
+
+  const handleDelete = useCallback(async (item: Expense | Earning | (TransactionTimelineItem & { createdAt: string })) => {
     showAlert({
       title: 'Eliminar transacción',
       message: `¿Eliminar "${item.name}"?`,
@@ -138,16 +177,23 @@ export function TransactionListScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              if (tab === 'expenses') {
-              await expensesApi.delete(item.id);
-            } else {
-              await earningsApi.delete(item.id);
+              if (tab === 'all') {
+                const t = item as TransactionTimelineItem;
+                if (t.type === 'expense') {
+                  await expensesApi.delete(t.id);
+                } else {
+                  await earningsApi.delete(t.id);
+                }
+              } else if (tab === 'expenses') {
+                await expensesApi.delete(item.id);
+              } else {
+                await earningsApi.delete(item.id);
+              }
+              loadData();
+            } catch {
+              showError('Error al eliminar transacción');
             }
-            loadData();
-          } catch {
-            showError('Error al eliminar transacción');
-          }
-        },
+          },
         },
       ],
     });
@@ -169,7 +215,10 @@ export function TransactionListScreen() {
 
   const hasActiveFilters = filterCategory !== undefined || filterWallet !== undefined || filterSortBy !== undefined;
 
-  const data = useMemo(() => tab === 'expenses' ? expenses : earnings, [tab, expenses, earnings]);
+  const data = useMemo(() => {
+    if (tab === 'all') return allTransactions;
+    return tab === 'expenses' ? expenses : earnings;
+  }, [tab, expenses, earnings, allTransactions]);
   const filtered = useMemo(() => data.filter((t) =>
     t.name.toLowerCase().includes(search.toLowerCase())
   ), [data, search]);
@@ -188,6 +237,12 @@ export function TransactionListScreen() {
   }, [filtered]);
 
   const totalAmount = useMemo(() => data.reduce((sum, t) => sum + t.value, 0), [data]);
+  const allBalance = useMemo(() => {
+    if (tab !== 'all') return null;
+    const totalExp = allTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.value, 0);
+    const totalEarn = allTransactions.filter(t => t.type === 'earning').reduce((s, t) => s + t.value, 0);
+    return totalEarn - totalExp;
+  }, [tab, allTransactions]);
 
   return (
     <FocusFadeIn>
@@ -229,7 +284,7 @@ export function TransactionListScreen() {
             marginVertical: spacing.md,
           }}
         >
-          {(['expenses', 'earnings'] as const).map((t) => (
+          {(['all', 'expenses', 'earnings'] as const).map((t) => (
             <TouchableOpacity
               key={t}
               onPress={() => setTab(t)}
@@ -247,7 +302,7 @@ export function TransactionListScreen() {
                   { color: tab === t ? '#FFFFFF' : colors.onSurfaceVariant, fontWeight: '600' },
                 ]}
               >
-                {t === 'expenses' ? 'Gastos' : 'Ingresos'}
+                {t === 'all' ? 'Todos' : t === 'expenses' ? 'Gastos' : 'Ingresos'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -294,11 +349,17 @@ export function TransactionListScreen() {
         {totalAmount > 0 && (
           <GlassCard style={{ marginBottom: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>
-              Total {tab === 'expenses' ? 'gastado' : 'recibido'}
+              {tab === 'all' ? 'Balance' : tab === 'expenses' ? 'Total gastado' : 'Total recibido'}
             </Text>
-            <Text style={[typography.titleLg, { color: tab === 'expenses' ? colors.error : colors.success }]}>
-              {tab === 'expenses' ? '-' : '+'}{formatCurrency(totalAmount)}
-            </Text>
+            {tab === 'all' ? (
+              <Text style={[typography.titleLg, { color: (allBalance ?? 0) >= 0 ? colors.success : colors.error }]}>
+                {(allBalance ?? 0) >= 0 ? '+' : '-'}{formatCurrency(Math.abs(allBalance ?? 0))}
+              </Text>
+            ) : (
+              <Text style={[typography.titleLg, { color: tab === 'expenses' ? colors.error : colors.success }]}>
+                {tab === 'expenses' ? '-' : '+'}{formatCurrency(totalAmount)}
+              </Text>
+            )}
           </GlassCard>
         )}
 
@@ -310,18 +371,21 @@ export function TransactionListScreen() {
               {title}
             </Text>
           )}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('TransactionDetail', { transactionId: item.id, type: tab === 'expenses' ? 'expense' : 'earning' })}
-              onLongPress={() => handleDelete(item)}
-              activeOpacity={0.7}
-            >
-              <TransactionCard
-                transaction={item}
-                type={tab === 'expenses' ? 'expense' : 'earning'}
-              />
-            </TouchableOpacity>
-          )}
+          renderItem={({ item }) => {
+            const itemType = tab === 'all' ? (item as TransactionTimelineItem).type : (tab === 'expenses' ? 'expense' : 'earning');
+            return (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('TransactionDetail', { transactionId: item.id, type: itemType as 'expense' | 'earning' })}
+                onLongPress={() => handleDelete(item)}
+                activeOpacity={0.7}
+              >
+                <TransactionCard
+                  transaction={item as Expense | Earning}
+                  type={itemType as 'expense' | 'earning'}
+                />
+              </TouchableOpacity>
+            );
+          }}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: spacing['2xl'] }}
           onEndReached={loadMore}
@@ -336,7 +400,7 @@ export function TransactionListScreen() {
               <View style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }}>
                 <Ionicons name="receipt-outline" size={48} color={colors.onSurfaceVariant} />
                 <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
-                  No hay {tab === 'expenses' ? 'gastos' : 'ingresos'} registrados
+                  {tab === 'all' ? 'No hay transacciones registradas' : `No hay ${tab === 'expenses' ? 'gastos' : 'ingresos'} registrados`}
                 </Text>
               </View>
             </GlassCard>

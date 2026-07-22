@@ -19,6 +19,7 @@ RUN pnpm --filter @finance-flow/backend exec nest build
 FROM node:22-alpine
 WORKDIR /app
 COPY --from=builder /app/apps/backend/dist ./dist
+COPY --from=builder /app/apps/backend/assets ./assets
 COPY --from=builder /app/apps/backend/package.json ./
 COPY --from=deps /app/node_modules ./node_modules
 EXPOSE 3001

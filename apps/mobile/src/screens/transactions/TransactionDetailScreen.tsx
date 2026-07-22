@@ -59,10 +59,7 @@ export function TransactionDetailScreen() {
               } else {
                 await earningsApi.delete(transactionId);
               }
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'MainTabs' }],
-              });
+              navigation.goBack();
             } catch {
               showError('Error al eliminar transacción');
             }

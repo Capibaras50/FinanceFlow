@@ -10,7 +10,7 @@ import { GradientButton } from '../../components/ui/GradientButton';
 import { DateTimePickerModal } from '../../components/ui/DateTimePickerModal';
 import { categoriesApi, walletsApi, earningsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
-import { getErrorMessage } from '../../utils/format';
+import { getErrorMessage, formatCurrencyInput, parseCurrencyInput } from '../../utils/format';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
 import type { Category, Wallet } from '@finance-flow/shared-types';
@@ -51,7 +51,7 @@ export function AddEarningScreen() {
       if (earningId) {
         const earning = await earningsApi.getById(earningId);
         setName(earning.name);
-        setValue(String(earning.value));
+        setValue(formatCurrencyInput(String(earning.value)));
         setDescription(earning.description ?? '');
         if (earning.wallet) setSelectedWallet(earning.wallet.id);
         if (earning.category) setSelectedCategory(earning.category.id);
@@ -66,7 +66,8 @@ export function AddEarningScreen() {
 
   const handleSave = async () => {
     if (!name || !value || !selectedCategory || !selectedWallet) return;
-    const numValue = parseFloat(value);
+    const rawValue = parseCurrencyInput(value);
+    const numValue = parseFloat(rawValue);
     if (isNaN(numValue) || numValue <= 0) return;
     setLoading(true);
     try {
@@ -83,10 +84,7 @@ export function AddEarningScreen() {
       } else {
         await earningsApi.create(dto);
       }
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'MainTabs' }],
-      });
+      navigation.goBack();
     } catch (e) {
       showError(getErrorMessage(e, 'Error al guardar ingreso'));
     } finally {
@@ -105,7 +103,8 @@ export function AddEarningScreen() {
   };
 
   const gradientColors = colors.gradient.accent;
-  const numValue = parseFloat(value);
+  const rawValue = parseCurrencyInput(value);
+  const numValue = parseFloat(rawValue);
   const isValueValid = !isNaN(numValue) && numValue > 0;
   const canSave = name && isValueValid && selectedCategory && selectedWallet;
 
@@ -161,7 +160,7 @@ export function AddEarningScreen() {
             <Text style={[typography.displayMd, { color: colors.primary, marginRight: spacing.xs }]}>$</Text>
             <Input
               value={value}
-              onChangeText={setValue}
+              onChangeText={(text) => setValue(formatCurrencyInput(text))}
               placeholder="0.00"
               keyboardType="decimal-pad"
               style={{ textAlign: 'center', minWidth: 160 }}

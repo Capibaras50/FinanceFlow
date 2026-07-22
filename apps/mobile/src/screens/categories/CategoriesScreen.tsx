@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +18,8 @@ import type { Category, Expense, Earning } from '@finance-flow/shared-types';
 
 const presetColors = ['#7C3AED', '#EC4899', '#06B6D4', '#4ADE80', '#F59E0B', '#8B5CF6', '#F472B6', '#14B8A6', '#3B82F6', '#EF4444', '#10B981', '#F97316'];
 
+type FilterType = 'all' | 'expense' | 'earning';
+
 export function CategoriesScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const { colors } = useTheme();
@@ -36,6 +38,7 @@ export function CategoriesScreen() {
   const [formDescription, setFormDescription] = useState('');
   const [formColor, setFormColor] = useState(presetColors[0]);
   const [formType, setFormType] = useState<'expense' | 'earning'>('expense');
+  const [filterType, setFilterType] = useState<FilterType>('all');
 
   useFocusEffect(
     useCallback(() => { loadFirstPage(); }, [])
@@ -48,7 +51,13 @@ export function CategoriesScreen() {
         expensesApi.getAll({ limit: 100 }),
         earningsApi.getAll({ limit: 100 }),
       ]);
-      setCategories(catData);
+      const seen = new Set<number>();
+      const unique = catData.filter(c => {
+        if (seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      });
+      setCategories(unique);
       setExpenses(expData);
       setEarnings(earnData);
       setPage(1);
@@ -64,7 +73,14 @@ export function CategoriesScreen() {
     const nextPage = page + 1;
     try {
       const newData = await categoriesApi.getAll({ limit: PAGE_SIZE, page: nextPage });
-      setCategories(prev => [...prev, ...newData]);
+      setCategories(prev => {
+        const seen = new Set(prev.map(c => c.id));
+        return [...prev, ...newData.filter(c => {
+          if (seen.has(c.id)) return false;
+          seen.add(c.id);
+          return true;
+        })];
+      });
       setPage(nextPage);
       if (newData.length < PAGE_SIZE) setHasMore(false);
     } catch {
@@ -80,7 +96,24 @@ export function CategoriesScreen() {
     return { catExpenses, catEarnings };
   };
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.value), 0);
+  const filteredCategories = useMemo(() =>
+    filterType === 'all'
+      ? categories
+      : categories.filter(c => c.type === filterType),
+    [categories, filterType]
+  );
+
+  const totalExpenses = useMemo(() => expenses.reduce((sum, e) => sum + Number(e.value), 0), [expenses]);
+  const totalEarnings = useMemo(() => earnings.reduce((sum, e) => sum + Number(e.value), 0), [earnings]);
+  const totalBalance = totalEarnings - totalExpenses;
+
+  const summaryLabel = filterType === 'all'
+    ? 'Balance general'
+    : filterType === 'expense' ? 'Total gastado' : 'Total recibido';
+
+  const summaryValue = filterType === 'all'
+    ? totalBalance
+    : filterType === 'expense' ? totalExpenses : totalEarnings;
 
   const openCreate = () => {
     setEditCategory(null);
@@ -161,6 +194,44 @@ export function CategoriesScreen() {
     }
   };
 
+  type BreakdownEntry = {
+    key: string;
+    label: string;
+    value: number;
+    color: string;
+    isExpense: boolean;
+  };
+
+  const categoryBreakdown = useMemo(() => {
+    const entries: BreakdownEntry[] = [];
+
+    for (const cat of filteredCategories) {
+      const catExpenses = expenses.filter(e => e.category?.id === cat.id);
+      const catEarnings = earnings.filter(e => e.category?.id === cat.id);
+      const expenseTotal = catExpenses.reduce((s, e) => s + Number(e.value), 0);
+      const earningTotal = catEarnings.reduce((s, e) => s + Number(e.value), 0);
+      const totalTx = catExpenses.length + catEarnings.length;
+
+      if (filterType === 'expense') {
+        if (expenseTotal > 0) entries.push({ key: `${cat.id}-exp`, label: cat.name, value: expenseTotal, color: cat.color, isExpense: true });
+      } else if (filterType === 'earning') {
+        if (earningTotal > 0) entries.push({ key: `${cat.id}-ear`, label: cat.name, value: earningTotal, color: cat.color, isExpense: false });
+      } else {
+        if (expenseTotal > 0) entries.push({ key: `${cat.id}-exp`, label: `${cat.name} (gasto)`, value: expenseTotal, color: cat.color, isExpense: true });
+        if (earningTotal > 0) entries.push({ key: `${cat.id}-ear`, label: `${cat.name} (ingreso)`, value: earningTotal, color: cat.color, isExpense: false });
+      }
+    }
+
+    return entries.sort((a, b) => b.value - a.value);
+  }, [filteredCategories, expenses, earnings, filterType]);
+
+  const summaryTotal = categoryBreakdown.reduce((sum, item) => sum + item.value, 0);
+
+  const formatAmount = (value: number): string => {
+    if (value < 0) return `-${formatCurrency(Math.abs(value))}`;
+    return formatCurrency(value);
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <LinearGradient
@@ -201,31 +272,67 @@ export function CategoriesScreen() {
       </LinearGradient>
 
       <FlatList
-        data={categories}
+        data={filteredCategories}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={{ padding: spacing.container, gap: spacing.md }}
         ListHeaderComponent={() => (
           <>
+            <View
+              style={{
+                flexDirection: 'row',
+                backgroundColor: colors.surfaceContainerHigh,
+                borderRadius: borderRadius.full,
+                padding: spacing.xs,
+                marginBottom: spacing.sm,
+              }}
+            >
+              {([
+                { key: 'all', label: 'Todos' },
+                { key: 'expense', label: 'Gastos' },
+                { key: 'earning', label: 'Ingresos' },
+              ] as const).map((t) => (
+                <TouchableOpacity
+                  key={t.key}
+                  onPress={() => setFilterType(t.key)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: spacing.sm + 2,
+                    borderRadius: borderRadius.full,
+                    backgroundColor: filterType === t.key ? colors.primary : 'transparent',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text
+                    style={[
+                      typography.labelMd,
+                      { color: filterType === t.key ? '#FFFFFF' : colors.onSurfaceVariant, fontWeight: '600' },
+                    ]}
+                  >
+                    {t.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             <GlassCard style={{ marginBottom: spacing.md }}>
-              <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>Total gastado</Text>
+              <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>{summaryLabel}</Text>
               <Text style={[typography.displayMd, { color: colors.onSurface, marginTop: spacing.xs }]}>
-                {formatCurrency(totalExpenses)}
+                {formatAmount(summaryValue)}
               </Text>
-              {totalExpenses > 0 && (
+              {categoryBreakdown.length > 0 && (
                 <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
-                  {categories.map((cat) => {
-                    const { catExpenses } = getCategoryTransactions(cat.id);
-                    const catTotal = catExpenses.reduce((s, e) => s + Number(e.value), 0);
-                    const percent = totalExpenses > 0 ? (catTotal / totalExpenses) * 100 : 0;
-                    if (catTotal <= 0) return null;
+                  {categoryBreakdown.map((item) => {
+                    const percent = summaryTotal > 0 ? (item.value / summaryTotal) * 100 : 0;
                     return (
-                      <View key={cat.id}>
+                      <View key={item.key}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs }}>
-                          <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>{cat.name}</Text>
-                          <Text style={[typography.bodySm, { color: colors.onSurface }]}>{formatCurrency(catTotal)}</Text>
+                          <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>{item.label}</Text>
+                          <Text style={[typography.bodySm, { color: colors.onSurface }]}>
+                            {item.isExpense ? '-' : '+'}{formatCurrency(item.value)}
+                          </Text>
                         </View>
                         <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.surfaceContainerHighest, overflow: 'hidden' }}>
-                          <View style={{ height: '100%', width: `${Math.min(percent, 100)}%`, borderRadius: 3, backgroundColor: cat.color }} />
+                          <View style={{ height: '100%', width: `${Math.min(percent, 100)}%`, borderRadius: 3, backgroundColor: item.color }} />
                         </View>
                       </View>
                     );
@@ -248,12 +355,18 @@ export function CategoriesScreen() {
           </>
         )}
         renderItem={({ item }) => {
-          const { catExpenses, catEarnings } = getCategoryTransactions(item.id);
+          const catExpenses = expenses.filter(e => e.category?.id === item.id);
+          const catEarnings = earnings.filter(e => e.category?.id === item.id);
           const catExpenseTotal = catExpenses.reduce((s, e) => s + Number(e.value), 0);
           const catEarningTotal = catEarnings.reduce((s, e) => s + Number(e.value), 0);
-          const catBalance = catEarningTotal - catExpenseTotal;
           const totalTx = catExpenses.length + catEarnings.length;
-          const isNegative = catBalance < 0;
+
+          const displayTotal = filterType === 'expense'
+            ? catExpenseTotal
+            : filterType === 'earning'
+              ? catEarningTotal
+              : catEarningTotal - catExpenseTotal;
+
           return (
             <TouchableOpacity onPress={() => openEdit(item)}>
               <GlassCard>
@@ -279,7 +392,7 @@ export function CategoriesScreen() {
                     </Text>
                   </View>
                   <Text style={[typography.titleMd, { color: colors.onSurface }]}>
-                    {isNegative ? '-' : ''}{formatCurrency(Math.abs(catBalance))}
+                    {formatAmount(displayTotal)}
                   </Text>
                   <TouchableOpacity onPress={() => handleDelete(item)} style={{ padding: spacing.xs }}>
                     <Ionicons name="trash-outline" size={20} color={colors.error} />
@@ -301,7 +414,9 @@ export function CategoriesScreen() {
             <View style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }}>
               <Ionicons name="apps-outline" size={48} color={colors.onSurfaceVariant} />
               <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
-                No hay categorías aún
+                {filterType === 'all'
+                  ? 'No hay categorías aún'
+                  : `No hay categorías de ${filterType === 'expense' ? 'gastos' : 'ingresos'}`}
               </Text>
               <GradientButton title="Crear categoría" onPress={openCreate} />
             </View>

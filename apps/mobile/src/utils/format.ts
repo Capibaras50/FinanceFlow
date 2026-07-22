@@ -37,3 +37,21 @@ export function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error) return error.message;
   return fallback;
 }
+
+export function formatCurrencyInput(text: string): string {
+  const cleaned = text.replace(/[^0-9.]/g, '');
+  const parts = cleaned.split('.');
+  if (parts.length > 2) {
+    return formatCurrencyInput(parts[0] + '.' + parts.slice(1).join(''));
+  }
+  const [integerPart, decimalPart] = parts;
+  const formattedInt = (integerPart.replace(/^0+/, '') || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  if (decimalPart !== undefined) {
+    return formattedInt + '.' + decimalPart.slice(0, 2);
+  }
+  return formattedInt === '0' && cleaned !== '0' && cleaned !== '' ? '' : formattedInt;
+}
+
+export function parseCurrencyInput(text: string): string {
+  return text.replace(/,/g, '');
+}

@@ -1,4 +1,33 @@
 services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: always
+    environment:
+      POSTGRES_DB: name
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: password
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+
   backend:
     build:
       context: .
@@ -8,11 +37,13 @@ services:
     env_file:
       - apps/backend/.env
     environment:
-      - HOST_DB=host.docker.internal
-      - HOST_QUEUE=host.docker.internal
-      - AI_URL=http://host.docker.internal:11434/v1/chat/completions
+      - HOST_DB=db
+      - HOST_QUEUE=redis
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - db
+      - redis
 
   web:
     build:
@@ -22,3 +53,6 @@ services:
       - "80:80"
     depends_on:
       - backend
+
+volumes:
+  pgdata:

@@ -7,4 +7,6 @@ export { ExpensesApi } from './expenses';
 export { EarningsApi } from './earnings';
 export { ReceiptsApi } from './receipts';
 export { ChatApi } from './chat';
+export { TransactionsApi } from './transactions';
+export type { TransactionTimelineItem, TransactionFilterParams } from './transactions';
 export type { ApiConfig } from './client';
