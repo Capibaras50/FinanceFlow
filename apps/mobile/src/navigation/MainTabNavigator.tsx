@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TabBarIcon } from '../components/ui/TabBarIcon';
 import { typography, borderRadius } from '../theme';
 import { useTheme } from '../hooks/useTheme';
@@ -45,6 +46,7 @@ function AddButton({ onPress }: { onPress?: (...args: any[]) => void }) {
 
 export function MainTabNavigator() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const handleAddPress = (navigation: any) => {
     showAlert({
@@ -64,11 +66,13 @@ export function MainTabNavigator() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: colors.surfaceContainer,
-          borderTopColor: colors.outlineVariant + '80',
-          borderTopWidth: 1,
-          height: 72,
-          paddingBottom: 16,
+          borderTopColor: colors.surfaceContainer,
+          borderTopWidth: 0,
+          elevation: 0,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 16,
           paddingTop: 8,
+          shadowOpacity: 0,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.onSurfaceVariant,

@@ -7,7 +7,7 @@ import { typography, spacing, borderRadius } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
-import { CategoryChip } from '../../components/ui/CategoryChip';
+import { DateTimePickerModal } from '../../components/ui/DateTimePickerModal';
 import { categoriesApi, walletsApi, earningsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { getErrorMessage } from '../../utils/format';
@@ -28,8 +28,10 @@ export function AddEarningScreen() {
   const [description, setDescription] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [wallets, setWallets] = useState<Wallet[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [selectedWallet, setSelectedWallet] = useState<number | null>(null);
+  const [createdAt, setCreatedAt] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const { showError } = useSnackbar();
   const [loading, setLoading] = useState(false);
 
@@ -43,7 +45,7 @@ export function AddEarningScreen() {
         categoriesApi.getAll({ limit: 100 }),
         walletsApi.getAll({ limit: 100 }),
       ]);
-      setCategories(catData);
+      setCategories(catData.filter(c => c.type === 'earning'));
       setWallets(walData);
 
       if (earningId) {
@@ -52,7 +54,8 @@ export function AddEarningScreen() {
         setValue(String(earning.value));
         setDescription(earning.description ?? '');
         if (earning.wallet) setSelectedWallet(earning.wallet.id);
-        if (earning.categories.length > 0) setSelectedCategories(earning.categories.map((c) => c.id));
+        if (earning.category) setSelectedCategory(earning.category.id);
+        if (earning.createdAt) setCreatedAt(new Date(earning.createdAt));
       } else if (walData.length > 0) {
         setSelectedWallet(walData[0].id);
       }
@@ -62,15 +65,18 @@ export function AddEarningScreen() {
   };
 
   const handleSave = async () => {
-    if (!name || !value || selectedCategories.length === 0 || !selectedWallet) return;
+    if (!name || !value || !selectedCategory || !selectedWallet) return;
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue <= 0) return;
     setLoading(true);
     try {
       const dto = {
         name,
-        value: parseFloat(value),
+        value: numValue,
         description: description || undefined,
         walletId: selectedWallet,
-        categoriesId: selectedCategories,
+        categoryId: selectedCategory,
+        createdAt: createdAt.toISOString(),
       };
       if (isEditing) {
         await earningsApi.update(earningId, dto);
@@ -85,10 +91,25 @@ export function AddEarningScreen() {
     }
   };
 
+  const formatDateLabel = () => {
+    const now = new Date();
+    const isToday = createdAt.toDateString() === now.toDateString();
+    const timeStr = createdAt.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    if (isToday) {
+      return `Hoy, ${timeStr}`;
+    }
+    return createdAt.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) + `, ${timeStr}`;
+  };
+
+  const gradientColors = colors.gradient.accent;
+  const numValue = parseFloat(value);
+  const isValueValid = !isNaN(numValue) && numValue > 0;
+  const canSave = name && isValueValid && selectedCategory && selectedWallet;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <LinearGradient
-        colors={colors.gradient.accent}
+        colors={gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: spacing.container }}
@@ -129,45 +150,55 @@ export function AddEarningScreen() {
         style={{ flex: 1, paddingHorizontal: spacing.container }}
         contentContainerStyle={{ paddingBottom: spacing['2xl'], gap: spacing.md, paddingTop: spacing.lg }}
       >
+        <View style={{ alignItems: 'center', paddingVertical: spacing.md }}>
+          <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginBottom: spacing.sm }]}>
+            Valor del ingreso
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={[typography.displayMd, { color: colors.primary, marginRight: spacing.xs }]}>$</Text>
+            <Input
+              value={value}
+              onChangeText={setValue}
+              placeholder="0.00"
+              keyboardType="decimal-pad"
+              style={{ textAlign: 'center', minWidth: 160 }}
+            />
+          </View>
+        </View>
+
         <Input
-          label="Nombre del ingreso"
+          label="¿Qué ingreso recibiste?"
           placeholder="Ej: Salario"
           value={name}
           onChangeText={setName}
         />
-        <Input
-          label="Valor"
-          placeholder="0.00"
-          value={value}
-          onChangeText={setValue}
-          keyboardType="decimal-pad"
-          prefix="$"
-        />
-        <Input
-          label="Descripción"
-          placeholder="Opcional"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={2}
-        />
 
         <View style={{ gap: spacing.sm }}>
           <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4 }]}>
-            Categorías
+            Categoría
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
             {categories.map((cat) => (
-              <CategoryChip
+              <TouchableOpacity
                 key={cat.id}
-                category={cat}
-                selected={selectedCategories.includes(cat.id)}
-                onPress={() =>
-                  setSelectedCategories((prev) =>
-                    prev.includes(cat.id) ? prev.filter((c) => c !== cat.id) : [...prev, cat.id],
-                  )
-                }
-              />
+                onPress={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.xs,
+                  paddingVertical: spacing.sm,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: borderRadius.full,
+                  backgroundColor: selectedCategory === cat.id ? colors.primaryContainer + '33' : colors.surfaceContainerHigh,
+                  borderWidth: 1,
+                  borderColor: selectedCategory === cat.id ? colors.primary : 'transparent',
+                }}
+              >
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: cat.color }} />
+                <Text style={[typography.labelMd, { color: selectedCategory === cat.id ? colors.primary : colors.onSurfaceVariant }]}>
+                  {cat.name}
+                </Text>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
@@ -201,10 +232,52 @@ export function AddEarningScreen() {
           </ScrollView>
         </View>
 
+        <TouchableOpacity
+          onPress={() => setShowDatePicker(true)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingVertical: spacing.md,
+            paddingHorizontal: spacing.md,
+            borderRadius: borderRadius.lg,
+            backgroundColor: colors.surfaceContainerHigh,
+            borderWidth: 1,
+            borderColor: colors.outlineVariant,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary }} />
+            <Text style={[typography.bodyMd, { color: colors.onSurface }]}>
+              {formatDateLabel()}
+            </Text>
+          </View>
+          <Ionicons name="time-outline" size={20} color={colors.primary} />
+        </TouchableOpacity>
+
+        <DateTimePickerModal
+          visible={showDatePicker}
+          value={createdAt}
+          onClose={() => setShowDatePicker(false)}
+          onConfirm={(date) => {
+            setCreatedAt(date);
+            setShowDatePicker(false);
+          }}
+        />
+
+        <Input
+          label="Descripción (opcional)"
+          placeholder="Añade detalles adicionales..."
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={3}
+        />
+
         <GradientButton
           title={isEditing ? 'Actualizar Ingreso' : 'Guardar Ingreso'}
           onPress={handleSave}
-          disabled={loading || !name || !value || selectedCategories.length === 0}
+          disabled={loading || !canSave}
         />
       </ScrollView>
     </View>

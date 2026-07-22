@@ -8,13 +8,13 @@ import { useTheme } from '../../hooks/useTheme';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
-import { categoriesApi, expensesApi } from '../../services/api';
+import { categoriesApi, expensesApi, earningsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { showAlert } from '../../components/ui/AppAlert';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 import { formatCurrency } from '../../utils/format';
-import type { Category, Expense } from '@finance-flow/shared-types';
+import type { Category, Expense, Earning } from '@finance-flow/shared-types';
 
 const presetColors = ['#7C3AED', '#EC4899', '#06B6D4', '#4ADE80', '#F59E0B', '#8B5CF6', '#F472B6', '#14B8A6', '#3B82F6', '#EF4444', '#10B981', '#F97316'];
 
@@ -26,6 +26,7 @@ export function CategoriesScreen() {
   const PAGE_SIZE = 100;
   const [categories, setCategories] = useState<Category[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [earnings, setEarnings] = useState<Earning[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -34,6 +35,7 @@ export function CategoriesScreen() {
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formColor, setFormColor] = useState(presetColors[0]);
+  const [formType, setFormType] = useState<'expense' | 'earning'>('expense');
 
   useFocusEffect(
     useCallback(() => { loadFirstPage(); }, [])
@@ -41,12 +43,14 @@ export function CategoriesScreen() {
 
   const loadFirstPage = async () => {
     try {
-      const [catData, expData] = await Promise.all([
+      const [catData, expData, earnData] = await Promise.all([
         categoriesApi.getAll({ limit: PAGE_SIZE, page: 1 }),
         expensesApi.getAll({ limit: 100 }),
+        earningsApi.getAll({ limit: 100 }),
       ]);
       setCategories(catData);
       setExpenses(expData);
+      setEarnings(earnData);
       setPage(1);
       setHasMore(catData.length >= PAGE_SIZE);
     } catch {
@@ -70,17 +74,20 @@ export function CategoriesScreen() {
     }
   };
 
-  const getCategoryExpenses = (catId: number) => {
-    return expenses.filter(e => e.categories?.some(c => c.id === catId));
+  const getCategoryTransactions = (catId: number) => {
+    const catExpenses = expenses.filter(e => e.category?.id === catId);
+    const catEarnings = earnings.filter(e => e.category?.id === catId);
+    return { catExpenses, catEarnings };
   };
 
-  const totalSpent = expenses.reduce((sum, e) => sum + Number(e.value), 0);
+  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.value), 0);
 
   const openCreate = () => {
     setEditCategory(null);
     setFormName('');
     setFormDescription('');
     setFormColor(presetColors[0]);
+    setFormType('expense');
     setModalVisible(true);
   };
 
@@ -89,15 +96,17 @@ export function CategoriesScreen() {
     setFormName(cat.name);
     setFormDescription(cat.description || '');
     setFormColor(cat.color);
+    setFormType(cat.type);
     setModalVisible(true);
   };
 
   const handleDelete = (cat: Category) => {
-    const catExpenses = getCategoryExpenses(cat.id);
-    if (catExpenses.length > 0) {
+    const { catExpenses, catEarnings } = getCategoryTransactions(cat.id);
+    const totalTx = catExpenses.length + catEarnings.length;
+    if (totalTx > 0) {
       showAlert({
         title: 'Eliminar categoría',
-        message: `Si borras "${cat.name}", también se eliminarán todos los gastos asociados a esta categoría.`,
+        message: `Si borras "${cat.name}", también se eliminarán todas las transacciones asociadas a esta categoría.`,
         buttons: [
           { text: 'Cancelar', style: 'cancel' },
           {
@@ -141,9 +150,9 @@ export function CategoriesScreen() {
     if (!formName.trim()) return;
     try {
       if (editCategory) {
-        await categoriesApi.update(editCategory.id, { name: formName, description: formDescription || undefined, color: formColor });
+        await categoriesApi.update(editCategory.id, { name: formName, description: formDescription || undefined, color: formColor, type: formType });
       } else {
-        await categoriesApi.create({ name: formName, description: formDescription || undefined, color: formColor });
+        await categoriesApi.create({ name: formName, description: formDescription || undefined, color: formColor, type: formType });
       }
       setModalVisible(false);
       loadFirstPage();
@@ -161,7 +170,13 @@ export function CategoriesScreen() {
         style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: spacing.container }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('MainTabs', { screen: 'Home' });
+            }
+          }}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View
@@ -189,19 +204,19 @@ export function CategoriesScreen() {
         data={categories}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={{ padding: spacing.container, gap: spacing.md }}
-        ListHeaderComponent={
+        ListHeaderComponent={() => (
           <>
             <GlassCard style={{ marginBottom: spacing.md }}>
               <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>Total gastado</Text>
               <Text style={[typography.displayMd, { color: colors.onSurface, marginTop: spacing.xs }]}>
-                {formatCurrency(totalSpent)}
+                {formatCurrency(totalExpenses)}
               </Text>
-              {totalSpent > 0 && (
+              {totalExpenses > 0 && (
                 <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
                   {categories.map((cat) => {
-                    const catExpenses = getCategoryExpenses(cat.id);
+                    const { catExpenses } = getCategoryTransactions(cat.id);
                     const catTotal = catExpenses.reduce((s, e) => s + Number(e.value), 0);
-                    const percent = totalSpent > 0 ? (catTotal / totalSpent) * 100 : 0;
+                    const percent = totalExpenses > 0 ? (catTotal / totalExpenses) * 100 : 0;
                     if (catTotal <= 0) return null;
                     return (
                       <View key={cat.id}>
@@ -231,10 +246,14 @@ export function CategoriesScreen() {
               </TouchableOpacity>
             </View>
           </>
-        }
+        )}
         renderItem={({ item }) => {
-          const catExpenses = getCategoryExpenses(item.id);
-          const catTotal = catExpenses.reduce((s, e) => s + Number(e.value), 0);
+          const { catExpenses, catEarnings } = getCategoryTransactions(item.id);
+          const catExpenseTotal = catExpenses.reduce((s, e) => s + Number(e.value), 0);
+          const catEarningTotal = catEarnings.reduce((s, e) => s + Number(e.value), 0);
+          const catBalance = catEarningTotal - catExpenseTotal;
+          const totalTx = catExpenses.length + catEarnings.length;
+          const isNegative = catBalance < 0;
           return (
             <TouchableOpacity onPress={() => openEdit(item)}>
               <GlassCard>
@@ -256,11 +275,11 @@ export function CategoriesScreen() {
                       {item.name}
                     </Text>
                     <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
-                      {catExpenses.length} transacciones
+                      {totalTx} transacciones
                     </Text>
                   </View>
                   <Text style={[typography.titleMd, { color: colors.onSurface }]}>
-                    {formatCurrency(catTotal)}
+                    {isNegative ? '-' : ''}{formatCurrency(Math.abs(catBalance))}
                   </Text>
                   <TouchableOpacity onPress={() => handleDelete(item)} style={{ padding: spacing.xs }}>
                     <Ionicons name="trash-outline" size={20} color={colors.error} />
@@ -301,6 +320,37 @@ export function CategoriesScreen() {
             <View style={{ height: spacing.md }} />
             <Input label="Descripción" placeholder="Opcional" value={formDescription} onChangeText={setFormDescription} />
             <View style={{ height: spacing.md }} />
+            <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4, marginBottom: spacing.sm }]}>Tipo</Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
+              <TouchableOpacity
+                onPress={() => setFormType('expense')}
+                style={{
+                  flex: 1,
+                  paddingVertical: spacing.sm,
+                  alignItems: 'center',
+                  borderRadius: borderRadius.full,
+                  backgroundColor: formType === 'expense' ? colors.error : colors.surfaceContainerHigh,
+                }}
+              >
+                <Text style={[typography.labelMd, { color: formType === 'expense' ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                  Gasto
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setFormType('earning')}
+                style={{
+                  flex: 1,
+                  paddingVertical: spacing.sm,
+                  alignItems: 'center',
+                  borderRadius: borderRadius.full,
+                  backgroundColor: formType === 'earning' ? colors.success : colors.surfaceContainerHigh,
+                }}
+              >
+                <Text style={[typography.labelMd, { color: formType === 'earning' ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                  Ingreso
+                </Text>
+              </TouchableOpacity>
+            </View>
             <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4, marginBottom: spacing.sm }]}>Color</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
               {presetColors.map((c) => (

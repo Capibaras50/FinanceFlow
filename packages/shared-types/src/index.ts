@@ -17,6 +17,7 @@ export interface Category {
   name: string;
   description: string | null;
   color: string;
+  type: 'expense' | 'earning';
 }
 
 export interface Wallet {
@@ -39,7 +40,7 @@ export interface Transaction {
   description: string | null;
   value: number;
   wallet: Wallet;
-  categories: Category[];
+  category: Category;
   createdAt: string;
 }
 

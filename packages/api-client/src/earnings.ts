@@ -6,7 +6,7 @@ export interface CreateEarningDto {
   description?: string;
   value: number;
   walletId: number;
-  categoriesId: number[];
+  categoryId: number;
 }
 
 export interface EarningFilterParams {

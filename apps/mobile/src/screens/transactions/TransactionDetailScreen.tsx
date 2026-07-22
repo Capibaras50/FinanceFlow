@@ -165,27 +165,22 @@ export function TransactionDetailScreen() {
             <DetailRow label="Monto" value={`${sign}${formatCurrency(transaction.value)}`} valueColor={amountColor} colors={colors} />
             <DetailRow label="Cartera" value={transaction.wallet?.name ?? '-'} colors={colors} />
             <DetailRow label="Fecha" value={new Date(transaction.createdAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} colors={colors} />
-            {transaction.categories && transaction.categories.length > 0 && (
+            {transaction.category && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>Categoría</Text>
-                <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-                  {transaction.categories.map((cat) => (
-                    <View
-                      key={cat.id}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: spacing.xs,
-                        backgroundColor: cat.color + '20',
-                        paddingVertical: spacing.xs + 1,
-                        paddingHorizontal: spacing.sm,
-                        borderRadius: borderRadius.full,
-                      }}
-                    >
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: cat.color }} />
-                      <Text style={[typography.labelMd, { color: cat.color }]}>{cat.name}</Text>
-                    </View>
-                  ))}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.xs,
+                    backgroundColor: transaction.category.color + '20',
+                    paddingVertical: spacing.xs + 1,
+                    paddingHorizontal: spacing.sm,
+                    borderRadius: borderRadius.full,
+                  }}
+                >
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: transaction.category.color }} />
+                  <Text style={[typography.labelMd, { color: transaction.category.color }]}>{transaction.category.name}</Text>
                 </View>
               </View>
             )}

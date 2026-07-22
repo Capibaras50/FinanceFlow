@@ -6,7 +6,7 @@ export interface CreateExpenseDto {
   description?: string;
   value: number;
   walletId: number;
-  categoriesId: number[];
+  categoryId: number;
   receiptId?: number;
 }
 

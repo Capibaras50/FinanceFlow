@@ -5,6 +5,7 @@ export interface CreateCategoryDto {
   name: string;
   description?: string;
   color: string;
+  type: 'expense' | 'earning';
 }
 
 export class CategoriesApi {

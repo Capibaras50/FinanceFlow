@@ -30,9 +30,20 @@ export class CategoriesService {
     }
   }
 
-  async findAll(profileId: number, take?: number, page?: number) {
+  async findAll(
+    profileId: number,
+    take?: number,
+    page?: number,
+    type?: CategoryType,
+  ) {
+    const where = {
+      profile: { id: profileId },
+    };
+    if (type) {
+      where['type'] = type;
+    }
     const categories = await this.categoriesRepository.find({
-      where: { profile: { id: profileId } },
+      where,
       take: take || 10,
       skip: ((page ?? 1) - 1) * 10,
     });

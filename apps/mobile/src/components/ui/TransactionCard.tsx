@@ -26,8 +26,8 @@ export function TransactionCard({ transaction, type }: TransactionCardProps) {
             width: 40,
             height: 40,
             borderRadius: 12,
-            backgroundColor: transaction.categories?.[0]
-              ? getCategoryColor(transaction.categories[0].color) + '20'
+            backgroundColor: transaction.category
+              ? getCategoryColor(transaction.category.color) + '20'
                               : colors.primary + '20',
             alignItems: 'center',
             justifyContent: 'center',
@@ -36,8 +36,8 @@ export function TransactionCard({ transaction, type }: TransactionCardProps) {
           <Ionicons
             name={iconName}
             size={20}
-            color={transaction.categories?.[0]
-              ? getCategoryColor(transaction.categories[0].color)
+            color={transaction.category
+              ? getCategoryColor(transaction.category.color)
               : colors.primary}
           />
         </View>
@@ -53,9 +53,9 @@ export function TransactionCard({ transaction, type }: TransactionCardProps) {
           <Text style={[typography.titleMd, { color: amountColor }]}>
             {sign}{formatCurrency(transaction.value)}
           </Text>
-          {transaction.categories?.[0] && (
+          {transaction.category && (
             <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
-              {transaction.categories[0].name}
+              {transaction.category.name}
             </Text>
           )}
         </View>

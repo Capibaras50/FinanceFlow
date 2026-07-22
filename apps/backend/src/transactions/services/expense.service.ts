@@ -50,7 +50,7 @@ export class ExpenseService {
           : undefined,
       };
       if (createExpenseDto.createdAt) {
-        newExpense.createdAt = createExpenseDto.createdAt;
+        newExpense.createdAt = new Date(createExpenseDto.createdAt);
       }
       const createdExpense = this.expensesRepository.create(newExpense);
       const savedExpense = await this.expensesRepository.save(createdExpense);
@@ -206,6 +206,10 @@ export class ExpenseService {
           profileId,
         );
         changes.receipt = { id: receipt.id };
+      }
+
+      if (updateExpenseDto.createdAt) {
+        changes.createdAt = new Date(updateExpenseDto.createdAt);
       }
 
       const mergedExpense = this.expensesRepository.merge(expense, changes);

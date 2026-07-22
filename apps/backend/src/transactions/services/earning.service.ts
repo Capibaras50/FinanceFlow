@@ -97,7 +97,7 @@ export class EarningService {
         profile: { id: profileId },
       };
       if (newEarning.createdAt) {
-        earning.createdAt = newEarning.createdAt;
+        earning.createdAt = new Date(newEarning.createdAt);
       }
       const createdEarning = this.earningRepository.create(earning);
       return await this.earningRepository.save(createdEarning);
@@ -133,6 +133,10 @@ export class EarningService {
           profileId,
         );
         changes.wallet = { id: wallet.id };
+      }
+
+      if (updateEarningDto.createdAt) {
+        changes.createdAt = new Date(updateEarningDto.createdAt);
       }
 
       const mergedEarning = this.earningRepository.merge(earning, changes);
