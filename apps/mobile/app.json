@@ -47,7 +47,8 @@
       "expo-secure-store",
       "expo-font",
       "expo-splash-screen",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/withCleartextTraffic"
     ],
     "extra": {
       "eas": {
@@ -55,9 +56,7 @@
       }
     },
     "owner": "capibaras60",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/170d9b99-e603-42f4-9008-4d8e8edca863"
     }

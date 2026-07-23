@@ -59,7 +59,7 @@ export function RegisterScreen() {
     >
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + spacing['2xl'], paddingHorizontal: spacing.container, paddingBottom: insets.bottom + spacing['2xl'] }}
+        contentContainerStyle={{ flexGrow: 1, backgroundColor: colors.background, paddingTop: insets.top + spacing['2xl'], paddingHorizontal: spacing.container, paddingBottom: insets.bottom + spacing['2xl'] }}
         keyboardShouldPersistTaps="handled"
       >
         <TouchableOpacity

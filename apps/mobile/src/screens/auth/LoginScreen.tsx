@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -50,7 +50,11 @@ export function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <View style={{ flex: 1, paddingTop: insets.top + spacing['2xl'], paddingHorizontal: spacing.container }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, backgroundColor: colors.background, paddingTop: insets.top + spacing['2xl'], paddingHorizontal: spacing.container }}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.header}>
           <LinearGradient
             colors={colors.gradient.primary}
@@ -141,7 +145,7 @@ export function LoginScreen() {
             Registrarse
           </Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
