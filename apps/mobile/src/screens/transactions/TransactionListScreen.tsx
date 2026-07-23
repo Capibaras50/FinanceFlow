@@ -22,7 +22,7 @@ type TabType = 'all' | 'expenses' | 'earnings';
 
 type TransactionSection = {
   title: string;
-  data: (Expense | (Earning & { _type?: 'earning' }) | (TransactionTimelineItem & { createdAt: string }))[];
+  data: (Expense | Earning | (TransactionTimelineItem & { createdAt: string }))[];
 };
 
 export function TransactionListScreen() {
@@ -86,7 +86,10 @@ export function TransactionListScreen() {
 
       if (tab === 'all') {
         const allData = await transactionsApi.getAll(params);
-        const mapped = allData.map(t => ({ ...t, createdAt: t.created_at }));
+        const mapped = allData.map(t => ({
+          ...t,
+          createdAt: t.created_at,
+        }));
         setAllTransactions(mapped);
         setAllPage(1);
         setHasMoreAll(allData.length >= PAGE_SIZE);
@@ -118,7 +121,10 @@ export function TransactionListScreen() {
       try {
         const params = buildParams({ page: nextPage });
         const newData = await transactionsApi.getAll(params);
-        const mapped = newData.map(t => ({ ...t, createdAt: t.created_at }));
+        const mapped = newData.map(t => ({
+          ...t,
+          createdAt: t.created_at,
+        }));
         setAllTransactions(prev => [...prev, ...mapped]);
         setAllPage(nextPage);
         if (newData.length < PAGE_SIZE) setHasMoreAll(false);
@@ -234,7 +240,7 @@ export function TransactionListScreen() {
         return d !== today && d !== yesterday;
       }) },
     ].filter(s => s.data.length > 0);
-  }, [filtered]);
+  }, [filtered, wallets]);
 
   const totalAmount = useMemo(() => data.reduce((sum, t) => sum + t.value, 0), [data]);
   const allBalance = useMemo(() => {
@@ -373,6 +379,10 @@ export function TransactionListScreen() {
           )}
           renderItem={({ item }) => {
             const itemType = tab === 'all' ? (item as TransactionTimelineItem).type : (tab === 'expenses' ? 'expense' : 'earning');
+            const timelineItem = tab === 'all' ? (item as TransactionTimelineItem) : null;
+            const resolvedWalletName = timelineItem
+              ? wallets.find(w => w.id === timelineItem.wallet_id)?.name
+              : undefined;
             return (
               <TouchableOpacity
                 onPress={() => navigation.navigate('TransactionDetail', { transactionId: item.id, type: itemType as 'expense' | 'earning' })}
@@ -382,6 +392,7 @@ export function TransactionListScreen() {
                 <TransactionCard
                   transaction={item as Expense | Earning}
                   type={itemType as 'expense' | 'earning'}
+                  walletName={resolvedWalletName}
                 />
               </TouchableOpacity>
             );

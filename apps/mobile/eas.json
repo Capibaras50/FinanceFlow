@@ -6,21 +6,24 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "channel": "development"
     },
     "preview": {
       "android": {
         "buildType": "apk"
       },
       "node": "22.14.0",
-      "pnpm": "10.27.0"
+      "pnpm": "10.27.0",
+      "channel": "preview"
     },
     "production": {
       "android": {
         "buildType": "apk"
       },
       "node": "22.14.0",
-      "pnpm": "10.27.0"
+      "pnpm": "10.27.0",
+      "channel": "production"
     }
   },
   "submit": {

@@ -7,6 +7,8 @@ export interface TransactionTimelineItem {
   value: number;
   created_at: string;
   type: 'expense' | 'earning';
+  wallet_id: number;
+  wallet_name: string;
 }
 
 export interface TransactionFilterParams {

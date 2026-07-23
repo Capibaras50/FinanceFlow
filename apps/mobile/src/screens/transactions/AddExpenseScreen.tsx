@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -156,14 +156,31 @@ export function AddExpenseScreen() {
           <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginBottom: spacing.sm }]}>
             Valor del gasto
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.surfaceContainerHigh,
+            borderRadius: borderRadius.lg,
+            borderWidth: 1,
+            borderColor: colors.outlineVariant,
+            paddingHorizontal: spacing.md,
+          }}>
             <Text style={[typography.displayMd, { color: colors.primary, marginRight: spacing.xs }]}>$</Text>
-            <Input
+            <TextInput
               value={value}
               onChangeText={(text) => setValue(formatCurrencyInput(text))}
               placeholder="0.00"
+              placeholderTextColor={colors.onSurfaceVariant}
               keyboardType="decimal-pad"
-              style={{ textAlign: 'center', minWidth: 160 }}
+              style={[
+                typography.bodyLg,
+                {
+                  flex: 1,
+                  color: colors.onSurface,
+                  paddingVertical: spacing.md,
+                  textAlign: 'center',
+                },
+              ]}
             />
           </View>
         </View>

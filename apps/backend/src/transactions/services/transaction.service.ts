@@ -35,6 +35,8 @@ export class TransactionService {
       .addSelect('expense.value', 'value')
       .addSelect('expense.created_at', 'created_at')
       .addSelect('category.type', 'type')
+      .addSelect('wallet.id', 'wallet_id')
+      .addSelect('wallet.name', 'wallet_name')
       .innerJoin('expense.category', 'category')
       .innerJoin('expense.wallet', 'wallet')
       .where('expense.profile_id = :profileId', { profileId });
@@ -47,6 +49,8 @@ export class TransactionService {
       .addSelect('earning.value', 'value')
       .addSelect('earning.created_at', 'created_at')
       .addSelect('category.type', 'type')
+      .addSelect('wallet.id', 'wallet_id')
+      .addSelect('wallet.name', 'wallet_name')
       .innerJoin('earning.category', 'category')
       .innerJoin('earning.wallet', 'wallet')
       .where('earning.profile_id = :profileId', { profileId });

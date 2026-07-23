@@ -9,14 +9,18 @@ import type { Expense, Earning } from '@finance-flow/shared-types';
 interface TransactionCardProps {
   transaction: Expense | Earning;
   type: 'expense' | 'earning';
+  walletName?: string;
 }
 
-export function TransactionCard({ transaction, type }: TransactionCardProps) {
+export function TransactionCard({ transaction, type, walletName }: TransactionCardProps) {
   const { colors } = useTheme();
   const isExpense = type === 'expense';
   const amountColor = isExpense ? colors.error : colors.success;
   const sign = isExpense ? '-' : '+';
   const iconName = isExpense ? 'trending-down' : 'trending-up';
+  const raw = transaction as unknown as Record<string, unknown>;
+  const name = walletName ?? transaction.wallet?.name ?? (typeof raw.wallet_name === 'string' ? raw.wallet_name : undefined);
+  const categoryColor = transaction.category?.color;
 
   return (
     <GlassCard style={{ marginBottom: spacing.sm }}>
@@ -26,9 +30,9 @@ export function TransactionCard({ transaction, type }: TransactionCardProps) {
             width: 40,
             height: 40,
             borderRadius: 12,
-            backgroundColor: transaction.category
-              ? getCategoryColor(transaction.category.color) + '20'
-                              : colors.primary + '20',
+            backgroundColor: categoryColor
+              ? getCategoryColor(categoryColor) + '20'
+              : colors.primary + '20',
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -36,8 +40,8 @@ export function TransactionCard({ transaction, type }: TransactionCardProps) {
           <Ionicons
             name={iconName}
             size={20}
-            color={transaction.category
-              ? getCategoryColor(transaction.category.color)
+            color={categoryColor
+              ? getCategoryColor(categoryColor)
               : colors.primary}
           />
         </View>
@@ -46,7 +50,7 @@ export function TransactionCard({ transaction, type }: TransactionCardProps) {
             {transaction.name}
           </Text>
           <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
-            {formatDate(transaction.createdAt)} · {transaction.wallet?.name}
+            {formatDate(transaction.createdAt)}{name ? ` · ${name}` : ''}
           </Text>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 2 }}>

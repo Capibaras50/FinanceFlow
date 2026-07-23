@@ -5,4 +5,6 @@ export interface TransactionTimelineInterface {
   description: string;
   created_at: Date;
   type: 'expense' | 'earning';
+  wallet_id: number;
+  wallet_name: string;
 }

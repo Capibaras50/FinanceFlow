@@ -67,11 +67,20 @@ export async function uploadAvatarAsync(uri: string, fileName?: string, mimeType
   const name = fileName || 'avatar.jpg';
   const type = mimeType || 'image/jpeg';
 
-  const response = await fetch(manipulated.uri);
-  const blob = await response.blob();
-
   const formData = new FormData();
-  formData.append('avatar', blob, name);
+
+  if (Platform.OS === 'web') {
+    const response = await fetch(manipulated.uri);
+    const blob = await response.blob();
+    const file = new File([blob], name, { type });
+    formData.append('avatar', file);
+  } else {
+    formData.append('avatar', {
+      uri: manipulated.uri,
+      name,
+      type,
+    } as any);
+  }
 
   return client.uploadFile<User>('/users/upload-avatar', formData);
 }

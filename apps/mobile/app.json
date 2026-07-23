@@ -54,6 +54,12 @@
         "projectId": "170d9b99-e603-42f4-9008-4d8e8edca863"
       }
     },
-    "owner": "capibaras60"
+    "owner": "capibaras60",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/170d9b99-e603-42f4-9008-4d8e8edca863"
+    }
   }
 }
