@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ComponentProps } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { Input } from '../../components/ui/Input';
+import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { DateTimePickerModal } from '../../components/ui/DateTimePickerModal';
 import { contactsApi, debtsApi } from '../../services/api';
@@ -19,10 +20,28 @@ import { goBackOrHome } from '../../utils/navigation';
 import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
 import type { Contact, DebtType, DebtPriority, DebtDirection } from '@finance-flow/shared-types';
 
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
 const DEBT_TYPES: DebtType[] = ['personal', 'bank', 'credit_card', 'loan', 'commercial', 'fiscal', 'other'];
 const PRIORITIES: DebtPriority[] = ['low', 'medium', 'high'];
 
 const PRIORITY_LABELS: Record<DebtPriority, string> = { low: 'Baja', medium: 'Media', high: 'Alta' };
+
+const DEBT_TYPE_ICONS: Record<DebtType, IoniconName> = {
+  personal: 'person-outline',
+  bank: 'business-outline',
+  credit_card: 'card-outline',
+  loan: 'swap-horizontal-outline',
+  commercial: 'storefront-outline',
+  fiscal: 'receipt-outline',
+  other: 'ellipsis-horizontal-outline',
+};
+
+const PRIORITY_ICONS: Record<DebtPriority, IoniconName> = {
+  low: 'arrow-down-circle-outline',
+  medium: 'remove-circle-outline',
+  high: 'arrow-up-circle-outline',
+};
 
 export function AddDebtScreen() {
   const navigation = useNavigation<RootNavigationProp>();
@@ -129,27 +148,46 @@ export function AddDebtScreen() {
   const numValue = parseFloat(parseCurrencyInput(amountText));
   const isValueValid = !isNaN(numValue) && numValue > 0;
   const canSave = name.trim() && contactName.trim() && isValueValid;
+  const directionColor = direction === 'receivable' ? colors.success : colors.error;
 
-  const DirectionButton = ({ value, label, icon }: { value: DebtDirection; label: string; icon: 'arrow-down-circle' | 'arrow-up-circle' }) => {
+  const SectionHeader = ({ icon, title, color }: { icon: IoniconName; title: string; color?: string }) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+      <View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 10,
+          backgroundColor: (color ?? colors.primary) + '1F',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Ionicons name={icon} size={16} color={color ?? colors.primary} />
+      </View>
+      <Text style={[typography.titleMd, { color: colors.onSurface }]}>{title}</Text>
+    </View>
+  );
+
+  const DirectionButton = ({ value, label, icon }: { value: DebtDirection; label: string; icon: IoniconName }) => {
     const active = direction === value;
     const color = value === 'receivable' ? colors.success : colors.error;
     return (
       <TouchableOpacity
         onPress={() => setDirection(value)}
+        activeOpacity={0.8}
         style={{
           flex: 1,
-          flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: spacing.xs,
+          gap: spacing.sm,
           paddingVertical: spacing.md,
           borderRadius: borderRadius.lg,
           backgroundColor: active ? color + '1F' : colors.surfaceContainerHigh,
-          borderWidth: 1,
+          borderWidth: 1.5,
           borderColor: active ? color : colors.outlineVariant,
         }}
       >
-        <Ionicons name={icon} size={18} color={active ? color : colors.onSurfaceVariant} />
+        <Ionicons name={icon} size={22} color={active ? color : colors.onSurfaceVariant} />
         <Text style={[typography.labelLg, { color: active ? color : colors.onSurfaceVariant }]}>
           {label}
         </Text>
@@ -157,26 +195,50 @@ export function AddDebtScreen() {
     );
   };
 
-  const Chip = <T extends string>({ value, label, selected, onSelect, color }: { value: T; label: string; selected: boolean; onSelect: () => void; color?: string }) => (
-    <TouchableOpacity
-      onPress={onSelect}
-      style={{
-        paddingVertical: spacing.sm + 2,
-        paddingHorizontal: spacing.md,
-        borderRadius: borderRadius.full,
-        backgroundColor: selected ? (color ?? colors.primary) : colors.surfaceContainerHigh,
-      }}
-    >
-      <Text
-        style={[
-          typography.labelMd,
-          { color: selected ? '#FFFFFF' : colors.onSurfaceVariant },
-        ]}
+  const Chip = <T extends string>({
+    value,
+    label,
+    selected,
+    onSelect,
+    color,
+    icon,
+  }: {
+    value: T;
+    label: string;
+    selected: boolean;
+    onSelect: () => void;
+    color?: string;
+    icon?: IoniconName;
+  }) => {
+    const accent = color ?? colors.primary;
+    return (
+      <TouchableOpacity
+        onPress={onSelect}
+        activeOpacity={0.8}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.xs,
+          paddingVertical: spacing.sm + 2,
+          paddingHorizontal: spacing.md,
+          borderRadius: borderRadius.full,
+          backgroundColor: selected ? accent + '1F' : colors.surfaceContainerHigh,
+          borderWidth: 1,
+          borderColor: selected ? accent : colors.outlineVariant,
+        }}
       >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+        {icon && <Ionicons name={icon} size={14} color={selected ? accent : colors.onSurfaceVariant} />}
+        <Text
+          style={[
+            typography.labelMd,
+            { color: selected ? accent : colors.onSurfaceVariant, fontWeight: '600' },
+          ]}
+        >
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -203,23 +265,17 @@ export function AddDebtScreen() {
       </LinearGradient>
 
       <ScrollView
-        style={{ flex: 1, paddingHorizontal: spacing.container }}
-        contentContainerStyle={{ paddingBottom: spacing['2xl'], gap: spacing.md, paddingTop: spacing.lg }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: spacing.container, paddingBottom: spacing['2xl'], gap: spacing.lg }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={{ alignItems: 'center', paddingVertical: spacing.md }}>
-          <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginBottom: spacing.sm }]}>
+        <GlassCard glowColor={directionColor} style={{ alignItems: 'center', paddingVertical: spacing.lg, gap: spacing.sm }}>
+          <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
             Monto de la deuda
           </Text>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: colors.surfaceContainerHigh,
-            borderRadius: borderRadius.lg,
-            borderWidth: 1,
-            borderColor: colors.outlineVariant,
-            paddingHorizontal: spacing.md,
-          }}>
-            <Text style={[typography.displayMd, { color: colors.primary, marginRight: spacing.xs }]}>$</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[typography.displayLg, { color: directionColor, marginRight: spacing.xs }]}>$</Text>
             <TextInput
               value={amountText}
               onChangeText={(text) => setAmountText(formatCurrencyInput(text))}
@@ -227,22 +283,20 @@ export function AddDebtScreen() {
               placeholderTextColor={colors.onSurfaceVariant}
               keyboardType="decimal-pad"
               style={[
-                typography.bodyLg,
-                { flex: 1, color: colors.onSurface, paddingVertical: spacing.md, textAlign: 'center' },
+                typography.displayLg,
+                { flex: 1, color: colors.onSurface, paddingVertical: spacing.xs, textAlign: 'center' },
               ]}
             />
           </View>
-        </View>
+        </GlassCard>
 
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
           <DirectionButton value="receivable" label="Me deben" icon="arrow-down-circle" />
           <DirectionButton value="payable" label="Debo" icon="arrow-up-circle" />
         </View>
 
-        <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4 }]}>
-            Persona (contacto)
-          </Text>
+        <GlassCard style={{ gap: spacing.md }}>
+          <SectionHeader icon="people-outline" title="Persona (contacto)" />
           <Input
             placeholder="Ej: Juan Pérez"
             value={contactName}
@@ -259,110 +313,108 @@ export function AddDebtScreen() {
                     label={profile.name}
                     selected={contactId === c.id}
                     onSelect={() => selectContact(c)}
+                    icon="person-circle-outline"
                   />
                 );
               })}
             </ScrollView>
           )}
-        </View>
+        </GlassCard>
 
-        <Input
-          label="Concepto"
-          placeholder="Ej: Renta de julio, préstamo del carro"
-          value={name}
-          onChangeText={setName}
-        />
-
-        <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4 }]}>
-            Tipo de deuda
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-            {DEBT_TYPES.map((t) => (
-              <Chip
-                key={t}
-                value={t}
-                label={DEBT_TYPE_LABELS[t]}
-                selected={debtType === t}
-                onSelect={() => setDebtType(t)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-
-        <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4 }]}>
-            Prioridad
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-            {PRIORITIES.map((p) => (
-              <Chip
-                key={p}
-                value={p}
-                label={PRIORITY_LABELS[p]}
-                selected={priority === p}
-                onSelect={() => setPriority(p)}
-                color={p === 'high' ? colors.error : p === 'low' ? colors.success : colors.primary}
-              />
-            ))}
-          </ScrollView>
-        </View>
-
-        <TouchableOpacity
-          onPress={() => setShowDatePicker(true)}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingVertical: spacing.md,
-            paddingHorizontal: spacing.md,
-            borderRadius: borderRadius.lg,
-            backgroundColor: colors.surfaceContainerHigh,
-            borderWidth: 1,
-            borderColor: colors.outlineVariant,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-            <Text style={[typography.bodyMd, { color: dueDate ? colors.onSurface : colors.onSurfaceVariant }]}>
-              {dueDate ? `Vence: ${formattedDate}` : 'Vencimiento (opcional)'}
+        <GlassCard style={{ gap: spacing.md }}>
+          <SectionHeader icon="pricetag-outline" title="Detalles" />
+          <Input
+            label="Concepto"
+            placeholder="Ej: Renta de julio, préstamo del carro"
+            value={name}
+            onChangeText={setName}
+          />
+          <View style={{ gap: spacing.sm }}>
+            <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4 }]}>
+              Tipo de deuda
             </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+              {DEBT_TYPES.map((t) => (
+                <Chip
+                  key={t}
+                  value={t}
+                  label={DEBT_TYPE_LABELS[t]}
+                  selected={debtType === t}
+                  onSelect={() => setDebtType(t)}
+                  icon={DEBT_TYPE_ICONS[t]}
+                />
+              ))}
+            </ScrollView>
           </View>
-          {dueDate && (
-            <TouchableOpacity onPress={() => setDueDate(null)} hitSlop={8}>
-              <Ionicons name="close-circle" size={20} color={colors.onSurfaceVariant} />
-            </TouchableOpacity>
-          )}
-        </TouchableOpacity>
+          <View style={{ gap: spacing.sm }}>
+            <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4 }]}>
+              Prioridad
+            </Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {PRIORITIES.map((p) => (
+                <Chip
+                  key={p}
+                  value={p}
+                  label={PRIORITY_LABELS[p]}
+                  selected={priority === p}
+                  onSelect={() => setPriority(p)}
+                  color={p === 'high' ? colors.error : p === 'low' ? colors.success : colors.warning}
+                  icon={PRIORITY_ICONS[p]}
+                />
+              ))}
+            </View>
+          </View>
+        </GlassCard>
 
-        <DateTimePickerModal
-          visible={showDatePicker}
-          value={dueDate ?? new Date()}
-          mode="date"
-          onClose={() => setShowDatePicker(false)}
-          onConfirm={(date) => {
-            setDueDate(date);
-            setShowDatePicker(false);
-          }}
-        />
+        <GlassCard style={{ gap: spacing.md }}>
+          <SectionHeader icon="calendar-outline" title="Plazos y condiciones" />
+          <TouchableOpacity
+            onPress={() => setShowDatePicker(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: spacing.md,
+              paddingHorizontal: spacing.md,
+              borderRadius: borderRadius.lg,
+              backgroundColor: colors.surfaceContainerHigh,
+              borderWidth: 1,
+              borderColor: colors.outlineVariant,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+              <Text style={[typography.bodyMd, { color: dueDate ? colors.onSurface : colors.onSurfaceVariant }]}>
+                {dueDate ? `Vence: ${formattedDate}` : 'Vencimiento (opcional)'}
+              </Text>
+            </View>
+            {dueDate && (
+              <TouchableOpacity onPress={() => setDueDate(null)} hitSlop={8}>
+                <Ionicons name="close-circle" size={20} color={colors.onSurfaceVariant} />
+              </TouchableOpacity>
+            )}
+          </TouchableOpacity>
+          <Input
+            label="Interés mensual (opcional)"
+            placeholder="Ej: 5"
+            prefix="%"
+            value={interestText}
+            onChangeText={(text) => setInterestText(formatCurrencyInput(text))}
+            keyboardType="decimal-pad"
+          />
+        </GlassCard>
 
-        <Input
-          label="Interés mensual (opcional)"
-          placeholder="Ej: 5"
-          prefix="%"
-          value={interestText}
-          onChangeText={(text) => setInterestText(formatCurrencyInput(text))}
-          keyboardType="decimal-pad"
-        />
-
-        <Input
-          label="Descripción (opcional)"
-          placeholder="Añade detalles..."
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={3}
-        />
+        <GlassCard style={{ gap: spacing.md }}>
+          <SectionHeader icon="document-text-outline" title="Notas" />
+          <Input
+            label="Descripción (opcional)"
+            placeholder="Añade detalles..."
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            numberOfLines={3}
+          />
+        </GlassCard>
 
         <GradientButton
           title={debtId ? 'Actualizar Deuda' : 'Guardar Deuda'}
@@ -370,6 +422,17 @@ export function AddDebtScreen() {
           disabled={loading || !canSave}
         />
       </ScrollView>
+
+      <DateTimePickerModal
+        visible={showDatePicker}
+        value={dueDate ?? new Date()}
+        mode="date"
+        onClose={() => setShowDatePicker(false)}
+        onConfirm={(date) => {
+          setDueDate(date);
+          setShowDatePicker(false);
+        }}
+      />
     </View>
   );
 }

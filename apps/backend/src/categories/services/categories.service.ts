@@ -7,14 +7,27 @@ import { CreateCategoryDto } from '../dto/create-category.dto';
 import { UpdateCategoryDto } from '../dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Category } from '../entities/category.entity';
-import { Repository, In, FindOptionsWhere } from 'typeorm';
+import { Repository, In, FindOptionsWhere, DataSource } from 'typeorm';
 import { CategoryType } from '../enums/category-type.enum';
+import { Expense } from 'src/transactions/entities/expense.entity';
+import { Earning } from 'src/transactions/entities/earning.entity';
+import { BreakdownCategoryDto } from '../dto/breakdown-category.dto';
+
+export interface CategoryBreakdownRow {
+  categoryId: number;
+  name: string;
+  color: string;
+  value: number;
+  count: number;
+  type: CategoryType;
+}
 
 @Injectable()
 export class CategoriesService {
   constructor(
     @InjectRepository(Category)
     private categoriesRepository: Repository<Category>,
+    private dataSource: DataSource,
   ) {}
   async create(createCategoryDto: CreateCategoryDto, profileId: number) {
     try {
@@ -48,6 +61,62 @@ export class CategoriesService {
       skip: ((page ?? 1) - 1) * 10,
     });
     return categories;
+  }
+
+  async getBreakdown(profileId: number, dto: BreakdownCategoryDto) {
+    const from = dto.from ? new Date(dto.from) : undefined;
+    const to = dto.to ? new Date(dto.to) : undefined;
+
+    const runQuery = async (type: CategoryType) => {
+      const entity = type === CategoryType.EXPENSE ? Expense : Earning;
+      const alias = type === CategoryType.EXPENSE ? 'expense' : 'earning';
+      const qb = this.dataSource
+        .createQueryBuilder(entity, alias)
+        .innerJoin(`${alias}.category`, 'category')
+        .select('category.id', 'categoryId')
+        .addSelect('category.name', 'name')
+        .addSelect('category.color', 'color')
+        .addSelect(`SUM(${alias}.value)`, 'value')
+        .addSelect(`COUNT(${alias}.id)`, 'count')
+        .where(`${alias}.profile_id = :profileId`, { profileId })
+        .andWhere(`${alias}.deleted_at IS NULL`)
+        .groupBy('category.id')
+        .addGroupBy('category.name')
+        .addGroupBy('category.color');
+
+      if (from) {
+        qb.andWhere(`${alias}.created_at >= :from`, { from });
+      }
+      if (to) {
+        qb.andWhere(`${alias}.created_at <= :to`, { to });
+      }
+
+      const rows = await qb.getRawMany<{
+        categoryId: string;
+        name: string;
+        color: string;
+        value: string;
+        count: string;
+      }>();
+
+      return rows.map((row) => ({
+        categoryId: Number(row.categoryId),
+        name: row.name,
+        color: row.color,
+        value: Number(row.value),
+        count: Number(row.count),
+        type,
+      }));
+    };
+
+    const types =
+      dto.type === undefined
+        ? [CategoryType.EXPENSE, CategoryType.EARNING]
+        : [dto.type];
+
+    const results = await Promise.all(types.map((t) => runQuery(t)));
+    const breakdown = results.flat().sort((a, b) => b.value - a.value);
+    return breakdown as CategoryBreakdownRow[];
   }
 
   async findByIds(categoriesId: number[], profileId: number) {

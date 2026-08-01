@@ -17,8 +17,8 @@ import { DebtsService } from '../services/debts.service';
 import { CreateDebtDto } from '../dto/create-debt.dto';
 import { UpdateDebtDto } from '../dto/update-debt.dto';
 import { GetUser } from 'src/decorators/get-user.decorator';
-import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { CloudinaryService } from 'src/cloudinary/services/cloudinary.service';
+import { FilterDebtDto } from '../dto/filter-debt.dto';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('debts')
@@ -39,13 +39,14 @@ export class DebtsController {
   @Get()
   findAll(
     @GetUser('profileId') profileId: number,
-    @Query() paginationDto: PaginationDto,
+    @Query() filterDebtDto: FilterDebtDto,
   ) {
-    return this.debtsService.findAll(
-      profileId,
-      paginationDto.limit,
-      paginationDto.page,
-    );
+    return this.debtsService.findAll(profileId, filterDebtDto);
+  }
+
+  @Get('summary')
+  getSummary(@GetUser('profileId') profileId: number) {
+    return this.debtsService.getSummary(profileId);
   }
 
   @Get(':id')

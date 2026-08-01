@@ -93,6 +93,30 @@ export interface MonthlySummary {
   expensesCount: number;
 }
 
+export interface TransactionSummary {
+  totalEarnings: number;
+  totalExpenses: number;
+  balance: number;
+}
+
+export interface CategoryBreakdownItem {
+  categoryId: number;
+  name: string;
+  color: string;
+  value: number;
+  count: number;
+  type: 'expense' | 'earning';
+}
+
+export interface PendingCount {
+  count: number;
+}
+
+export interface DebtSummary {
+  receivableTotal: number;
+  payableTotal: number;
+}
+
 export interface ApiError {
   message: string;
   statusCode: number;

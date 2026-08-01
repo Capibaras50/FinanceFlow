@@ -1,4 +1,10 @@
-import type { Debt } from '@finance-flow/shared-types';
+import type {
+  Debt,
+  DebtDirection,
+  DebtPriority,
+  DebtStatus,
+  DebtSummary,
+} from '@finance-flow/shared-types';
 import type { ApiClient } from './client';
 
 export interface CreateDebtDto {
@@ -14,6 +20,18 @@ export interface CreateDebtDto {
   dueDate?: string;
 }
 
+export interface DebtFilterParams {
+  direction?: DebtDirection;
+  status?: DebtStatus;
+  priority?: DebtPriority;
+  name?: string;
+  contactName?: string;
+  sortBy?: 'amount' | 'createdAt';
+  sortOrder?: 'ASC' | 'DESC';
+  limit?: number;
+  page?: number;
+}
+
 export interface ReceiptFile {
   uri: string;
   name: string;
@@ -23,8 +41,12 @@ export interface ReceiptFile {
 export class DebtsApi {
   constructor(private client: ApiClient) {}
 
-  getAll(params?: Record<string, string | number | undefined>): Promise<Debt[]> {
-    return this.client.get<Debt[]>('/debts', params);
+  getAll(params?: DebtFilterParams): Promise<Debt[]> {
+    return this.client.get<Debt[]>('/debts', params as Record<string, string | number | undefined>);
+  }
+
+  getSummary(): Promise<DebtSummary> {
+    return this.client.get<DebtSummary>('/debts/summary');
   }
 
   getById(id: number): Promise<Debt> {

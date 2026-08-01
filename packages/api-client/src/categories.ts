@@ -1,4 +1,4 @@
-import type { Category } from '@finance-flow/shared-types';
+import type { Category, CategoryBreakdownItem } from '@finance-flow/shared-types';
 import type { ApiClient } from './client';
 
 export interface CreateCategoryDto {
@@ -8,11 +8,21 @@ export interface CreateCategoryDto {
   type: 'expense' | 'earning';
 }
 
+export interface CategoryBreakdownParams {
+  type?: 'expense' | 'earning';
+  from?: string;
+  to?: string;
+}
+
 export class CategoriesApi {
   constructor(private client: ApiClient) {}
 
   getAll(params?: Record<string, string | number | undefined>): Promise<Category[]> {
     return this.client.get<Category[]>('/categories', params);
+  }
+
+  getBreakdown(params?: CategoryBreakdownParams): Promise<CategoryBreakdownItem[]> {
+    return this.client.get<CategoryBreakdownItem[]>('/categories/breakdown', params as Record<string, string | number | undefined>);
   }
 
   getById(id: number): Promise<Category> {

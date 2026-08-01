@@ -68,6 +68,11 @@ export class ContactsController {
     return this.contactsService.findPendingReceived(profileId);
   }
 
+  @Get('pending/received/count')
+  pendingReceivedCount(@GetUser('profileId') profileId: number) {
+    return this.contactsService.countPendingReceived(profileId);
+  }
+
   @Get(':id')
   findOne(
     @GetUser('profileId') profileId: number,

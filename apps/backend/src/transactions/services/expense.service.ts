@@ -10,6 +10,7 @@ import {
   Between,
   In,
   EntityManager,
+  ILike,
 } from 'typeorm';
 import { Expense } from '../entities/expense.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -87,6 +88,9 @@ export class ExpenseService {
       }
       if (filterTransactionDto.wallet) {
         where['wallet'] = { name: filterTransactionDto.wallet };
+      }
+      if (filterTransactionDto.name) {
+        where['name'] = ILike(`%${filterTransactionDto.name}%`);
       }
       const expenses = await this.expensesRepository.find({
         where,

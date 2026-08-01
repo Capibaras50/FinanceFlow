@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, Repository, EntityManager } from 'typeorm';
+import { DeepPartial, Repository, EntityManager, ILike } from 'typeorm';
 import { Earning } from '../entities/earning.entity';
 import { CreateEarningDto } from '../dto/create-earning.dto';
 import { UpdateEarningDto } from '../dto/update-earning.dto';
@@ -35,6 +35,9 @@ export class EarningService {
       }
       if (filterTransactionDto.wallet) {
         where['wallet'] = { name: filterTransactionDto.wallet };
+      }
+      if (filterTransactionDto.name) {
+        where['name'] = ILike(`%${filterTransactionDto.name}%`);
       }
       const earnings = await this.earningRepository.find({
         where,

@@ -16,7 +16,7 @@ import { getMyDirection, isDebtOutstanding } from '../../utils/debts';
 import { goBackOrHome } from '../../utils/navigation';
 import { debtsApi } from '../../services/api';
 import type { RootNavigationProp } from '../../navigation/types';
-import type { Debt } from '@finance-flow/shared-types';
+import type { Debt, DebtSummary } from '@finance-flow/shared-types';
 
 type Filter = 'all' | 'receivable' | 'payable' | 'paid';
 
@@ -35,6 +35,7 @@ export function DebtsScreen() {
   const { showError } = useSnackbar();
   const myProfileId = user?.profile?.id ?? 0;
   const [debts, setDebts] = useState<Debt[]>([]);
+  const [summary, setSummary] = useState<DebtSummary | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
 
   useFocusEffect(
@@ -43,8 +44,12 @@ export function DebtsScreen() {
 
   const loadData = async () => {
     try {
-      const data = await debtsApi.getAll({ limit: 100 });
-      setDebts(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      const [data, summaryData] = await Promise.all([
+        debtsApi.getAll({ limit: 100, sortBy: 'createdAt', sortOrder: 'DESC' }),
+        debtsApi.getSummary(),
+      ]);
+      setDebts(data);
+      setSummary(summaryData);
     } catch {
       showError('Error al cargar deudas');
     }
@@ -54,17 +59,8 @@ export function DebtsScreen() {
     goBackOrHome(navigation);
   };
 
-  const { receivableTotal, payableTotal } = useMemo(() => {
-    let rec = 0;
-    let pay = 0;
-    for (const debt of debts) {
-      if (!isDebtOutstanding(debt.status)) continue;
-      const direction = getMyDirection(debt, myProfileId);
-      if (direction === 'receivable') rec += Number(debt.amount);
-      else pay += Number(debt.amount);
-    }
-    return { receivableTotal: rec, payableTotal: pay };
-  }, [debts, myProfileId]);
+  const receivableTotal = summary?.receivableTotal ?? 0;
+  const payableTotal = summary?.payableTotal ?? 0;
 
   const filteredDebts = useMemo(() => {
     const pending = (d: Debt) => isDebtOutstanding(d.status);

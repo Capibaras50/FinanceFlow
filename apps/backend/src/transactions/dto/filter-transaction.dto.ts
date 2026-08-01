@@ -4,6 +4,10 @@ import { PaginationDto } from 'src/common/dto/pagination.dto';
 export class FilterTransactionDto extends PaginationDto {
   @IsOptional()
   @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
   category?: string;
 
   @IsOptional()

@@ -108,20 +108,23 @@ export function ContactsScreen() {
 
   const handleAccept = async (contact: Contact) => {
     try {
-      await contactsApi.accept(contact.id);
+      const updated = await contactsApi.accept(contact.id);
+      setPendingReceived((prev) => prev.filter((c) => c.id !== contact.id));
+      setContacts((prev) => [...prev, updated]);
       showSuccess('Contacto agregado');
-      loadData();
     } catch {
       showError('No se pudo aceptar la solicitud');
+      loadData();
     }
   };
 
   const handleReject = async (contact: Contact) => {
     try {
       await contactsApi.reject(contact.id);
-      loadData();
+      setPendingReceived((prev) => prev.filter((c) => c.id !== contact.id));
     } catch {
       showError('No se pudo rechazar la solicitud');
+      loadData();
     }
   };
 
@@ -136,11 +139,13 @@ export function ContactsScreen() {
           text: 'Cancelar',
           style: 'destructive',
           onPress: async () => {
+            setPendingSent((prev) => prev.filter((c) => c.id !== contact.id));
             try {
               await contactsApi.remove(contact.id);
-              loadData();
+              showSuccess('Solicitud cancelada');
             } catch {
               showError('No se pudo cancelar la solicitud');
+              loadData();
             }
           },
         },

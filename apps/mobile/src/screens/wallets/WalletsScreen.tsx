@@ -39,10 +39,10 @@ export function WalletsScreen() {
     try {
       const [balData, expData] = await Promise.all([
         walletsApi.getBalance(),
-        expensesApi.getAll(),
+        expensesApi.getAll({ sortBy: 'createdAt', sortOrder: 'DESC', limit: 5 }),
       ]);
       setBalances(balData);
-      setRecentExpenses(expData.slice(0, 5));
+      setRecentExpenses(expData);
     } catch {
       showError('Error al cargar carteras');
     }

@@ -8,14 +8,14 @@ import { useTheme } from '../../hooks/useTheme';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
-import { categoriesApi, expensesApi, earningsApi } from '../../services/api';
+import { categoriesApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { showAlert } from '../../components/ui/AppAlert';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 import { formatCurrency } from '../../utils/format';
 import { goBackOrHome } from '../../utils/navigation';
-import type { Category, Expense, Earning } from '@finance-flow/shared-types';
+import type { Category, CategoryBreakdownItem } from '@finance-flow/shared-types';
 
 const presetColors = ['#7C3AED', '#EC4899', '#06B6D4', '#4ADE80', '#F59E0B', '#8B5CF6', '#F472B6', '#14B8A6', '#3B82F6', '#EF4444', '#10B981', '#F97316'];
 
@@ -28,8 +28,7 @@ export function CategoriesScreen() {
   const { showError } = useSnackbar();
   const PAGE_SIZE = 100;
   const [categories, setCategories] = useState<Category[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [earnings, setEarnings] = useState<Earning[]>([]);
+  const [breakdown, setBreakdown] = useState<CategoryBreakdownItem[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -47,10 +46,9 @@ export function CategoriesScreen() {
 
   const loadFirstPage = async () => {
     try {
-      const [catData, expData, earnData] = await Promise.all([
+      const [catData, brkData] = await Promise.all([
         categoriesApi.getAll({ limit: PAGE_SIZE, page: 1 }),
-        expensesApi.getAll({ limit: 100 }),
-        earningsApi.getAll({ limit: 100 }),
+        categoriesApi.getBreakdown(),
       ]);
       const seen = new Set<number>();
       const unique = catData.filter(c => {
@@ -59,8 +57,7 @@ export function CategoriesScreen() {
         return true;
       });
       setCategories(unique);
-      setExpenses(expData);
-      setEarnings(earnData);
+      setBreakdown(brkData);
       setPage(1);
       setHasMore(catData.length >= PAGE_SIZE);
     } catch {
@@ -91,11 +88,8 @@ export function CategoriesScreen() {
     }
   };
 
-  const getCategoryTransactions = (catId: number) => {
-    const catExpenses = expenses.filter(e => e.category?.id === catId);
-    const catEarnings = earnings.filter(e => e.category?.id === catId);
-    return { catExpenses, catEarnings };
-  };
+  const getCategoryTransactionCount = (catId: number) =>
+    breakdown.reduce((sum, item) => sum + (item.categoryId === catId ? item.count : 0), 0);
 
   const filteredCategories = useMemo(() =>
     filterType === 'all'
@@ -104,8 +98,14 @@ export function CategoriesScreen() {
     [categories, filterType]
   );
 
-  const totalExpenses = useMemo(() => expenses.reduce((sum, e) => sum + Number(e.value), 0), [expenses]);
-  const totalEarnings = useMemo(() => earnings.reduce((sum, e) => sum + Number(e.value), 0), [earnings]);
+  const totalExpenses = useMemo(
+    () => breakdown.filter(i => i.type === 'expense').reduce((sum, i) => sum + Number(i.value), 0),
+    [breakdown]
+  );
+  const totalEarnings = useMemo(
+    () => breakdown.filter(i => i.type === 'earning').reduce((sum, i) => sum + Number(i.value), 0),
+    [breakdown]
+  );
   const totalBalance = totalEarnings - totalExpenses;
 
   const summaryLabel = filterType === 'all'
@@ -135,8 +135,7 @@ export function CategoriesScreen() {
   };
 
   const handleDelete = (cat: Category) => {
-    const { catExpenses, catEarnings } = getCategoryTransactions(cat.id);
-    const totalTx = catExpenses.length + catEarnings.length;
+    const totalTx = getCategoryTransactionCount(cat.id);
     if (totalTx > 0) {
       showAlert({
         title: 'Eliminar categoría',
@@ -206,25 +205,23 @@ export function CategoriesScreen() {
   const categoryBreakdown = useMemo(() => {
     const entries: BreakdownEntry[] = [];
 
-    for (const cat of filteredCategories) {
-      const catExpenses = expenses.filter(e => e.category?.id === cat.id);
-      const catEarnings = earnings.filter(e => e.category?.id === cat.id);
-      const expenseTotal = catExpenses.reduce((s, e) => s + Number(e.value), 0);
-      const earningTotal = catEarnings.reduce((s, e) => s + Number(e.value), 0);
-      const totalTx = catExpenses.length + catEarnings.length;
+    for (const item of breakdown) {
+      if (filterType === 'expense' && item.type !== 'expense') continue;
+      if (filterType === 'earning' && item.type !== 'earning') continue;
 
-      if (filterType === 'expense') {
-        if (expenseTotal > 0) entries.push({ key: `${cat.id}-exp`, label: cat.name, value: expenseTotal, color: cat.color, isExpense: true });
-      } else if (filterType === 'earning') {
-        if (earningTotal > 0) entries.push({ key: `${cat.id}-ear`, label: cat.name, value: earningTotal, color: cat.color, isExpense: false });
-      } else {
-        if (expenseTotal > 0) entries.push({ key: `${cat.id}-exp`, label: `${cat.name} (gasto)`, value: expenseTotal, color: cat.color, isExpense: true });
-        if (earningTotal > 0) entries.push({ key: `${cat.id}-ear`, label: `${cat.name} (ingreso)`, value: earningTotal, color: cat.color, isExpense: false });
-      }
+      entries.push({
+        key: `${item.categoryId}-${item.type}`,
+        label: filterType === 'all'
+          ? `${item.name} (${item.type === 'expense' ? 'gasto' : 'ingreso'})`
+          : item.name,
+        value: Number(item.value),
+        color: item.color,
+        isExpense: item.type === 'expense',
+      });
     }
 
     return entries.sort((a, b) => b.value - a.value);
-  }, [filteredCategories, expenses, earnings, filterType]);
+  }, [breakdown, filterType]);
 
   const summaryTotal = categoryBreakdown.reduce((sum, item) => sum + item.value, 0);
 
@@ -350,11 +347,13 @@ export function CategoriesScreen() {
           </>
         )}
         renderItem={({ item }) => {
-          const catExpenses = expenses.filter(e => e.category?.id === item.id);
-          const catEarnings = earnings.filter(e => e.category?.id === item.id);
-          const catExpenseTotal = catExpenses.reduce((s, e) => s + Number(e.value), 0);
-          const catEarningTotal = catEarnings.reduce((s, e) => s + Number(e.value), 0);
-          const totalTx = catExpenses.length + catEarnings.length;
+          const catExpenseTotal = breakdown
+            .filter(i => i.categoryId === item.id && i.type === 'expense')
+            .reduce((s, i) => s + Number(i.value), 0);
+          const catEarningTotal = breakdown
+            .filter(i => i.categoryId === item.id && i.type === 'earning')
+            .reduce((s, i) => s + Number(i.value), 0);
+          const totalTx = getCategoryTransactionCount(item.id);
 
           const displayTotal = filterType === 'expense'
             ? catExpenseTotal

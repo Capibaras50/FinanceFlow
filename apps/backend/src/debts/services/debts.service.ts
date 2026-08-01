@@ -5,7 +5,13 @@ import {
 } from '@nestjs/common';
 import { CreateDebtDto } from '../dto/create-debt.dto';
 import { UpdateDebtDto } from '../dto/update-debt.dto';
-import { DeepPartial, Repository, DataSource, EntityManager } from 'typeorm';
+import {
+  DeepPartial,
+  Repository,
+  DataSource,
+  EntityManager,
+  Like,
+} from 'typeorm';
 import { Debt } from '../entities/debt.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ContactsService } from 'src/contacts/services/contacts.service';
@@ -16,6 +22,7 @@ import { WalletsService } from 'src/wallets/services/wallets.service';
 import { CategoriesService } from 'src/categories/services/categories.service';
 import { CategoryType } from 'src/categories/enums/category-type.enum';
 import { DebtStatus } from '../enums/debt-status.enum';
+import { FilterDebtDto } from '../dto/filter-debt.dto';
 
 @Injectable()
 export class DebtsService {
@@ -52,21 +59,51 @@ export class DebtsService {
     }
   }
 
-  async findAll(profileId: number, take?: number, page?: number) {
+  async findAll(profileId: number, filterDebtDto: FilterDebtDto) {
+    const sortBy = filterDebtDto.sortBy || 'createdAt';
+    const sortOrder = filterDebtDto.sortOrder || 'DESC';
+    const take = filterDebtDto.limit || 10;
+    const page = filterDebtDto.page || 1;
+    const order = { [sortBy]: sortOrder };
+    const where = [
+      {
+        profile: { id: profileId },
+      },
+      {
+        contact: {
+          addressee: { id: profileId },
+        },
+      },
+    ];
+    if (filterDebtDto.status) {
+      where[0]['status'] = filterDebtDto.status;
+      where[1]['status'] = filterDebtDto.status;
+    }
+    if (filterDebtDto.priority) {
+      where[0]['priority'] = filterDebtDto.priority;
+      where[1]['priority'] = filterDebtDto.priority;
+    }
+    if (filterDebtDto.name) {
+      where[0]['name'] = Like(`%${filterDebtDto.name}%`);
+      where[1]['name'] = Like(`%${filterDebtDto.name}%`);
+    }
+    if (filterDebtDto.direction) {
+      where[0]['direction'] = filterDebtDto.direction;
+      where[1]['direction'] =
+        filterDebtDto.direction === DirectionEnum.RECEIVABLE
+          ? DirectionEnum.PAYABLE
+          : DirectionEnum.RECEIVABLE;
+    }
+    if (filterDebtDto.contactName) {
+      where[0]['contactName'] = Like(`%${filterDebtDto.contactName}%`);
+      where[1]['contactName'] = Like(`%${filterDebtDto.contactName}%`);
+    }
     const debts = await this.debtRepository.find({
-      where: [
-        {
-          profile: { id: profileId },
-        },
-        {
-          contact: {
-            addressee: { id: profileId },
-          },
-        },
-      ],
-      take: take || 10,
-      skip: ((page ?? 1) - 1) * (take || 10),
+      where,
+      take,
+      skip: (page - 1) * take,
       relations: ['contact', 'contact.requester', 'contact.addressee'],
+      order,
     });
     return debts;
   }
@@ -141,7 +178,7 @@ export class DebtsService {
     return await this.dataSource
       .transaction(async (manager) => {
         const now = new Date();
-        const debt = await this.findOne(profileId, id);
+        const debt = await this.searchOne(profileId, id);
         if (
           debt.status === DebtStatus.PAID ||
           debt.status === DebtStatus.CANCELLED
@@ -238,5 +275,36 @@ export class DebtsService {
       profileId,
       manager,
     );
+  }
+
+  async getSummary(profileId: number) {
+    const result = await this.debtRepository
+      .createQueryBuilder('debts')
+      .leftJoin('debts.contact', 'contact')
+      .select([
+        `COALESCE(SUM(CASE
+          WHEN (debts.profile_id = :profileId AND debts.direction = 'payable')
+            OR (contact.addressee_id = :profileId AND debts.direction = 'receivable')
+          THEN debts.amount ELSE 0 END), 0) AS "payableTotal"`,
+        `COALESCE(SUM(CASE
+          WHEN (debts.profile_id = :profileId AND debts.direction = 'receivable')
+            OR (contact.addressee_id = :profileId AND debts.direction = 'payable')
+          THEN debts.amount ELSE 0 END), 0) AS "receivableTotal"`,
+      ])
+      .where('debts.profile_id = :profileId OR contact.addressee_id = :profileId', {
+        profileId,
+      })
+      .andWhere('debts.status NOT IN (:...excludedStatuses)', {
+        excludedStatuses: [DebtStatus.PAID, DebtStatus.CANCELLED],
+      })
+      .getRawOne<{
+        payableTotal: string;
+        receivableTotal: string;
+      }>();
+
+    return {
+      payableTotal: Number(result?.payableTotal ?? 0),
+      receivableTotal: Number(result?.receivableTotal ?? 0),
+    };
   }
 }

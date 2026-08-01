@@ -109,6 +109,16 @@ export class ContactsService {
     });
   }
 
+  async countPendingReceived(profileId: number) {
+    const count = await this.contactsRepository.count({
+      where: {
+        addressee: { id: profileId },
+        status: ContactStatus.PENDING,
+      },
+    });
+    return { count };
+  }
+
   async updateStatus(
     profileId: number,
     contactId: number,

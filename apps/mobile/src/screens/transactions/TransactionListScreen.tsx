@@ -15,7 +15,7 @@ import { expensesApi, earningsApi, transactionsApi, categoriesApi, walletsApi } 
 import { useSnackbar } from '../../context/SnackbarContext';
 import { showAlert } from '../../components/ui/AppAlert';
 import type { RootNavigationProp } from '../../navigation/types';
-import type { Expense, Earning, Category, Wallet } from '@finance-flow/shared-types';
+import type { Expense, Earning, Category, Wallet, TransactionSummary } from '@finance-flow/shared-types';
 import type { TransactionTimelineItem } from '@finance-flow/api-client';
 
 type TabType = 'all' | 'expenses' | 'earnings';
@@ -34,6 +34,7 @@ export function TransactionListScreen() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [earnings, setEarnings] = useState<Earning[]>([]);
   const [allTransactions, setAllTransactions] = useState<(TransactionTimelineItem & { createdAt: string })[]>([]);
+  const [summary, setSummary] = useState<TransactionSummary | null>(null);
   const [search, setSearch] = useState('');
 
   const [showFilters, setShowFilters] = useState(false);
@@ -105,6 +106,9 @@ export function TransactionListScreen() {
         setHasMoreExpenses(expData.length >= PAGE_SIZE);
         setHasMoreEarnings(earnData.length >= PAGE_SIZE);
       }
+
+      const summaryData = await transactionsApi.getSummary();
+      setSummary(summaryData);
     } catch {
       showError('Error al cargar transacciones');
     }
@@ -242,13 +246,21 @@ export function TransactionListScreen() {
     ].filter(s => s.data.length > 0);
   }, [filtered, wallets]);
 
-  const totalAmount = useMemo(() => data.reduce((sum, t) => sum + t.value, 0), [data]);
+  const hasAmountFilters = filterCategory !== undefined || filterWallet !== undefined;
+
+  const totalAmount = useMemo(() => {
+    if (hasAmountFilters || !summary) return data.reduce((sum, t) => sum + t.value, 0);
+    return tab === 'expenses' ? summary.totalExpenses : summary.totalEarnings;
+  }, [data, hasAmountFilters, summary, tab]);
   const allBalance = useMemo(() => {
     if (tab !== 'all') return null;
-    const totalExp = allTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.value, 0);
-    const totalEarn = allTransactions.filter(t => t.type === 'earning').reduce((s, t) => s + t.value, 0);
-    return totalEarn - totalExp;
-  }, [tab, allTransactions]);
+    if (hasAmountFilters || !summary) {
+      const totalExp = allTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.value, 0);
+      const totalEarn = allTransactions.filter(t => t.type === 'earning').reduce((s, t) => s + t.value, 0);
+      return totalEarn - totalExp;
+    }
+    return summary.balance;
+  }, [tab, allTransactions, hasAmountFilters, summary]);
 
   return (
     <FocusFadeIn>

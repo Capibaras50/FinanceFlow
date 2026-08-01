@@ -12,10 +12,9 @@ import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../utils/format';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
-import { isDebtOutstanding, getMyDirection } from '../../utils/debts';
-import { expensesApi, earningsApi, walletsApi, debtsApi } from '../../services/api';
+import { expensesApi, earningsApi, walletsApi, debtsApi, contactsApi } from '../../services/api';
 import type { RootNavigationProp } from '../../navigation/types';
-import type { Expense, Earning, WalletBalance, Debt } from '@finance-flow/shared-types';
+import type { Expense, Earning, WalletBalance, DebtSummary } from '@finance-flow/shared-types';
 
 export function HomeScreen() {
   const navigation = useNavigation<RootNavigationProp>();
@@ -26,7 +25,8 @@ export function HomeScreen() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [earnings, setEarnings] = useState<Earning[]>([]);
   const [balanceData, setBalanceData] = useState<WalletBalance[]>([]);
-  const [debts, setDebts] = useState<Debt[]>([]);
+  const [debtSummary, setDebtSummary] = useState<DebtSummary | null>(null);
+  const [pendingRequests, setPendingRequests] = useState(0);
 
   useFocusEffect(
     useCallback(() => { loadData(); }, [])
@@ -34,16 +34,18 @@ export function HomeScreen() {
 
   const loadData = async () => {
     try {
-      const [balData, expData, earnData, debtData] = await Promise.all([
+      const [balData, expData, earnData, summaryData, pendingData] = await Promise.all([
         walletsApi.getBalance(),
         expensesApi.getAll({ sortBy: 'createdAt', sortOrder: 'DESC', limit: 5 }),
         earningsApi.getAll({ sortBy: 'createdAt', sortOrder: 'DESC', limit: 5 }),
-        debtsApi.getAll({ limit: 100 }),
+        debtsApi.getSummary(),
+        contactsApi.getPendingReceivedCount(),
       ]);
       setBalanceData(balData);
       setExpenses(expData);
       setEarnings(earnData);
-      setDebts(debtData);
+      setDebtSummary(summaryData);
+      setPendingRequests(pendingData.count);
     } catch {
       showError('Error al cargar datos del inicio');
     }
@@ -67,18 +69,13 @@ export function HomeScreen() {
     [expenses, earnings]
   );
 
-  const myProfileId = user?.profile?.id ?? 0;
   const { receivableDebtsTotal, payableDebtsTotal } = useMemo(() => {
-    let rec = 0;
-    let pay = 0;
-    for (const debt of debts) {
-      if (!isDebtOutstanding(debt.status)) continue;
-      const direction = getMyDirection(debt, myProfileId);
-      if (direction === 'receivable') rec += Number(debt.amount);
-      else pay += Number(debt.amount);
-    }
-    return { receivableDebtsTotal: rec, payableDebtsTotal: pay };
-  }, [debts, myProfileId]);
+    if (!debtSummary) return { receivableDebtsTotal: 0, payableDebtsTotal: 0 };
+    return {
+      receivableDebtsTotal: Number(debtSummary.receivableTotal),
+      payableDebtsTotal: Number(debtSummary.payableTotal),
+    };
+  }, [debtSummary]);
   const hasOutstandingDebts = receivableDebtsTotal > 0 || payableDebtsTotal > 0;
 
   return (
@@ -115,7 +112,7 @@ export function HomeScreen() {
               </View>
             </View>
             <TouchableOpacity
-              onPress={() => navigation.navigate('Chat')}
+              onPress={() => navigation.navigate('Contacts')}
               style={{
                 width: 44,
                 height: 44,
@@ -128,6 +125,28 @@ export function HomeScreen() {
               }}
             >
               <Ionicons name="notifications" size={22} color={colors.primary} />
+              {pendingRequests > 0 && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -4,
+                    right: -4,
+                    minWidth: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    backgroundColor: colors.error,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 4,
+                    borderWidth: 2,
+                    borderColor: colors.background,
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>
+                    {pendingRequests > 9 ? '9+' : pendingRequests}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
 

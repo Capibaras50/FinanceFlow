@@ -17,6 +17,7 @@ import { UpdateCategoryDto } from '../dto/update-category.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from '../../decorators/get-user.decorator';
 import { FilterCategoryDto } from '../dto/filter-category.dto';
+import { BreakdownCategoryDto } from '../dto/breakdown-category.dto';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('categories')
@@ -42,6 +43,14 @@ export class CategoriesController {
       filterCategoryDto.page,
       filterCategoryDto.type,
     );
+  }
+
+  @Get('breakdown')
+  breakdown(
+    @GetUser('profileId') profileId: number,
+    @Query() breakdownCategoryDto: BreakdownCategoryDto,
+  ) {
+    return this.categoriesService.getBreakdown(profileId, breakdownCategoryDto);
   }
 
   @Get(':id')

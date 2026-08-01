@@ -1,4 +1,4 @@
-import type { Contact } from '@finance-flow/shared-types';
+import type { Contact, PendingCount } from '@finance-flow/shared-types';
 import type { ApiClient } from './client';
 
 export class ContactsApi {
@@ -30,6 +30,10 @@ export class ContactsApi {
 
   getPendingReceived(): Promise<Contact[]> {
     return this.client.get<Contact[]>('/contacts/pending/received');
+  }
+
+  getPendingReceivedCount(): Promise<PendingCount> {
+    return this.client.get<PendingCount>('/contacts/pending/received/count');
   }
 
   remove(id: number): Promise<void> {
