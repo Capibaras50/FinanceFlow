@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 import { getTokenSync } from '../../services/storage';
 import { getErrorMessage } from '../../utils/format';
+import { goBackOrHome } from '../../utils/navigation';
 import { receiptsApi } from '../../services/api';
 
 const IS_WEB = Platform.OS === 'web';
@@ -160,7 +161,7 @@ export function ReceiptScannerScreen() {
         }
       }
       showSuccess('Recibo enviado. El asistente IA lo está procesando.');
-      navigation.goBack();
+      goBackOrHome(navigation);
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'No se pudo procesar el recibo');
       showError(msg.includes('413') ? 'La imagen es muy pesada. Intenta con otra foto.' : msg);
@@ -258,7 +259,7 @@ export function ReceiptScannerScreen() {
           style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.md, paddingHorizontal: spacing.container }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
+            <TouchableOpacity onPress={() => goBackOrHome(navigation)}>
               <Ionicons name="close" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={[typography.headlineSm, { color: '#FFFFFF', flex: 1 }]}>
@@ -323,7 +324,7 @@ export function ReceiptScannerScreen() {
         style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.md, paddingHorizontal: spacing.container }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={() => goBackOrHome(navigation)}>
             <Ionicons name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={[typography.headlineSm, { color: '#FFFFFF', flex: 1 }]}>

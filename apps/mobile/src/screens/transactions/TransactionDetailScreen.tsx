@@ -8,6 +8,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { formatCurrency } from '../../utils/format';
+import { goBackOrHome } from '../../utils/navigation';
 import { expensesApi, earningsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { showAlert } from '../../components/ui/AppAlert';
@@ -59,7 +60,7 @@ export function TransactionDetailScreen() {
               } else {
                 await earningsApi.delete(transactionId);
               }
-              navigation.goBack();
+              goBackOrHome(navigation);
             } catch {
               showError('Error al eliminar transacción');
             }
@@ -86,7 +87,7 @@ export function TransactionDetailScreen() {
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg }}>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={() => goBackOrHome(navigation)}
             style={{
               width: 36,
               height: 36,

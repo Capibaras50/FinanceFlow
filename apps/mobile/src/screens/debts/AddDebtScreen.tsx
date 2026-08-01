@@ -15,6 +15,7 @@ import { contactsApi, debtsApi } from '../../services/api';
 import { getErrorMessage, formatCurrencyInput, parseCurrencyInput } from '../../utils/format';
 import { DEBT_TYPE_LABELS } from '../../utils/debts';
 import { getOtherProfile } from '../../utils/debts';
+import { goBackOrHome } from '../../utils/navigation';
 import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
 import type { Contact, DebtType, DebtPriority, DebtDirection } from '@finance-flow/shared-types';
 
@@ -34,6 +35,7 @@ export function AddDebtScreen() {
 
   const initialContactId = route.params?.contactId;
   const initialContactName = route.params?.contactName;
+  const debtId = route.params?.debtId;
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactId, setContactId] = useState<number | undefined>(initialContactId);
@@ -52,6 +54,27 @@ export function AddDebtScreen() {
   useEffect(() => {
     contactsApi.getAll().then(setContacts).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!debtId) return;
+    debtsApi
+      .getById(debtId)
+      .then((debt) => {
+        setName(debt.name);
+        setDescription(debt.description ?? '');
+        setContactName(debt.contactName);
+        setContactId(debt.contact?.id ?? undefined);
+        setAmountText(formatCurrencyInput(String(debt.amount)));
+        setDirection(debt.direction);
+        setDebtType(debt.debtType);
+        setPriority(debt.priority);
+        if (debt.interestRate != null) {
+          setInterestText(formatCurrencyInput(String(Math.round(debt.interestRate * 10000) / 100)));
+        }
+        if (debt.dueDate) setDueDate(new Date(debt.dueDate));
+      })
+      .catch(() => {});
+  }, [debtId]);
 
   const selectContact = (c: Contact) => {
     const profile = getOtherProfile(c, myProfileId);
@@ -76,7 +99,7 @@ export function AddDebtScreen() {
 
     setLoading(true);
     try {
-      await debtsApi.create({
+      const dto = {
         name: trimmedName,
         description: description.trim() || undefined,
         contactName: trimmedContact,
@@ -87,9 +110,15 @@ export function AddDebtScreen() {
         priority,
         interestRate,
         dueDate: dueDate ? dueDate.toISOString() : undefined,
-      });
-      showSuccess('Deuda registrada');
-      navigation.goBack();
+      };
+      if (debtId) {
+        await debtsApi.update(debtId, dto);
+        showSuccess('Deuda actualizada');
+      } else {
+        await debtsApi.create(dto);
+        showSuccess('Deuda registrada');
+      }
+      goBackOrHome(navigation);
     } catch (e) {
       showError(getErrorMessage(e, 'Error al registrar la deuda'));
     } finally {
@@ -159,7 +188,7 @@ export function AddDebtScreen() {
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={() => goBackOrHome(navigation)}
             style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
           >
             <Ionicons name="close" size={20} color="#FFFFFF" />
@@ -168,7 +197,7 @@ export function AddDebtScreen() {
             <Ionicons name="receipt" size={20} color="#FFFFFF" />
           </View>
           <Text style={[typography.headlineSm, { color: '#FFFFFF', flex: 1 }]}>
-            Nueva Deuda
+            {debtId ? 'Editar Deuda' : 'Nueva Deuda'}
           </Text>
         </View>
       </LinearGradient>
@@ -336,7 +365,7 @@ export function AddDebtScreen() {
         />
 
         <GradientButton
-          title="Guardar Deuda"
+          title={debtId ? 'Actualizar Deuda' : 'Guardar Deuda'}
           onPress={handleSave}
           disabled={loading || !canSave}
         />

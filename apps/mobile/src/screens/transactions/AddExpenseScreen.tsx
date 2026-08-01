@@ -11,6 +11,7 @@ import { DateTimePickerModal } from '../../components/ui/DateTimePickerModal';
 import { categoriesApi, walletsApi, expensesApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { getErrorMessage, formatCurrencyInput, parseCurrencyInput } from '../../utils/format';
+import { goBackOrHome } from '../../utils/navigation';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
 import type { Category, Wallet } from '@finance-flow/shared-types';
@@ -84,7 +85,7 @@ export function AddExpenseScreen() {
       } else {
         await expensesApi.create(dto);
       }
-      navigation.goBack();
+      goBackOrHome(navigation);
     } catch (e) {
       showError(getErrorMessage(e, 'Error al guardar gasto'));
     } finally {
@@ -118,7 +119,7 @@ export function AddExpenseScreen() {
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={() => goBackOrHome(navigation)}
             style={{
               width: 36,
               height: 36,

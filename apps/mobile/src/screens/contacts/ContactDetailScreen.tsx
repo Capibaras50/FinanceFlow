@@ -14,6 +14,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { formatCurrency } from '../../utils/format';
 import { getOtherProfile, getMyDirection, isDebtOutstanding } from '../../utils/debts';
+import { goBackOrHome } from '../../utils/navigation';
 import { contactsApi, debtsApi } from '../../services/api';
 import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
 import type { Contact, Debt } from '@finance-flow/shared-types';
@@ -78,7 +79,7 @@ export function ContactDetailScreen() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
             <TouchableOpacity
-              onPress={() => navigation.goBack()}
+              onPress={() => goBackOrHome(navigation)}
               style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
             >
               <Ionicons name="arrow-back" size={20} color="#FFFFFF" />

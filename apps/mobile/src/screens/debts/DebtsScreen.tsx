@@ -13,6 +13,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { formatCurrency } from '../../utils/format';
 import { getMyDirection, isDebtOutstanding } from '../../utils/debts';
+import { goBackOrHome } from '../../utils/navigation';
 import { debtsApi } from '../../services/api';
 import type { RootNavigationProp } from '../../navigation/types';
 import type { Debt } from '@finance-flow/shared-types';
@@ -50,11 +51,7 @@ export function DebtsScreen() {
   };
 
   const handleBack = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate('MainTabs', { screen: 'Home' });
-    }
+    goBackOrHome(navigation);
   };
 
   const { receivableTotal, payableTotal } = useMemo(() => {

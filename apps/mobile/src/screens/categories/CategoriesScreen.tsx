@@ -14,6 +14,7 @@ import { showAlert } from '../../components/ui/AppAlert';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 import { formatCurrency } from '../../utils/format';
+import { goBackOrHome } from '../../utils/navigation';
 import type { Category, Expense, Earning } from '@finance-flow/shared-types';
 
 const presetColors = ['#7C3AED', '#EC4899', '#06B6D4', '#4ADE80', '#F59E0B', '#8B5CF6', '#F472B6', '#14B8A6', '#3B82F6', '#EF4444', '#10B981', '#F97316'];
@@ -241,13 +242,7 @@ export function CategoriesScreen() {
         style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: spacing.container }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <TouchableOpacity onPress={() => {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else {
-              navigation.navigate('MainTabs', { screen: 'Home' });
-            }
-          }}>
+          <TouchableOpacity onPress={() => goBackOrHome(navigation)}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View

@@ -19,7 +19,7 @@ export type RootStackParamList = {
   ChangePassword: undefined;
   Debts: undefined;
   DebtDetail: { debtId: number };
-  AddDebt: { contactId?: number; contactName?: string } | undefined;
+  AddDebt: { contactId?: number; contactName?: string; debtId?: number } | undefined;
   Contacts: undefined;
   ContactDetail: { contactId: number };
 };

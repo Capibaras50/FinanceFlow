@@ -15,6 +15,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { showAlert } from '../../components/ui/AppAlert';
 import { getOtherProfile } from '../../utils/debts';
+import { goBackOrHome } from '../../utils/navigation';
 import { contactsApi, usersApi } from '../../services/api';
 import type { RootNavigationProp } from '../../navigation/types';
 import type { Contact, Profile } from '@finance-flow/shared-types';
@@ -172,11 +173,7 @@ export function ContactsScreen() {
   };
 
   const handleBack = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate('MainTabs', { screen: 'Home' });
-    }
+    goBackOrHome(navigation);
   };
 
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (

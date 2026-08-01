@@ -133,23 +133,32 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
               style={{
                 borderTopWidth: 1,
                 borderTopColor: colors.outlineVariant + '40',
-                flexDirection: 'row',
+                flexDirection: config.buttons.length > 2 ? 'column' : 'row',
                 justifyContent: 'flex-end',
               }}
             >
               {config.buttons.map((btn, i) => {
                 const isDestructive = btn.style === 'destructive';
                 const isCancel = btn.style === 'cancel';
+                const isStacked = config.buttons.length > 2;
                 return (
                   <TouchableOpacity
                     key={i}
                     onPress={() => handlePress(btn)}
                     style={{
-                      flex: isCancel ? 1 : undefined,
                       paddingVertical: 14,
                       paddingHorizontal: 20,
-                      borderLeftWidth: i > 0 ? 1 : 0,
-                      borderLeftColor: colors.outlineVariant + '40',
+                      ...(isStacked
+                        ? {
+                            width: '100%',
+                            borderTopWidth: i > 0 ? 1 : 0,
+                            borderTopColor: colors.outlineVariant + '40',
+                          }
+                        : {
+                            flex: isCancel ? 1 : undefined,
+                            borderLeftWidth: i > 0 ? 1 : 0,
+                            borderLeftColor: colors.outlineVariant + '40',
+                          }),
                     }}
                     activeOpacity={0.6}
                   >

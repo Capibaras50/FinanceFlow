@@ -14,6 +14,7 @@ import { useSnackbar } from '../../context/SnackbarContext';
 import { showAlert } from '../../components/ui/AppAlert';
 import { formatCurrency, getErrorMessage } from '../../utils/format';
 import { DEBT_TYPE_LABELS, DEBT_PRIORITY_LABELS, getMyDirection, formatInterestRate } from '../../utils/debts';
+import { goBackOrHome } from '../../utils/navigation';
 import { debtsApi } from '../../services/api';
 import * as ImagePicker from 'expo-image-picker';
 import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
@@ -101,7 +102,7 @@ export function DebtDetailScreen() {
           onPress: async () => {
             try {
               await debtsApi.remove(debtId);
-              navigation.goBack();
+              goBackOrHome(navigation);
             } catch {
               showError('Error al eliminar la deuda');
             }
@@ -145,7 +146,7 @@ export function DebtDetailScreen() {
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={() => goBackOrHome(navigation)}
             style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
           >
             <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
@@ -153,6 +154,18 @@ export function DebtDetailScreen() {
           <Text style={[typography.headlineSm, { color: '#FFFFFF', flex: 1 }]}>
             {debt.name}
           </Text>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate('AddDebt', {
+                debtId,
+                contactId: debt.contact?.id,
+                contactName: debt.contactName,
+              })
+            }
+            style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="pencil" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
         <View style={{ alignItems: 'center', marginTop: spacing.md, gap: spacing.sm }}>
           <Text style={[typography.labelMd, { color: 'rgba(255,255,255,0.75)' }]}>

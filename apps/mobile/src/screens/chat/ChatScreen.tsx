@@ -11,6 +11,7 @@ import { useSnackbar } from '../../context/SnackbarContext';
 import { useNavigation } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 import { chatApi } from '../../services/api';
+import { goBackOrHome } from '../../utils/navigation';
 import type { ChatMessage } from '@finance-flow/shared-types';
 
 function TypingIndicator() {
@@ -143,7 +144,7 @@ export function ChatScreen() {
         style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: spacing.container }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={() => goBackOrHome(navigation)}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View
