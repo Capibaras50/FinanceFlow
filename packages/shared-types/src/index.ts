@@ -98,3 +98,45 @@ export interface ApiError {
   statusCode: number;
   error?: string;
 }
+
+export type ContactStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface Contact {
+  id: number;
+  requester: Profile;
+  addressee: Profile;
+  status: ContactStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type DebtDirection = 'receivable' | 'payable';
+export type DebtStatus = 'pending' | 'cancelled' | 'overdue' | 'paid';
+export type DebtType =
+  | 'personal'
+  | 'bank'
+  | 'credit_card'
+  | 'loan'
+  | 'commercial'
+  | 'fiscal'
+  | 'other';
+export type DebtPriority = 'low' | 'medium' | 'high';
+
+export interface Debt {
+  id: number;
+  name: string;
+  description: string | null;
+  contactName: string;
+  contact: Contact | null;
+  amount: number;
+  direction: DebtDirection;
+  debtType: DebtType;
+  status: DebtStatus;
+  priority: DebtPriority;
+  receiptUrl: string | null;
+  interestRate: number | null;
+  dueDate: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

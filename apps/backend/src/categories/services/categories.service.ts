@@ -7,7 +7,7 @@ import { CreateCategoryDto } from '../dto/create-category.dto';
 import { UpdateCategoryDto } from '../dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Category } from '../entities/category.entity';
-import { Repository, In } from 'typeorm';
+import { Repository, In, FindOptionsWhere } from 'typeorm';
 import { CategoryType } from '../enums/category-type.enum';
 
 @Injectable()
@@ -76,17 +76,19 @@ export class CategoriesService {
     return category;
   }
 
-  async findByName(name: string, profileId: number) {
-    const categories = await this.categoriesRepository.find({
-      where: { profile: { id: profileId } },
-    });
-    const filteredCategories = categories.filter((category) =>
-      category.name.toLowerCase().includes(name.toLowerCase()),
+  async findByName(name: string, profileId: number, type?: CategoryType) {
+    const where: FindOptionsWhere<Category> = { profile: { id: profileId } };
+    if (type) {
+      where.type = type;
+    }
+    const categories = await this.categoriesRepository.find({ where });
+    const filteredCategories = categories.filter(
+      (category) => category.name.toLowerCase() === name.toLowerCase(),
     );
     if (filteredCategories.length > 0) {
       return filteredCategories.map((category) => category.id);
     }
-    if (categories.length > 0) {
+    if (!type && categories.length > 0) {
       return [categories[0].id];
     }
     throw new NotFoundException('No categories found for this profile');

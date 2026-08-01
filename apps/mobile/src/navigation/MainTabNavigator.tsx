@@ -1,12 +1,12 @@
-import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import { useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, Modal, Pressable, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TabBarIcon } from '../components/ui/TabBarIcon';
-import { typography, borderRadius } from '../theme';
+import { typography, borderRadius, spacing } from '../theme';
 import { useTheme } from '../hooks/useTheme';
-import { showAlert } from '../components/ui/AppAlert';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { WalletsScreen } from '../screens/wallets/WalletsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
@@ -44,91 +44,165 @@ function AddButton({ onPress }: { onPress?: (...args: any[]) => void }) {
   );
 }
 
+const ADD_OPTIONS = [
+  { key: 'AddExpense', icon: 'trending-down', label: 'Gasto', color: 'error' as const },
+  { key: 'AddEarning', icon: 'trending-up', label: 'Ingreso', color: 'success' as const },
+  { key: 'AddDebt', icon: 'receipt', label: 'Deuda', color: 'warning' as const },
+];
+
 export function MainTabNavigator() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const [menuVisible, setMenuVisible] = useState(false);
+  const addNavRef = useRef<any>(null);
 
   const handleAddPress = (navigation: any) => {
-    showAlert({
-      title: 'Nuevo movimiento',
-      message: '¿Qué tipo de movimiento quieres registrar?',
-      buttons: [
-        { text: 'Gasto', onPress: () => navigation.getParent()?.navigate('AddExpense') },
-        { text: 'Ingreso', onPress: () => navigation.getParent()?.navigate('AddEarning') },
-        { text: 'Cancelar', style: 'cancel' },
-      ],
-    });
+    addNavRef.current = navigation;
+    setMenuVisible(true);
+  };
+
+  const handleSelectOption = (key: string) => {
+    setMenuVisible(false);
+    addNavRef.current?.getParent()?.navigate(key);
   };
 
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.surfaceContainer,
-          borderTopColor: colors.surfaceContainer,
-          borderTopWidth: 0,
-          elevation: 0,
-          height: 72 + insets.bottom,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
-          paddingTop: 8,
-          shadowOpacity: 0,
-        },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.onSurfaceVariant,
-        tabBarLabelStyle: {
-          fontFamily: typography.labelMd.fontFamily,
-          fontSize: 10,
-          marginTop: 2,
-        },
-      }}
-    >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          tabBarIcon: ({ focused }) => <TabBarIcon name="home" focused={focused} />,
-          tabBarLabel: 'Inicio',
-        }}
-      />
-      <Tab.Screen
-        name="Transactions"
-        component={TransactionListScreen}
-        options={{
-          tabBarIcon: ({ focused }) => <TabBarIcon name="swap-horizontal" focused={focused} />,
-          tabBarLabel: 'Movimientos',
-        }}
-      />
-      <Tab.Screen
-        name="Add"
-        component={View}
-        options={{
-          tabBarButton: (props) => <AddButton {...props} />,
-          tabBarLabel: () => null,
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            handleAddPress(navigation);
+    <>
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: colors.surfaceContainer,
+            borderTopColor: colors.surfaceContainer,
+            borderTopWidth: 0,
+            elevation: 0,
+            height: 72 + insets.bottom,
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
+            paddingTop: 8,
+            shadowOpacity: 0,
           },
-        })}
-      />
-      <Tab.Screen
-        name="Wallets"
-        component={WalletsScreen}
-        options={{
-          tabBarIcon: ({ focused }) => <TabBarIcon name="wallet" focused={focused} />,
-          tabBarLabel: 'Carteras',
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.onSurfaceVariant,
+          tabBarLabelStyle: {
+            fontFamily: typography.labelMd.fontFamily,
+            fontSize: 10,
+            marginTop: 2,
+          },
         }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ focused }) => <TabBarIcon name="person" focused={focused} />,
-          tabBarLabel: 'Perfil',
-        }}
-      />
-    </Tab.Navigator>
+      >
+        <Tab.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{
+            tabBarIcon: ({ focused }) => <TabBarIcon name="home" focused={focused} />,
+            tabBarLabel: 'Inicio',
+          }}
+        />
+        <Tab.Screen
+          name="Transactions"
+          component={TransactionListScreen}
+          options={{
+            tabBarIcon: ({ focused }) => <TabBarIcon name="swap-horizontal" focused={focused} />,
+            tabBarLabel: 'Movimientos',
+          }}
+        />
+        <Tab.Screen
+          name="Add"
+          component={View}
+          options={{
+            tabBarButton: (props) => <AddButton {...props} />,
+            tabBarLabel: () => null,
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              e.preventDefault();
+              handleAddPress(navigation);
+            },
+          })}
+        />
+        <Tab.Screen
+          name="Wallets"
+          component={WalletsScreen}
+          options={{
+            tabBarIcon: ({ focused }) => <TabBarIcon name="wallet" focused={focused} />,
+            tabBarLabel: 'Carteras',
+          }}
+        />
+        <Tab.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{
+            tabBarIcon: ({ focused }) => <TabBarIcon name="person" focused={focused} />,
+            tabBarLabel: 'Perfil',
+          }}
+        />
+      </Tab.Navigator>
+
+      <Modal visible={menuVisible} transparent animationType="slide" onRequestClose={() => setMenuVisible(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} onPress={() => setMenuVisible(false)}>
+          <Pressable
+            style={{
+              backgroundColor: colors.surface,
+              borderTopLeftRadius: borderRadius['2xl'],
+              borderTopRightRadius: borderRadius['2xl'],
+              padding: spacing.container,
+              paddingBottom: insets.bottom + spacing.md,
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.outlineVariant, alignSelf: 'center', marginBottom: spacing.lg }} />
+            <Text style={[typography.titleLg, { color: colors.onSurface, marginBottom: spacing.md }]}>
+              Nuevo movimiento
+            </Text>
+            <Text style={[typography.bodySm, { color: colors.onSurfaceVariant, marginBottom: spacing.lg }]}>
+              ¿Qué quieres registrar?
+            </Text>
+            <View style={{ gap: spacing.sm }}>
+              {ADD_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.key}
+                  onPress={() => handleSelectOption(option.key)}
+                  activeOpacity={0.7}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.md,
+                    padding: spacing.md,
+                    borderRadius: borderRadius.lg,
+                    backgroundColor: colors.surfaceContainerHigh,
+                    borderWidth: 1,
+                    borderColor: colors.outlineVariant + '40',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 12,
+                      backgroundColor: colors[option.color] + '1F',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name={option.icon as any} size={20} color={colors[option.color]} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[typography.titleMd, { color: colors.onSurface }]}>
+                      {option.label}
+                    </Text>
+                    <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
+                      {option.key === 'AddExpense' ? 'Registra una salida de dinero'
+                        : option.key === 'AddEarning' ? 'Registra una entrada de dinero'
+                        : 'Registra lo que te deben o debes'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceVariant} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
   );
 }

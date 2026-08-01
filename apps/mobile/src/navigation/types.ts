@@ -17,6 +17,11 @@ export type RootStackParamList = {
   WalletDetail: { walletId: number };
   TransactionDetail: { transactionId: number; type: 'expense' | 'earning' };
   ChangePassword: undefined;
+  Debts: undefined;
+  DebtDetail: { debtId: number };
+  AddDebt: { contactId?: number; contactName?: string } | undefined;
+  Contacts: undefined;
+  ContactDetail: { contactId: number };
 };
 
 export type MainTabParamList = {

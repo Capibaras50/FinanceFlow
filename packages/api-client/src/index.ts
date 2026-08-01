@@ -8,5 +8,8 @@ export { EarningsApi } from './earnings';
 export { ReceiptsApi } from './receipts';
 export { ChatApi } from './chat';
 export { TransactionsApi } from './transactions';
+export { ContactsApi } from './contacts';
+export { DebtsApi } from './debts';
 export type { TransactionTimelineItem, TransactionFilterParams } from './transactions';
 export type { ApiConfig } from './client';
+export type { CreateDebtDto, ReceiptFile } from './debts';

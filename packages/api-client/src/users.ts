@@ -1,4 +1,4 @@
-import type { User } from '@finance-flow/shared-types';
+import type { User, Profile } from '@finance-flow/shared-types';
 import type { ApiClient } from './client';
 
 export interface CreateUserDto {
@@ -31,6 +31,10 @@ export class UsersApi {
 
   getProfile(): Promise<User['profile']> {
     return this.client.get<User['profile']>('/users/me/profile');
+  }
+
+  findProfilesByName(name: string): Promise<Profile[]> {
+    return this.client.get<Profile[]>('/users/profiles', { name });
   }
 
   update(dto: UpdateUserDto): Promise<User> {

@@ -12,9 +12,10 @@ import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../utils/format';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
-import { expensesApi, earningsApi, walletsApi } from '../../services/api';
+import { isDebtOutstanding, getMyDirection } from '../../utils/debts';
+import { expensesApi, earningsApi, walletsApi, debtsApi } from '../../services/api';
 import type { RootNavigationProp } from '../../navigation/types';
-import type { Expense, Earning, WalletBalance } from '@finance-flow/shared-types';
+import type { Expense, Earning, WalletBalance, Debt } from '@finance-flow/shared-types';
 
 export function HomeScreen() {
   const navigation = useNavigation<RootNavigationProp>();
@@ -25,6 +26,7 @@ export function HomeScreen() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [earnings, setEarnings] = useState<Earning[]>([]);
   const [balanceData, setBalanceData] = useState<WalletBalance[]>([]);
+  const [debts, setDebts] = useState<Debt[]>([]);
 
   useFocusEffect(
     useCallback(() => { loadData(); }, [])
@@ -32,14 +34,16 @@ export function HomeScreen() {
 
   const loadData = async () => {
     try {
-      const [balData, expData, earnData] = await Promise.all([
+      const [balData, expData, earnData, debtData] = await Promise.all([
         walletsApi.getBalance(),
         expensesApi.getAll({ sortBy: 'createdAt', sortOrder: 'DESC', limit: 5 }),
         earningsApi.getAll({ sortBy: 'createdAt', sortOrder: 'DESC', limit: 5 }),
+        debtsApi.getAll({ limit: 100 }),
       ]);
       setBalanceData(balData);
       setExpenses(expData);
       setEarnings(earnData);
+      setDebts(debtData);
     } catch {
       showError('Error al cargar datos del inicio');
     }
@@ -62,6 +66,20 @@ export function HomeScreen() {
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
     [expenses, earnings]
   );
+
+  const myProfileId = user?.profile?.id ?? 0;
+  const { receivableDebtsTotal, payableDebtsTotal } = useMemo(() => {
+    let rec = 0;
+    let pay = 0;
+    for (const debt of debts) {
+      if (!isDebtOutstanding(debt.status)) continue;
+      const direction = getMyDirection(debt, myProfileId);
+      if (direction === 'receivable') rec += Number(debt.amount);
+      else pay += Number(debt.amount);
+    }
+    return { receivableDebtsTotal: rec, payableDebtsTotal: pay };
+  }, [debts, myProfileId]);
+  const hasOutstandingDebts = receivableDebtsTotal > 0 || payableDebtsTotal > 0;
 
   return (
     <FocusFadeIn>
@@ -207,6 +225,55 @@ export function HomeScreen() {
               </View>
               <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>IA Chat</Text>
             </TouchableOpacity>
+          </View>
+
+          <View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+              <Text style={[typography.titleLg, { color: colors.onSurface }]}>
+                Deudas Pendientes
+              </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Debts')}>
+                <Text style={[typography.bodySm, { color: colors.primary }]}>Ver todas</Text>
+              </TouchableOpacity>
+            </View>
+            <GlassCard>
+              {hasOutstandingDebts ? (
+                <View style={{ flexDirection: 'row' }}>
+                  <View style={{ flex: 1, gap: spacing.xs }}>
+                    <Text style={[typography.labelMd, { color: colors.success }]}>Me deben</Text>
+                    <Text style={[typography.headlineMd, { color: colors.success }]}>
+                      {formatCurrency(receivableDebtsTotal)}
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      width: 1,
+                      backgroundColor: colors.outlineVariant + '60',
+                      marginHorizontal: spacing.lg,
+                    }}
+                  />
+                  <View style={{ flex: 1, gap: spacing.xs }}>
+                    <Text style={[typography.labelMd, { color: colors.error }]}>Debo</Text>
+                    <Text style={[typography.headlineMd, { color: colors.error }]}>
+                      {formatCurrency(payableDebtsTotal)}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('AddDebt')}
+                  style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs }}
+                >
+                  <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>
+                    No tienes deudas pendientes
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                    <Ionicons name="add-circle" size={18} color={colors.primary} />
+                    <Text style={[typography.labelLg, { color: colors.primary }]}>Crear deuda</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            </GlassCard>
           </View>
 
           <View>

@@ -22,6 +22,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from 'src/cloudinary/services/cloudinary.service';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from 'src/decorators/roles.decorator';
+import { FindProfilesDto } from '../dto/find-profiles.dto';
 
 @Controller('users')
 export class UsersController {
@@ -49,6 +50,12 @@ export class UsersController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @Get('profiles')
+  findAllProfiles(@Query() findAllProfilesDto: FindProfilesDto) {
+    return this.usersService.findProfilesByName(findAllProfilesDto.name);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
   @Get('me/profile')
   findOneProfile(@GetUser('userId') userId: number) {
     return this.usersService.findProfileById(userId);
@@ -72,6 +79,9 @@ export class UsersController {
   ) {
     if (!avatar) {
       throw new BadRequestException('Avatar file is required');
+    }
+    if (!avatar.mimetype.startsWith('image')) {
+      throw new BadRequestException('Avatar file must be an image');
     }
     const avatarUrl = (await this.cloudinaryService.uploadFile(
       avatar,

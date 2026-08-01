@@ -14,6 +14,7 @@ import { Expense } from 'src/transactions/entities/expense.entity';
 import { Earning } from 'src/transactions/entities/earning.entity';
 import { Wallet } from 'src/wallets/entities/wallets.entity';
 import { Receipt } from 'src/transactions/entities/receipt.entity';
+import { Debt } from 'src/debts/entities/debt.entity';
 
 @Entity('profiles')
 export class Profile {
@@ -53,6 +54,11 @@ export class Profile {
     onDelete: 'CASCADE',
   })
   wallets: Wallet[];
+
+  @OneToMany(() => Debt, (debt) => debt.profile, {
+    onDelete: 'CASCADE',
+  })
+  debts: Debt[];
 
   @CreateDateColumn({
     name: 'created_at',

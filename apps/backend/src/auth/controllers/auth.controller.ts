@@ -99,6 +99,7 @@ export class AuthController {
     return tokens;
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('logout')
   @HttpCode(204)
   async logout(

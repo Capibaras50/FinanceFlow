@@ -3,7 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DeepPartial, Repository, DataSource, Between, In } from 'typeorm';
+import {
+  DeepPartial,
+  Repository,
+  DataSource,
+  Between,
+  In,
+  EntityManager,
+} from 'typeorm';
 import { Expense } from '../entities/expense.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateExpenseDto } from '../dto/create-expense.dto';
@@ -28,8 +35,15 @@ export class ExpenseService {
     private dataSource: DataSource,
   ) {}
 
-  async create(createExpenseDto: CreateExpenseDto, profileId: number) {
+  async create(
+    createExpenseDto: CreateExpenseDto,
+    profileId: number,
+    manager?: EntityManager,
+  ) {
     try {
+      const repository = manager
+        ? manager.getRepository(Expense)
+        : this.expensesRepository;
       const wallet = await this.walletsService.findOne(
         createExpenseDto.walletId,
         profileId,
@@ -52,8 +66,8 @@ export class ExpenseService {
       if (createExpenseDto.createdAt) {
         newExpense.createdAt = new Date(createExpenseDto.createdAt);
       }
-      const createdExpense = this.expensesRepository.create(newExpense);
-      const savedExpense = await this.expensesRepository.save(createdExpense);
+      const createdExpense = repository.create(newExpense);
+      const savedExpense = await repository.save(createdExpense);
       return savedExpense;
     } catch {
       throw new BadRequestException('The Expense Could Not Be Created');

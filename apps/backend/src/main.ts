@@ -16,7 +16,12 @@ async function bootstrap() {
   app.use(cookieParser());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(new Reflector()));
   app.use(helmet());
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
   await app.listen(process.env.PORT ?? 3000);
   console.log(`NestJs esta corriendo en el puerto ${process.env.PORT || 3000}`);
 }

@@ -11,6 +11,8 @@ import {
   ReceiptsApi,
   ChatApi,
   TransactionsApi,
+  ContactsApi,
+  DebtsApi,
 } from '@finance-flow/api-client';
 import {
   getTokenSync,
@@ -56,6 +58,8 @@ export const earningsApi = new EarningsApi(client);
 export const receiptsApi = new ReceiptsApi(client);
 export const chatApi = new ChatApi(client);
 export const transactionsApi = new TransactionsApi(client);
+export const contactsApi = new ContactsApi(client);
+export const debtsApi = new DebtsApi(client);
 
 export async function uploadAvatarAsync(uri: string, fileName?: string, mimeType?: string) {
   const manipulated = await manipulateAsync(

@@ -151,7 +151,7 @@ export class AuthService {
       .digest('hex');
     const user =
       await this.usersService.findUserByRecoveryToken(hashRecoveryToken);
-    if (new Date() > user.recoveryTokenExpiresAt) {
+    if (!user.recoveryTokenExpiresAt || new Date() > user.recoveryTokenExpiresAt) {
       throw new UnauthorizedException('Invalid Recovery Token');
     }
     const hashPassword = await hash(newPassword, 10);

@@ -17,6 +17,11 @@ import { TransactionDetailScreen } from '../screens/transactions/TransactionDeta
 import { ChatScreen } from '../screens/chat/ChatScreen';
 import { ReceiptScannerScreen } from '../screens/scanner/ReceiptScannerScreen';
 import { CategoriesScreen } from '../screens/categories/CategoriesScreen';
+import { DebtsScreen } from '../screens/debts/DebtsScreen';
+import { DebtDetailScreen } from '../screens/debts/DebtDetailScreen';
+import { AddDebtScreen } from '../screens/debts/AddDebtScreen';
+import { ContactsScreen } from '../screens/contacts/ContactsScreen';
+import { ContactDetailScreen } from '../screens/contacts/ContactDetailScreen';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -43,6 +48,11 @@ const linking: LinkingOptions<RootStackParamList> = {
       ReceiptScanner: 'scanner',
       Chat: 'chat',
       Categories: 'categories',
+      Debts: 'debts',
+      DebtDetail: 'debt/:debtId',
+      AddDebt: 'add-debt',
+      Contacts: 'contacts',
+      ContactDetail: 'contact/:contactId',
     },
   },
 };
@@ -80,7 +90,14 @@ export function RootNavigator() {
     <NavigationContainer ref={navigationRef} linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
-          <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+          <>
+            <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+            <Stack.Screen name="Debts" component={DebtsScreen} options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="DebtDetail" component={DebtDetailScreen} options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="AddDebt" component={AddDebtScreen} options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="Contacts" component={ContactsScreen} options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="ContactDetail" component={ContactDetailScreen} options={{ animation: 'slide_from_right' }} />
+          </>
         ) : (
           <>
             <Stack.Screen name="Login" component={LoginScreen} options={{ animation: 'slide_from_right' }} />

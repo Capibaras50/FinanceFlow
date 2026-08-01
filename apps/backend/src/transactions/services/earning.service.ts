@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, Repository } from 'typeorm';
+import { DeepPartial, Repository, EntityManager } from 'typeorm';
 import { Earning } from '../entities/earning.entity';
 import { CreateEarningDto } from '../dto/create-earning.dto';
 import { UpdateEarningDto } from '../dto/update-earning.dto';
@@ -78,8 +78,15 @@ export class EarningService {
     return totalEarnings;
   }
 
-  async create(newEarning: CreateEarningDto, profileId: number) {
+  async create(
+    newEarning: CreateEarningDto,
+    profileId: number,
+    manager?: EntityManager,
+  ) {
     try {
+      const repository = manager
+        ? manager.getRepository(Earning)
+        : this.earningRepository;
       const wallet = await this.walletsService.findOne(
         newEarning.walletId,
         profileId,
@@ -99,8 +106,8 @@ export class EarningService {
       if (newEarning.createdAt) {
         earning.createdAt = new Date(newEarning.createdAt);
       }
-      const createdEarning = this.earningRepository.create(earning);
-      return await this.earningRepository.save(createdEarning);
+      const createdEarning = repository.create(earning);
+      return await repository.save(createdEarning);
     } catch {
       throw new BadRequestException('The Earning Couldnt Be Created');
     }

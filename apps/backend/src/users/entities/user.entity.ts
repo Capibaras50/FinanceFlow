@@ -42,22 +42,22 @@ export class User {
     nullable: false,
     default: UserRoleEnum.USER,
   })
-  role: string;
+  role: UserRoleEnum;
 
   @Column({ name: 'recovery_token_hash', type: 'text', nullable: true })
-  recoveryTokenHash: string;
+  recoveryTokenHash: string | null;
 
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user, {
     onDelete: 'CASCADE',
   })
-  refreshToken: RefreshToken;
+  refreshToken: RefreshToken[];
 
   @Column({
     name: 'recovery_token_expires_at',
     type: 'timestamp with time zone',
     nullable: true,
   })
-  recoveryTokenExpiresAt: Date;
+  recoveryTokenExpiresAt: Date | null;
 
   @CreateDateColumn({
     name: 'created_at',

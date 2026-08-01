@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
-import { DeepPartial, Repository } from 'typeorm';
+import { DeepPartial, ILike, Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CategoriesService } from 'src/categories/services/categories.service';
@@ -14,12 +14,15 @@ import { WalletsService } from 'src/wallets/services/wallets.service';
 import { compare, hash } from 'bcrypt';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { CreateUserGoogleDto } from '../dto/create-user-google.dto';
+import { Profile } from '../entities/profile.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Profile)
+    private profilesRepository: Repository<Profile>,
     private categoriesService: CategoriesService,
     private walletsService: WalletsService,
   ) {}
@@ -27,7 +30,7 @@ export class UsersService {
     const users = await this.usersRepository.find({
       where: { deletedAt: undefined },
       take: take || 10,
-      skip: ((page ?? 1) - 1) * 10,
+      skip: ((page ?? 1) - 1) * (take || 10),
     });
     return users;
   }
@@ -121,12 +124,20 @@ export class UsersService {
     return user;
   }
 
+  async findProfilesByName(name: string) {
+    return this.profilesRepository.find({
+      where: {
+        name: ILike(`%${name}%`),
+      },
+    });
+  }
+
   async recoveryPassword(id: number, hashPassword: string) {
     const user = await this.findOne(id);
     const mergedUser = this.usersRepository.merge(user, {
       password: hashPassword,
-      recoveryTokenExpiresAt: undefined,
-      recoveryTokenHash: undefined,
+      recoveryTokenExpiresAt: null,
+      recoveryTokenHash: null,
     });
     await this.usersRepository.save(mergedUser);
   }

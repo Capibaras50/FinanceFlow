@@ -11,6 +11,7 @@ interface DateTimePickerModalProps {
   value: Date;
   onClose: () => void;
   onConfirm: (date: Date) => void;
+  mode?: 'date' | 'datetime';
 }
 
 const DAY_LABELS = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
@@ -177,10 +178,11 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
   );
 }
 
-export function DateTimePickerModal({ visible, value, onClose, onConfirm }: DateTimePickerModalProps) {
+export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode = 'datetime' }: DateTimePickerModalProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const gradientColors = colors.gradient.primary;
+  const isDateMode = mode === 'date';
 
   const [useNow, setUseNow] = useState(true);
   const [viewDate, setViewDate] = useState(new Date(value));
@@ -214,6 +216,9 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm }: Date
   };
 
   const buildDate = () => {
+    if (isDateMode) {
+      return new Date(year, month, selectedDay);
+    }
     const h24 = ampm === 'PM' ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour);
     return new Date(year, month, selectedDay, h24, minute);
   };
@@ -227,6 +232,10 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm }: Date
   };
 
   const formatTimeLabel = () => {
+    if (isDateMode) {
+      const d = buildDate();
+      return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
     if (useNow) return 'Hoy, ahora mismo';
     const d = buildDate();
     const now = new Date();
@@ -258,7 +267,9 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm }: Date
           <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.outlineVariant, alignSelf: 'center', marginBottom: spacing.md }} />
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
-            <Text style={[typography.titleLg, { color: colors.onSurface }]}>Seleccionar Fecha y Hora</Text>
+            <Text style={[typography.titleLg, { color: colors.onSurface }]}>
+              {isDateMode ? 'Seleccionar Fecha' : 'Seleccionar Fecha y Hora'}
+            </Text>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={22} color={colors.onSurfaceVariant} />
             </TouchableOpacity>
@@ -281,8 +292,12 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm }: Date
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: useNow ? colors.primary : colors.onSurfaceVariant }} />
               <View>
-                <Text style={[typography.bodyMd, { color: colors.onSurface, fontWeight: '600' }]}>Hoy, ahora mismo</Text>
-                <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Opción recomendada</Text>
+                <Text style={[typography.bodyMd, { color: colors.onSurface, fontWeight: '600' }]}>
+                  {isDateMode ? 'Hoy' : 'Hoy, ahora mismo'}
+                </Text>
+                <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
+                  {isDateMode ? 'Usar la fecha actual' : 'Opción recomendada'}
+                </Text>
               </View>
             </View>
             <View
@@ -364,8 +379,9 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm }: Date
               </View>
             </View>
 
-            <View style={isDisabled ? disabledStyle : undefined} pointerEvents={isDisabled ? 'none' : 'auto'}>
-              <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginBottom: spacing.sm }]}>Hora</Text>
+            {!isDateMode && (
+              <View style={isDisabled ? disabledStyle : undefined} pointerEvents={isDisabled ? 'none' : 'auto'}>
+                <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginBottom: spacing.sm }]}>Hora</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs }}>
                 <View style={{ alignItems: 'center', flex: 1 }}>
                   <ScrollPicker
@@ -421,6 +437,7 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm }: Date
                 </View>
               </View>
             </View>
+            )}
 
             <TouchableOpacity onPress={handleConfirm} activeOpacity={0.8} style={{ marginTop: spacing.xs }}>
               <LinearGradient

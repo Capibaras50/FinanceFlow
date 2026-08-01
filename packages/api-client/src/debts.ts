@@ -1,0 +1,53 @@
+import type { Debt } from '@finance-flow/shared-types';
+import type { ApiClient } from './client';
+
+export interface CreateDebtDto {
+  name: string;
+  description?: string;
+  contactName: string;
+  contactId?: number;
+  amount: number;
+  direction: 'receivable' | 'payable';
+  debtType: 'personal' | 'bank' | 'credit_card' | 'loan' | 'commercial' | 'fiscal' | 'other';
+  priority: 'low' | 'medium' | 'high';
+  interestRate?: number;
+  dueDate?: string;
+}
+
+export interface ReceiptFile {
+  uri: string;
+  name: string;
+  type: string;
+}
+
+export class DebtsApi {
+  constructor(private client: ApiClient) {}
+
+  getAll(params?: Record<string, string | number | undefined>): Promise<Debt[]> {
+    return this.client.get<Debt[]>('/debts', params);
+  }
+
+  getById(id: number): Promise<Debt> {
+    return this.client.get<Debt>(`/debts/${id}`);
+  }
+
+  create(dto: CreateDebtDto): Promise<Debt> {
+    return this.client.post<Debt>('/debts', dto);
+  }
+
+  update(id: number, dto: Partial<CreateDebtDto>): Promise<Debt> {
+    return this.client.patch<Debt>(`/debts/${id}`, dto);
+  }
+
+  remove(id: number): Promise<void> {
+    return this.client.delete<void>(`/debts/${id}`);
+  }
+
+  pay(id: number, receipt?: ReceiptFile): Promise<Debt> {
+    const formData = new FormData();
+    if (receipt) {
+      formData.append('receipt', receipt as any);
+    }
+    return this.client.uploadFile<Debt>(`/debts/${id}/pay`, formData, 'PATCH');
+  }
+}

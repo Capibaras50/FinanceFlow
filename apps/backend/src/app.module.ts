@@ -13,6 +13,8 @@ import { ChatModule } from './chat/chat.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { MailModule } from './mail/mail.module';
+import { DebtsModule } from './debts/debts.module';
+import { ContactsModule } from './contacts/contacts.module';
 
 @Module({
   imports: [
@@ -55,6 +57,8 @@ import { MailModule } from './mail/mail.module';
     FinancialToolsModule,
     ChatModule,
     MailModule,
+    DebtsModule,
+    ContactsModule,
   ],
   providers: [
     {
