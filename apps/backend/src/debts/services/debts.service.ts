@@ -11,6 +11,7 @@ import {
   DataSource,
   EntityManager,
   Like,
+  Not,
 } from 'typeorm';
 import { Debt } from '../entities/debt.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -68,39 +69,52 @@ export class DebtsService {
         profile: { id: profileId },
       },
       {
+        profile: { id: Not(profileId) },
         contact: {
           addressee: { id: profileId },
+        },
+      },
+      {
+        profile: { id: Not(profileId) },
+        contact: {
+          requester: { id: profileId },
         },
       },
     ];
     if (filterDebtDto.status) {
       where[0]['status'] = filterDebtDto.status;
       where[1]['status'] = filterDebtDto.status;
+      where[2]['status'] = filterDebtDto.status;
     }
     if (filterDebtDto.priority) {
       where[0]['priority'] = filterDebtDto.priority;
       where[1]['priority'] = filterDebtDto.priority;
+      where[2]['priority'] = filterDebtDto.priority;
     }
     if (filterDebtDto.name) {
       where[0]['name'] = Like(`%${filterDebtDto.name}%`);
       where[1]['name'] = Like(`%${filterDebtDto.name}%`);
+      where[2]['name'] = Like(`%${filterDebtDto.name}%`);
     }
     if (filterDebtDto.direction) {
       where[0]['direction'] = filterDebtDto.direction;
-      where[1]['direction'] =
+      const inverted =
         filterDebtDto.direction === DirectionEnum.RECEIVABLE
           ? DirectionEnum.PAYABLE
           : DirectionEnum.RECEIVABLE;
+      where[1]['direction'] = inverted;
+      where[2]['direction'] = inverted;
     }
     if (filterDebtDto.contactName) {
       where[0]['contactName'] = Like(`%${filterDebtDto.contactName}%`);
       where[1]['contactName'] = Like(`%${filterDebtDto.contactName}%`);
+      where[2]['contactName'] = Like(`%${filterDebtDto.contactName}%`);
     }
     const debts = await this.debtRepository.find({
       where,
       take,
       skip: (page - 1) * take,
-      relations: ['contact', 'contact.requester', 'contact.addressee'],
+      relations: ['contact', 'contact.requester', 'contact.addressee', 'profile'],
       order,
     });
     return debts;
@@ -115,12 +129,20 @@ export class DebtsService {
         },
         {
           id,
+          profile: { id: Not(profileId) },
           contact: {
             addressee: { id: profileId },
           },
         },
+        {
+          id,
+          profile: { id: Not(profileId) },
+          contact: {
+            requester: { id: profileId },
+          },
+        },
       ],
-      relations: ['contact', 'contact.requester', 'contact.addressee'],
+      relations: ['contact', 'contact.requester', 'contact.addressee', 'profile'],
     });
     if (!debt) {
       throw new NotFoundException('The Debt Not Found');
@@ -134,7 +156,7 @@ export class DebtsService {
         profile: { id: profileId },
         id,
       },
-      relations: ['contact', 'contact.requester', 'contact.addressee'],
+      relations: ['contact', 'contact.requester', 'contact.addressee', 'profile'],
     });
     if (!debt) {
       throw new NotFoundException('The Debt Not Found');
@@ -277,24 +299,26 @@ export class DebtsService {
       .createQueryBuilder('debts')
       .leftJoin('debts.contact', 'contact')
       .select([
-        `COALESCE(SUM(CASE
-          WHEN (debts.profile_id = :profileId AND debts.direction = 'payable')
-            OR (contact.addressee_id = :profileId AND debts.direction = 'receivable')
-          THEN debts.amount ELSE 0 END), 0) AS "payableTotal"`,
-        `COALESCE(SUM(CASE
-          WHEN (debts.profile_id = :profileId AND debts.direction = 'receivable')
-            OR (contact.addressee_id = :profileId AND debts.direction = 'payable')
-          THEN debts.amount ELSE 0 END), 0) AS "receivableTotal"`,
+        `COALESCE(SUM(CASE WHEN
+          (debts.profile_id = :profileId AND debts.direction = 'payable')
+          OR (debts.profile_id <> :profileId
+              AND debts.direction = 'receivable'
+              AND (contact.requester_id = :profileId OR contact.addressee_id = :profileId))
+        THEN debts.amount ELSE 0 END), 0) AS "payableTotal"`,
+        `COALESCE(SUM(CASE WHEN
+          (debts.profile_id = :profileId AND debts.direction = 'receivable')
+          OR (debts.profile_id <> :profileId
+              AND debts.direction = 'payable'
+              AND (contact.requester_id = :profileId OR contact.addressee_id = :profileId))
+        THEN debts.amount ELSE 0 END), 0) AS "receivableTotal"`,
       ])
       .where(
-        'debts.profile_id = :profileId OR contact.addressee_id = :profileId',
+        '(debts.profile_id = :profileId OR contact.requester_id = :profileId OR contact.addressee_id = :profileId) AND debts.status NOT IN (:...excludedStatuses)',
         {
           profileId,
+          excludedStatuses: [DebtStatus.PAID, DebtStatus.CANCELLED],
         },
       )
-      .andWhere('debts.status NOT IN (:...excludedStatuses)', {
-        excludedStatuses: [DebtStatus.PAID, DebtStatus.CANCELLED],
-      })
       .getRawOne<{
         payableTotal: string;
         receivableTotal: string;

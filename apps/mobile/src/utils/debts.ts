@@ -27,12 +27,16 @@ export function getOtherProfile(contact: Contact, myProfileId: number): Profile 
   if (contact.requester && contact.requester.id === myProfileId) {
     return contact.addressee;
   }
+  if (contact.addressee && contact.addressee.id === myProfileId) {
+    return contact.requester;
+  }
   return contact.requester ?? contact.addressee;
 }
 
 export function isDebtMine(debt: Debt, myProfileId: number): boolean {
+  if (debt.profile?.id === myProfileId) return true;
   if (!debt.contact) return true;
-  if (debt.contact.requester.id === myProfileId) return true;
+  if (debt.contact.requester.id === myProfileId) return false;
   if (debt.contact.addressee.id === myProfileId) return false;
   return true;
 }

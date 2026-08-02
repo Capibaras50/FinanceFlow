@@ -152,6 +152,7 @@ export interface Debt {
   description: string | null;
   contactName: string;
   contact: Contact | null;
+  profile: Profile | null;
   amount: number;
   direction: DebtDirection;
   debtType: DebtType;

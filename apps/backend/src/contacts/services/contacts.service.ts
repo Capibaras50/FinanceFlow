@@ -126,6 +126,7 @@ export class ContactsService {
   ) {
     const contact = await this.contactsRepository.findOne({
       where: { id: contactId, addressee: { id: profileId } },
+      relations: ['requester', 'addressee'],
     });
     if (!contact) {
       throw new NotFoundException('Contact request not found');
