@@ -10,9 +10,11 @@ import {
   Query,
   UploadedFile,
   UseGuards,
+  UseInterceptors,
   HttpCode,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { DebtsService } from '../services/debts.service';
 import { CreateDebtDto } from '../dto/create-debt.dto';
 import { UpdateDebtDto } from '../dto/update-debt.dto';
@@ -76,6 +78,7 @@ export class DebtsController {
   }
 
   @Patch(':id/pay')
+  @UseInterceptors(FileInterceptor('receipt'))
   async payDebt(
     @GetUser('profileId') profileId: number,
     @Param('id', ParseIntPipe) id: number,
