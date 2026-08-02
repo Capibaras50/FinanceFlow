@@ -82,7 +82,7 @@ export class DebtsController {
   async payDebt(
     @GetUser('profileId') profileId: number,
     @Param('id', ParseIntPipe) id: number,
-    @UploadedFile('receipt') receipt?: Express.Multer.File,
+    @UploadedFile() receipt?: Express.Multer.File,
   ) {
     let receiptUrl: string | undefined = undefined;
     if (receipt) {
