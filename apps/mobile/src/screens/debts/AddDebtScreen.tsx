@@ -64,7 +64,6 @@ export function AddDebtScreen() {
   const [direction, setDirection] = useState<DebtDirection>('receivable');
   const [debtType, setDebtType] = useState<DebtType>('personal');
   const [priority, setPriority] = useState<DebtPriority>('medium');
-  const [interestText, setInterestText] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -87,9 +86,6 @@ export function AddDebtScreen() {
         setDirection(debt.direction);
         setDebtType(debt.debtType);
         setPriority(debt.priority);
-        if (debt.interestRate != null) {
-          setInterestText(formatCurrencyInput(String(Math.round(debt.interestRate * 10000) / 100)));
-        }
         if (debt.dueDate) setDueDate(new Date(debt.dueDate));
       })
       .catch(() => {});
@@ -113,9 +109,6 @@ export function AddDebtScreen() {
     const numValue = parseFloat(parseCurrencyInput(amountText));
     if (isNaN(numValue) || numValue <= 0) return;
 
-    const interest = parseFloat(parseCurrencyInput(interestText));
-    const interestRate = !isNaN(interest) && interest >= 0 ? interest : undefined;
-
     setLoading(true);
     try {
       const dto = {
@@ -127,7 +120,6 @@ export function AddDebtScreen() {
         direction,
         debtType,
         priority,
-        interestRate,
         dueDate: dueDate ? dueDate.toISOString() : undefined,
       };
       if (debtId) {
@@ -394,14 +386,6 @@ export function AddDebtScreen() {
               </TouchableOpacity>
             )}
           </TouchableOpacity>
-          <Input
-            label="Interés mensual (opcional)"
-            placeholder="Ej: 5"
-            prefix="%"
-            value={interestText}
-            onChangeText={(text) => setInterestText(formatCurrencyInput(text))}
-            keyboardType="decimal-pad"
-          />
         </GlassCard>
 
         <GlassCard style={{ gap: spacing.md }}>

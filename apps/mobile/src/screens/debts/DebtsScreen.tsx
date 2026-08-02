@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,19 +12,38 @@ import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { formatCurrency } from '../../utils/format';
-import { getMyDirection, isDebtOutstanding } from '../../utils/debts';
 import { goBackOrHome } from '../../utils/navigation';
 import { debtsApi } from '../../services/api';
 import type { RootNavigationProp } from '../../navigation/types';
-import type { Debt, DebtSummary } from '@finance-flow/shared-types';
+import type { Debt, DebtSummary, DebtDirection, DebtStatus, DebtPriority } from '@finance-flow/shared-types';
+import type { DebtFilterParams } from '@finance-flow/api-client';
 
-type Filter = 'all' | 'receivable' | 'payable' | 'paid';
+interface ActiveFilters {
+  direction?: DebtDirection;
+  status?: DebtStatus;
+  priority?: DebtPriority;
+  name?: string;
+}
 
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'all', label: 'Todas' },
-  { key: 'receivable', label: 'Me deben' },
-  { key: 'payable', label: 'Debo' },
-  { key: 'paid', label: 'Pagadas' },
+const DIRECTION_FILTERS: { value: DebtDirection | undefined; label: string; icon: 'options-outline' | 'arrow-down-circle' | 'arrow-up-circle' }[] = [
+  { value: undefined, label: 'Todas', icon: 'options-outline' },
+  { value: 'receivable', label: 'Me deben', icon: 'arrow-down-circle' },
+  { value: 'payable', label: 'Debo', icon: 'arrow-up-circle' },
+];
+
+const STATUS_FILTERS: { value: DebtStatus | undefined; label: string }[] = [
+  { value: undefined, label: 'Todas' },
+  { value: 'pending', label: 'Pendiente' },
+  { value: 'overdue', label: 'Vencida' },
+  { value: 'paid', label: 'Pagada' },
+  { value: 'cancelled', label: 'Cancelada' },
+];
+
+const PRIORITY_FILTERS: { value: DebtPriority | undefined; label: string }[] = [
+  { value: undefined, label: 'Todas' },
+  { value: 'low', label: 'Baja' },
+  { value: 'medium', label: 'Media' },
+  { value: 'high', label: 'Alta' },
 ];
 
 export function DebtsScreen() {
@@ -36,16 +55,28 @@ export function DebtsScreen() {
   const myProfileId = user?.profile?.id ?? 0;
   const [debts, setDebts] = useState<Debt[]>([]);
   const [summary, setSummary] = useState<DebtSummary | null>(null);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filters, setFilters] = useState<ActiveFilters>({});
+  const [searchText, setSearchText] = useState('');
 
-  useFocusEffect(
-    useCallback(() => { loadData(); }, [])
-  );
+  const hasActiveFilters =
+    filters.direction !== undefined ||
+    filters.status !== undefined ||
+    filters.priority !== undefined ||
+    (filters.name?.length ?? 0) > 0;
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    const params: DebtFilterParams = {
+      limit: 100,
+      sortBy: 'createdAt',
+      sortOrder: 'DESC',
+      direction: filters.direction,
+      status: filters.status,
+      priority: filters.priority,
+      name: filters.name?.trim() || undefined,
+    };
     try {
       const [data, summaryData] = await Promise.all([
-        debtsApi.getAll({ limit: 100, sortBy: 'createdAt', sortOrder: 'DESC' }),
+        debtsApi.getAll(params),
         debtsApi.getSummary(),
       ]);
       setDebts(data);
@@ -53,6 +84,19 @@ export function DebtsScreen() {
     } catch {
       showError('Error al cargar deudas');
     }
+  }, [filters, showError]);
+
+  useFocusEffect(
+    useCallback(() => { loadData(); }, [loadData])
+  );
+
+  const applySearch = () => {
+    setFilters((prev) => ({ ...prev, name: searchText.trim() || undefined }));
+  };
+
+  const clearFilters = () => {
+    setSearchText('');
+    setFilters({});
   };
 
   const handleBack = () => {
@@ -61,20 +105,55 @@ export function DebtsScreen() {
 
   const receivableTotal = summary?.receivableTotal ?? 0;
   const payableTotal = summary?.payableTotal ?? 0;
-
-  const filteredDebts = useMemo(() => {
-    const pending = (d: Debt) => isDebtOutstanding(d.status);
-    return debts.filter((d) => {
-      switch (filter) {
-        case 'receivable': return pending(d) && getMyDirection(d, myProfileId) === 'receivable';
-        case 'payable': return pending(d) && getMyDirection(d, myProfileId) === 'payable';
-        case 'paid': return d.status === 'paid';
-        default: return true;
-      }
-    });
-  }, [debts, filter, myProfileId]);
-
   const hasOutstanding = receivableTotal > 0 || payableTotal > 0;
+
+  const Chip = <T,>({
+    label,
+    selected,
+    onPress,
+    color,
+  }: {
+    label: string;
+    selected: boolean;
+    onPress: () => void;
+    color?: string;
+  }) => {
+    const accent = color ?? colors.primary;
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.8}
+        style={{
+          paddingVertical: spacing.sm + 2,
+          paddingHorizontal: spacing.md,
+          borderRadius: borderRadius.full,
+          backgroundColor: selected ? accent + '1F' : colors.surfaceContainerHigh,
+          borderWidth: 1,
+          borderColor: selected ? accent : colors.outlineVariant,
+        }}
+      >
+        <Text
+          style={[
+            typography.labelMd,
+            { color: selected ? accent : colors.onSurfaceVariant, fontWeight: '600' },
+          ]}
+        >
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const FilterSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <View style={{ gap: spacing.sm }}>
+      <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4 }]}>
+        {title}
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+        {children}
+      </ScrollView>
+    </View>
+  );
 
   return (
     <FocusFadeIn>
@@ -120,6 +199,7 @@ export function DebtsScreen() {
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: spacing['2xl'] + 40, paddingHorizontal: spacing.container, gap: spacing.md, paddingTop: spacing.lg }}
+          keyboardShouldPersistTaps="handled"
         >
           <GlassCard glowColor={colors.primary}>
             <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
@@ -148,7 +228,99 @@ export function DebtsScreen() {
             </View>
           </GlassCard>
 
-          {!hasOutstanding && (
+          <GlassCard style={{ gap: spacing.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Ionicons name="filter" size={18} color={colors.primary} />
+              <Text style={[typography.titleMd, { color: colors.onSurface, flex: 1 }]}>
+                Filtros
+              </Text>
+              {hasActiveFilters && (
+                <TouchableOpacity onPress={clearFilters} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="close-circle" size={16} color={colors.onSurfaceVariant} />
+                  <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Limpiar</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: colors.surfaceContainerHigh,
+                borderRadius: borderRadius.lg,
+                borderWidth: 1,
+                borderColor: colors.outlineVariant,
+                paddingHorizontal: spacing.md,
+              }}
+            >
+              <Ionicons name="search" size={18} color={colors.onSurfaceVariant} />
+              <TextInput
+                value={searchText}
+                onChangeText={setSearchText}
+                placeholder="Buscar por concepto..."
+                placeholderTextColor={colors.onSurfaceVariant}
+                returnKeyType="search"
+                onSubmitEditing={applySearch}
+                style={[typography.bodyMd, { flex: 1, color: colors.onSurface, paddingVertical: spacing.md, marginLeft: spacing.xs }]}
+              />
+              {searchText.length > 0 && (
+                <TouchableOpacity onPress={() => { setSearchText(''); setFilters((prev) => ({ ...prev, name: undefined })); }} hitSlop={8}>
+                  <Ionicons name="close-circle" size={18} color={colors.onSurfaceVariant} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <FilterSection title="Dirección">
+              {DIRECTION_FILTERS.map((f) => (
+                <TouchableOpacity
+                  key={f.label}
+                  onPress={() => setFilters((prev) => ({ ...prev, direction: f.value }))}
+                  activeOpacity={0.8}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.xs,
+                    paddingVertical: spacing.sm + 2,
+                    paddingHorizontal: spacing.md,
+                    borderRadius: borderRadius.full,
+                    backgroundColor: filters.direction === f.value ? colors.primary + '1F' : colors.surfaceContainerHigh,
+                    borderWidth: 1,
+                    borderColor: filters.direction === f.value ? colors.primary : colors.outlineVariant,
+                  }}
+                >
+                  <Ionicons name={f.icon} size={14} color={filters.direction === f.value ? colors.primary : colors.onSurfaceVariant} />
+                  <Text style={[typography.labelMd, { color: filters.direction === f.value ? colors.primary : colors.onSurfaceVariant, fontWeight: '600' }]}>
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </FilterSection>
+
+            <FilterSection title="Estado">
+              {STATUS_FILTERS.map((f) => (
+                <Chip
+                  key={f.label}
+                  label={f.label}
+                  selected={filters.status === f.value}
+                  onPress={() => setFilters((prev) => ({ ...prev, status: f.value }))}
+                />
+              ))}
+            </FilterSection>
+
+            <FilterSection title="Prioridad">
+              {PRIORITY_FILTERS.map((f) => (
+                <Chip
+                  key={f.label}
+                  label={f.label}
+                  selected={filters.priority === f.value}
+                  onPress={() => setFilters((prev) => ({ ...prev, priority: f.value }))}
+                  color={f.value === 'high' ? colors.error : f.value === 'low' ? colors.success : f.value === 'medium' ? colors.warning : undefined}
+                />
+              ))}
+            </FilterSection>
+          </GlassCard>
+
+          {!hasOutstanding && !hasActiveFilters && (
             <GlassCard>
               <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
                 No tienes deudas pendientes
@@ -171,48 +343,17 @@ export function DebtsScreen() {
 
           <View style={{ gap: spacing.md }}>
             <Text style={[typography.titleLg, { color: colors.onSurface }]}>
-              Todas tus deudas
+              {hasActiveFilters ? 'Resultados' : 'Todas tus deudas'}
             </Text>
-            <View
-              style={{
-                flexDirection: 'row',
-                backgroundColor: colors.surfaceContainerHigh,
-                borderRadius: borderRadius.full,
-                padding: spacing.xs,
-              }}
-            >
-              {FILTERS.map((f) => (
-                <TouchableOpacity
-                  key={f.key}
-                  onPress={() => setFilter(f.key)}
-                  style={{
-                    flex: 1,
-                    paddingVertical: spacing.sm + 2,
-                    borderRadius: borderRadius.full,
-                    backgroundColor: filter === f.key ? colors.primary : 'transparent',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text
-                    style={[
-                      typography.labelMd,
-                      { color: filter === f.key ? '#FFFFFF' : colors.onSurfaceVariant, fontWeight: '600' },
-                    ]}
-                  >
-                    {f.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
 
-            {filteredDebts.length === 0 ? (
+            {debts.length === 0 ? (
               <GlassCard>
                 <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
-                  No hay deudas aquí
+                  No hay deudas con estos filtros
                 </Text>
               </GlassCard>
             ) : (
-              filteredDebts.map((debt) => (
+              debts.map((debt) => (
                 <DebtCard
                   key={debt.id}
                   debt={debt}

@@ -12,4 +12,4 @@ export { ContactsApi } from './contacts';
 export { DebtsApi } from './debts';
 export type { TransactionTimelineItem, TransactionFilterParams } from './transactions';
 export type { ApiConfig } from './client';
-export type { CreateDebtDto, ReceiptFile } from './debts';
+export type { CreateDebtDto, DebtFilterParams, ReceiptFile } from './debts';

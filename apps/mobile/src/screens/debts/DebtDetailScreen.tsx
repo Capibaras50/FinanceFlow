@@ -13,7 +13,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { showAlert } from '../../components/ui/AppAlert';
 import { formatCurrency, getErrorMessage } from '../../utils/format';
-import { DEBT_TYPE_LABELS, DEBT_PRIORITY_LABELS, getMyDirection, formatInterestRate } from '../../utils/debts';
+import { DEBT_TYPE_LABELS, DEBT_PRIORITY_LABELS, getMyDirection } from '../../utils/debts';
 import { goBackOrHome } from '../../utils/navigation';
 import { debtsApi } from '../../services/api';
 import * as ImagePicker from 'expo-image-picker';
@@ -124,7 +124,6 @@ export function DebtDetailScreen() {
 
   const isReceivable = getMyDirection(debt, myProfileId) === 'receivable';
   const amountColor = isReceivable ? colors.success : colors.error;
-  const interest = formatInterestRate(debt.interestRate);
   const isPayable = debt.status === 'pending' || debt.status === 'overdue';
 
   const InfoRow = ({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) => (
@@ -188,9 +187,6 @@ export function DebtDetailScreen() {
               <InfoRow label="Persona" value={debt.contactName} />
               <InfoRow label="Tipo" value={DEBT_TYPE_LABELS[debt.debtType]} />
               <InfoRow label="Prioridad" value={DEBT_PRIORITY_LABELS[debt.priority]} />
-              {interest && (
-                <InfoRow label="Interés mensual" value={interest} />
-              )}
               {debt.dueDate && (
                 <InfoRow
                   label="Vence"

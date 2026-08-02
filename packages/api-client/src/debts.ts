@@ -16,7 +16,6 @@ export interface CreateDebtDto {
   direction: 'receivable' | 'payable';
   debtType: 'personal' | 'bank' | 'credit_card' | 'loan' | 'commercial' | 'fiscal' | 'other';
   priority: 'low' | 'medium' | 'high';
-  interestRate?: number;
   dueDate?: string;
 }
 

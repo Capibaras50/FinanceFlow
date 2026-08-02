@@ -41,11 +41,6 @@ export function getMyDirection(debt: Debt, myProfileId: number): DebtDirection {
   return isDebtMine(debt, myProfileId) ? debt.direction : (debt.direction === 'receivable' ? 'payable' : 'receivable');
 }
 
-export function formatInterestRate(rate: number | null | undefined): string | null {
-  if (rate == null) return null;
-  return `${Math.round(Number(rate) * 100)}%`;
-}
-
 export function isDebtOutstanding(status: DebtStatus): boolean {
   return status === 'pending' || status === 'overdue';
 }

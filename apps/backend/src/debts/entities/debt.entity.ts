@@ -66,15 +66,6 @@ export class Debt {
   @Column({ name: 'receipt_url', type: 'text', nullable: true })
   receiptUrl?: string;
 
-  @Column({
-    name: 'interest_rate',
-    type: 'numeric',
-    precision: 5,
-    scale: 2,
-    default: 0,
-  })
-  interestRate?: number;
-
   @Column({ name: 'due_date', type: 'date', nullable: true })
   dueDate?: Date;
 

@@ -158,7 +158,6 @@ export interface Debt {
   status: DebtStatus;
   priority: DebtPriority;
   receiptUrl: string | null;
-  interestRate: number | null;
   dueDate: string | null;
   paidAt: string | null;
   createdAt: string;

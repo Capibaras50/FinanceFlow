@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, FlatList, type ListRenderItemInfo } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -42,59 +42,35 @@ interface ScrollPickerProps {
 }
 
 function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPickerProps) {
-  const flatListRef = useRef<FlatList>(null);
-  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isInitialScroll = useRef(true);
+  const flatListRef = useRef<FlatList<string>>(null);
+
+  const safeIndex = Math.max(0, Math.min(selectedIndex, items.length - 1));
 
   const snapToNearest = useCallback(
     (offsetY: number) => {
       const index = Math.round(offsetY / ITEM_HEIGHT);
       const clamped = Math.max(0, Math.min(index, items.length - 1));
       onIndexChange(clamped);
-      flatListRef.current?.scrollToOffset({
-        offset: clamped * ITEM_HEIGHT,
-        animated: true,
-      });
     },
     [items.length, onIndexChange],
   );
 
-  const handleScroll = useCallback(
+  const handleMomentumScrollEnd = useCallback(
     (e: any) => {
-      if (isInitialScroll.current) return;
-      if (scrollTimer.current) clearTimeout(scrollTimer.current);
-      scrollTimer.current = setTimeout(() => {
-        const offsetY = e.nativeEvent.contentOffset.y;
-        snapToNearest(offsetY);
-      }, 80);
+      snapToNearest(e.nativeEvent.contentOffset.y);
     },
     [snapToNearest],
   );
 
-  useEffect(() => {
-    return () => {
-      if (scrollTimer.current) clearTimeout(scrollTimer.current);
-    };
-  }, []);
-
-  const handleMomentumScrollEnd = useCallback(
+  const handleScrollEndDrag = useCallback(
     (e: any) => {
-      if (isInitialScroll.current) {
-        isInitialScroll.current = false;
-        return;
-      }
-      if (scrollTimer.current) clearTimeout(scrollTimer.current);
-      const offsetY = e.nativeEvent.contentOffset.y;
-      const index = Math.round(offsetY / ITEM_HEIGHT);
-      const clamped = Math.max(0, Math.min(index, items.length - 1));
-      onIndexChange(clamped);
+      snapToNearest(e.nativeEvent.contentOffset.y);
     },
-    [items.length, onIndexChange],
+    [snapToNearest],
   );
 
   const handleItemPress = useCallback(
     (index: number) => {
-      if (scrollTimer.current) clearTimeout(scrollTimer.current);
       flatListRef.current?.scrollToOffset({
         offset: index * ITEM_HEIGHT,
         animated: true,
@@ -106,7 +82,7 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
 
   const renderItem = useCallback(
     ({ item, index }: ListRenderItemInfo<string>) => {
-      const isSelected = index === selectedIndex;
+      const isSelected = index === safeIndex;
       return (
         <TouchableOpacity
           onPress={() => handleItemPress(index)}
@@ -129,7 +105,7 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
         </TouchableOpacity>
       );
     },
-    [selectedIndex, colors, handleItemPress],
+    [safeIndex, colors, handleItemPress],
   );
 
   const getItemLayout = useCallback(
@@ -168,9 +144,11 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
         showsVerticalScrollIndicator={false}
         bounces={false}
         onMomentumScrollEnd={handleMomentumScrollEnd}
-        onScroll={handleScroll}
-        scrollEventThrottle={100}
-        initialScrollIndex={selectedIndex}
+        onScrollEndDrag={handleScrollEndDrag}
+        initialScrollIndex={safeIndex}
+        onScrollToIndexFailed={({ index }) => {
+          flatListRef.current?.scrollToOffset({ offset: index * ITEM_HEIGHT, animated: false });
+        }}
         style={{ zIndex: 1 }}
         contentContainerStyle={{ paddingVertical: ITEM_HEIGHT * 2 }}
       />
@@ -398,7 +376,7 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode =
                 <View style={{ alignItems: 'center', flex: 1 }}>
                   <ScrollPicker
                     items={MINUTE_ITEMS}
-                    selectedIndex={Math.round(minute / 5)}
+                    selectedIndex={Math.min(MINUTE_ITEMS.length - 1, Math.round(minute / 5))}
                     onIndexChange={(i) => setMinute(i * 5)}
                     colors={colors}
                   />

@@ -6,7 +6,6 @@ import {
   IsOptional,
   IsPositive,
   IsString,
-  Max,
   MaxLength,
   Min,
   MinLength,
@@ -57,12 +56,6 @@ export class CreateDebtDto {
   @IsEnum(DebtPriority)
   @IsNotEmpty()
   priority: DebtPriority;
-
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  @IsOptional()
-  interestRate?: number;
 
   @IsDateString()
   @IsOptional()

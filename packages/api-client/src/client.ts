@@ -88,12 +88,16 @@ export class ApiClient {
         this.config.onTokenRefreshed?.(data.accessToken, data.refreshToken);
 
         this.failedQueue.forEach((item) => {
-          item.config.headers!.Authorization = `Bearer ${data.accessToken}`;
-          item.resolve(this.instance(item.config));
+          item.config.headers = item.config.headers ?? {};
+          item.config.headers.Authorization = `Bearer ${data.accessToken}`;
+          item.resolve(
+            this.instance(item.config).then((r) => r.data),
+          );
         });
         this.failedQueue = [];
 
-        error.config!.headers!.Authorization = `Bearer ${data.accessToken}`;
+        error.config!.headers = error.config!.headers ?? {};
+        error.config!.headers.Authorization = `Bearer ${data.accessToken}`;
         const response = await this.instance.request<T>(error.config!);
         return response.data as T;
       } catch (refreshError) {

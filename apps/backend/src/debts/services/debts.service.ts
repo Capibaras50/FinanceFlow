@@ -39,10 +39,8 @@ export class DebtsService {
 
   async create(profileId: number, createDebtDto: CreateDebtDto) {
     try {
-      const interestRate = (createDebtDto.interestRate || 0) / 100;
       const newDebt: DeepPartial<Debt> = {
         ...createDebtDto,
-        interestRate,
         profile: { id: profileId },
       };
       if (createDebtDto.contactId) {
@@ -150,9 +148,6 @@ export class DebtsService {
       const changes: DeepPartial<Debt> = {
         ...updateDebtDto,
       };
-      if (updateDebtDto.interestRate) {
-        changes.interestRate = updateDebtDto.interestRate / 100;
-      }
       if (updateDebtDto.contactId) {
         const contact = await this.contactsService.findOne(
           profileId,
@@ -291,9 +286,12 @@ export class DebtsService {
             OR (contact.addressee_id = :profileId AND debts.direction = 'payable')
           THEN debts.amount ELSE 0 END), 0) AS "receivableTotal"`,
       ])
-      .where('debts.profile_id = :profileId OR contact.addressee_id = :profileId', {
-        profileId,
-      })
+      .where(
+        'debts.profile_id = :profileId OR contact.addressee_id = :profileId',
+        {
+          profileId,
+        },
+      )
       .andWhere('debts.status NOT IN (:...excludedStatuses)', {
         excludedStatuses: [DebtStatus.PAID, DebtStatus.CANCELLED],
       })
