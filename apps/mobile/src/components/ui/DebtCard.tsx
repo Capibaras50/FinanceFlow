@@ -55,7 +55,15 @@ export function DebtCard({ debt, myProfileId, onPress }: DebtCardProps) {
             <Text style={[typography.titleMd, { color: amountColor }]}>
               {isReceivable ? '+' : '-'}{formatCurrency(Number(debt.amount))}
             </Text>
-            <StatusBadge status={debt.status} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              <StatusBadge status={debt.status} />
+              {debt.receiptUrl && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <Ionicons name="receipt" size={14} color={colors.primary} />
+                  <Text style={[typography.labelMd, { color: colors.primary }]}>Comp.</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
       </GlassCard>

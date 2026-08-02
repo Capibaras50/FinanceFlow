@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -57,6 +57,8 @@ export function DebtsScreen() {
   const [summary, setSummary] = useState<DebtSummary | null>(null);
   const [filters, setFilters] = useState<ActiveFilters>({});
   const [searchText, setSearchText] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<ActiveFilters>({});
 
   const hasActiveFilters =
     filters.direction !== undefined ||
@@ -64,15 +66,16 @@ export function DebtsScreen() {
     filters.priority !== undefined ||
     (filters.name?.length ?? 0) > 0;
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (effective?: ActiveFilters) => {
+    const active = effective ?? filters;
     const params: DebtFilterParams = {
       limit: 100,
       sortBy: 'createdAt',
       sortOrder: 'DESC',
-      direction: filters.direction,
-      status: filters.status,
-      priority: filters.priority,
-      name: filters.name?.trim() || undefined,
+      direction: active.direction,
+      status: active.status,
+      priority: active.priority,
+      name: active.name?.trim() || undefined,
     };
     try {
       const [data, summaryData] = await Promise.all([
@@ -90,13 +93,35 @@ export function DebtsScreen() {
     useCallback(() => { loadData(); }, [loadData])
   );
 
+  const openFilters = () => {
+    setDraftFilters({ ...filters, name: searchText.trim() || undefined });
+    setShowFilters(true);
+  };
+
   const applySearch = () => {
-    setFilters((prev) => ({ ...prev, name: searchText.trim() || undefined }));
+    const next = { ...filters, name: searchText.trim() || undefined };
+    setFilters(next);
+    loadData(next);
+  };
+
+  const clearSearch = () => {
+    setSearchText('');
+    const next = { ...filters, name: undefined };
+    setFilters(next);
+    loadData(next);
+  };
+
+  const applyFilters = () => {
+    setShowFilters(false);
+    setFilters(draftFilters);
+    loadData(draftFilters);
   };
 
   const clearFilters = () => {
+    setShowFilters(false);
     setSearchText('');
     setFilters({});
+    loadData({});
   };
 
   const handleBack = () => {
@@ -107,17 +132,7 @@ export function DebtsScreen() {
   const payableTotal = summary?.payableTotal ?? 0;
   const hasOutstanding = receivableTotal > 0 || payableTotal > 0;
 
-  const Chip = <T,>({
-    label,
-    selected,
-    onPress,
-    color,
-  }: {
-    label: string;
-    selected: boolean;
-    onPress: () => void;
-    color?: string;
-  }) => {
+  const FilterChip = ({ label, selected, onPress, color }: { label: string; selected: boolean; onPress: () => void; color?: string }) => {
     const accent = color ?? colors.primary;
     return (
       <TouchableOpacity
@@ -132,28 +147,12 @@ export function DebtsScreen() {
           borderColor: selected ? accent : colors.outlineVariant,
         }}
       >
-        <Text
-          style={[
-            typography.labelMd,
-            { color: selected ? accent : colors.onSurfaceVariant, fontWeight: '600' },
-          ]}
-        >
+        <Text style={[typography.labelMd, { color: selected ? accent : colors.onSurfaceVariant, fontWeight: '600' }]}>
           {label}
         </Text>
       </TouchableOpacity>
     );
   };
-
-  const FilterSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <View style={{ gap: spacing.sm }}>
-      <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4 }]}>
-        {title}
-      </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-        {children}
-      </ScrollView>
-    </View>
-  );
 
   return (
     <FocusFadeIn>
@@ -228,97 +227,50 @@ export function DebtsScreen() {
             </View>
           </GlassCard>
 
-          <GlassCard style={{ gap: spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <Ionicons name="filter" size={18} color={colors.primary} />
-              <Text style={[typography.titleMd, { color: colors.onSurface, flex: 1 }]}>
-                Filtros
-              </Text>
-              {hasActiveFilters && (
-                <TouchableOpacity onPress={clearFilters} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Ionicons name="close-circle" size={16} color={colors.onSurfaceVariant} />
-                  <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Limpiar</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: colors.surfaceContainerHigh,
-                borderRadius: borderRadius.lg,
-                borderWidth: 1,
-                borderColor: colors.outlineVariant,
-                paddingHorizontal: spacing.md,
-              }}
-            >
-              <Ionicons name="search" size={18} color={colors.onSurfaceVariant} />
-              <TextInput
-                value={searchText}
-                onChangeText={setSearchText}
-                placeholder="Buscar por concepto..."
-                placeholderTextColor={colors.onSurfaceVariant}
-                returnKeyType="search"
-                onSubmitEditing={applySearch}
-                style={[typography.bodyMd, { flex: 1, color: colors.onSurface, paddingVertical: spacing.md, marginLeft: spacing.xs }]}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: colors.surfaceContainerHigh,
+              borderRadius: borderRadius.lg,
+              paddingHorizontal: spacing.md,
+              borderWidth: 1,
+              borderColor: colors.outlineVariant,
+            }}
+          >
+            <Ionicons name="search" size={18} color={colors.onSurfaceVariant} />
+            <TextInput
+              value={searchText}
+              onChangeText={setSearchText}
+              placeholder="Buscar por concepto..."
+              placeholderTextColor={colors.onSurfaceVariant}
+              returnKeyType="search"
+              onSubmitEditing={applySearch}
+              style={[typography.bodyMd, { flex: 1, color: colors.onSurface, paddingVertical: spacing.sm + 2, marginLeft: spacing.sm }]}
+            />
+            {searchText.length > 0 ? (
+              <TouchableOpacity onPress={clearSearch} hitSlop={8}>
+                <Ionicons name="close-circle" size={18} color={colors.onSurfaceVariant} />
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity onPress={openFilters} hitSlop={8} style={{ marginLeft: spacing.sm }}>
+              <Ionicons
+                name="filter"
+                size={20}
+                color={hasActiveFilters ? colors.primary : colors.onSurfaceVariant}
               />
-              {searchText.length > 0 && (
-                <TouchableOpacity onPress={() => { setSearchText(''); setFilters((prev) => ({ ...prev, name: undefined })); }} hitSlop={8}>
-                  <Ionicons name="close-circle" size={18} color={colors.onSurfaceVariant} />
-                </TouchableOpacity>
-              )}
-            </View>
+            </TouchableOpacity>
+          </View>
 
-            <FilterSection title="Dirección">
-              {DIRECTION_FILTERS.map((f) => (
-                <TouchableOpacity
-                  key={f.label}
-                  onPress={() => setFilters((prev) => ({ ...prev, direction: f.value }))}
-                  activeOpacity={0.8}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: spacing.xs,
-                    paddingVertical: spacing.sm + 2,
-                    paddingHorizontal: spacing.md,
-                    borderRadius: borderRadius.full,
-                    backgroundColor: filters.direction === f.value ? colors.primary + '1F' : colors.surfaceContainerHigh,
-                    borderWidth: 1,
-                    borderColor: filters.direction === f.value ? colors.primary : colors.outlineVariant,
-                  }}
-                >
-                  <Ionicons name={f.icon} size={14} color={filters.direction === f.value ? colors.primary : colors.onSurfaceVariant} />
-                  <Text style={[typography.labelMd, { color: filters.direction === f.value ? colors.primary : colors.onSurfaceVariant, fontWeight: '600' }]}>
-                    {f.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </FilterSection>
-
-            <FilterSection title="Estado">
-              {STATUS_FILTERS.map((f) => (
-                <Chip
-                  key={f.label}
-                  label={f.label}
-                  selected={filters.status === f.value}
-                  onPress={() => setFilters((prev) => ({ ...prev, status: f.value }))}
-                />
-              ))}
-            </FilterSection>
-
-            <FilterSection title="Prioridad">
-              {PRIORITY_FILTERS.map((f) => (
-                <Chip
-                  key={f.label}
-                  label={f.label}
-                  selected={filters.priority === f.value}
-                  onPress={() => setFilters((prev) => ({ ...prev, priority: f.value }))}
-                  color={f.value === 'high' ? colors.error : f.value === 'low' ? colors.success : f.value === 'medium' ? colors.warning : undefined}
-                />
-              ))}
-            </FilterSection>
-          </GlassCard>
+          {hasActiveFilters && (
+            <TouchableOpacity
+              onPress={clearFilters}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start' }}
+            >
+              <Ionicons name="close-circle" size={16} color={colors.primary} />
+              <Text style={[typography.bodySm, { color: colors.primary }]}>Filtros activos · Limpiar</Text>
+            </TouchableOpacity>
+          )}
 
           {!hasOutstanding && !hasActiveFilters && (
             <GlassCard>
@@ -398,6 +350,114 @@ export function DebtsScreen() {
             <Ionicons name="add" size={30} color="#FFFFFF" />
           </LinearGradient>
         </TouchableOpacity>
+
+        <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>
+          <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <View
+              style={{
+                backgroundColor: colors.surface,
+                borderTopLeftRadius: borderRadius['2xl'],
+                borderTopRightRadius: borderRadius['2xl'],
+                padding: spacing.container,
+                paddingBottom: insets.bottom + spacing.lg,
+                maxHeight: '75%',
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
+                <Text style={[typography.titleLg, { color: colors.onSurface }]}>Filtros</Text>
+                <TouchableOpacity onPress={() => setShowFilters(false)} hitSlop={8}>
+                  <Ionicons name="close" size={24} color={colors.onSurface} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm }]}>Dirección</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.lg }}>
+                  {DIRECTION_FILTERS.map((f) => (
+                    <TouchableOpacity
+                      key={f.label}
+                      onPress={() => setDraftFilters((prev) => ({ ...prev, direction: f.value }))}
+                      activeOpacity={0.8}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: spacing.xs,
+                        paddingVertical: spacing.xs + 2,
+                        paddingHorizontal: spacing.md,
+                        borderRadius: borderRadius.full,
+                        backgroundColor: draftFilters.direction === f.value ? colors.primary : colors.surfaceContainerHigh,
+                      }}
+                    >
+                      <Ionicons name={f.icon} size={16} color={draftFilters.direction === f.value ? '#FFFFFF' : colors.onSurfaceVariant} />
+                      <Text style={[typography.labelMd, { color: draftFilters.direction === f.value ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                        {f.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm }]}>Estado</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.lg }}>
+                  {STATUS_FILTERS.map((f) => (
+                    <FilterChip
+                      key={f.label}
+                      label={f.label}
+                      selected={draftFilters.status === f.value}
+                      onPress={() => setDraftFilters((prev) => ({ ...prev, status: f.value }))}
+                    />
+                  ))}
+                </View>
+
+                <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm }]}>Prioridad</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.lg }}>
+                  {PRIORITY_FILTERS.map((f) => (
+                    <FilterChip
+                      key={f.label}
+                      label={f.label}
+                      selected={draftFilters.priority === f.value}
+                      onPress={() => setDraftFilters((prev) => ({ ...prev, priority: f.value }))}
+                      color={f.value === 'high' ? colors.error : f.value === 'low' ? colors.success : f.value === 'medium' ? colors.warning : undefined}
+                    />
+                  ))}
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
+                  <TouchableOpacity
+                    onPress={clearFilters}
+                    style={{
+                      flex: 1,
+                      paddingVertical: spacing.md,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: borderRadius.full,
+                      borderWidth: 1.5,
+                      borderColor: colors.outlineVariant,
+                    }}
+                  >
+                    <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, fontWeight: '600' }]}>
+                      Limpiar
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={applyFilters}
+                    style={{
+                      flex: 1,
+                      paddingVertical: spacing.md,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: borderRadius.full,
+                      backgroundColor: colors.primary,
+                    }}
+                  >
+                    <Text style={[typography.labelMd, { color: '#FFFFFF', fontWeight: '600' }]}>
+                      Aplicar
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </View>
     </FocusFadeIn>
   );
