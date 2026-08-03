@@ -29,7 +29,15 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "Finance Flow",
+      "shortName": "Finance Flow",
+      "description": "Controla tus gastos, ingresos y deudas desde cualquier dispositivo.",
+      "lang": "es",
+      "themeColor": "#0B1326",
+      "backgroundColor": "#0B1326"
     },
     "plugins": [
       [
