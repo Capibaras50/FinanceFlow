@@ -10,6 +10,8 @@ registerRootComponent(App);
 
 if (Platform.OS === 'web' && typeof window !== 'undefined' && 'serviceWorker' in navigator && !__DEV__) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker
+      .register('/sw.js', { updateViaCache: 'none' })
+      .catch(() => {});
   });
 }

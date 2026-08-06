@@ -65,10 +65,12 @@ export class DebtsApi {
   }
 
   pay(id: number, receipt?: ReceiptFile): Promise<Debt> {
-    const formData = new FormData();
-    if (receipt) {
-      formData.append('receipt', receipt as any);
+    const path = `/debts/${id}/pay`;
+    if (!receipt) {
+      return this.client.patch<Debt>(path);
     }
-    return this.client.uploadFile<Debt>(`/debts/${id}/pay`, formData, 'PATCH');
+    const formData = new FormData();
+    formData.append('receipt', receipt as any);
+    return this.client.uploadFile<Debt>(path, formData, 'PATCH');
   }
 }

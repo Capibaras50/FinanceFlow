@@ -187,9 +187,9 @@ export function ChatScreen() {
         data={messages}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={{ padding: spacing.container, paddingBottom: spacing.md }}
-        initialNumToRender={messages.length}
-        maxToRenderPerBatch={messages.length}
-        windowSize={messages.length + 1}
+        initialNumToRender={15}
+        maxToRenderPerBatch={15}
+        windowSize={11}
         ListFooterComponent={loading ? <TypingIndicator /> : null}
         renderItem={({ item }) => (
           <View

@@ -50,9 +50,9 @@ export function DebtDetailScreen() {
   const doPay = async (receipt?: { uri: string; name: string; type: string }) => {
     setPaying(true);
     try {
-      await debtsApi.pay(debtId, receipt);
+      const updated = await debtsApi.pay(debtId, receipt);
+      setDebt(updated);
       showSuccess('Deuda pagada');
-      loadData();
     } catch (e) {
       showError(getErrorMessage(e, 'Error al pagar la deuda'));
     } finally {

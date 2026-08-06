@@ -1,5 +1,5 @@
 /* Finance Flow - Service Worker */
-const CACHE_VERSION = 'finance-flow-v1';
+const CACHE_VERSION = 'finance-flow-v2';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -48,7 +48,7 @@ self.addEventListener('fetch', (event) => {
   // Network-first for navigations: serve the app shell from cache when offline.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-store' })
         .then((response) => {
           const copy = response.clone();
           caches
@@ -57,20 +57,27 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() =>
-          caches.match('/index.html').then((cached) => cached || caches.match('/'))
+          caches
+            .match('/index.html', { cacheName: CACHE_VERSION })
+            .then((cached) => cached || caches.match('/'))
         )
     );
     return;
   }
 
   // Stale-while-revalidate for same-origin static assets (JS/CSS/images/icons).
+  // API responses (JSON) are never cached: they always hit the network so that
+  // created/updated data shows up immediately without a page reload.
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const networkFetch = fetch(request)
+    caches.match(request, { cacheName: CACHE_VERSION }).then((cached) => {
+      const networkFetch = fetch(request, { cache: 'no-store' })
         .then((response) => {
           if (response && response.status === 200 && response.type === 'basic') {
-            const copy = response.clone();
-            caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy));
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+              const copy = response.clone();
+              caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy));
+            }
           }
           return response;
         })

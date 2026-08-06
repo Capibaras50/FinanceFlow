@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -63,7 +63,9 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
     setVisible(true);
   }, []);
 
-  globalShow = show;
+  useEffect(() => {
+    globalShow = show;
+  }, [show]);
 
   const handlePress = (btn: AlertButton) => {
     setVisible(false);
