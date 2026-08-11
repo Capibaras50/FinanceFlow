@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Tool, ToolParameters } from '../interfaces/tool.interface';
 import { Expense } from 'src/transactions/entities/expense.entity';
 import { FinancialToolsService } from '../services/financial-tools.service';
@@ -34,7 +34,8 @@ export class CreateExpenseTool implements Tool<CreateExpenseArgs, Expense> {
       },
       value: {
         type: 'number',
-        description: 'Cost of Expense that user insert',
+        description:
+          'Cost of Expense that user insert. Must be a positive number greater than 0.',
       },
       createdAt: {
         type: 'string',
@@ -46,6 +47,9 @@ export class CreateExpenseTool implements Tool<CreateExpenseArgs, Expense> {
   };
 
   async execute(profileId: number, args: CreateExpenseArgs): Promise<Expense> {
+    if (!Number.isFinite(args.value) || args.value <= 0) {
+      throw new BadRequestException();
+    }
     const categoryId =
       await this.financialToolsService.inferBestCategoryTransaction(
         profileId,

@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcrypt';
@@ -145,13 +149,19 @@ export class AuthService {
   }
 
   async changePassword(recoveryToken: string, newPassword: string) {
+    if (!recoveryToken) {
+      throw new BadRequestException();
+    }
     const hashRecoveryToken = crypto
       .createHash('sha256')
       .update(recoveryToken)
       .digest('hex');
     const user =
       await this.usersService.findUserByRecoveryToken(hashRecoveryToken);
-    if (!user.recoveryTokenExpiresAt || new Date() > user.recoveryTokenExpiresAt) {
+    if (
+      !user.recoveryTokenExpiresAt ||
+      new Date() > user.recoveryTokenExpiresAt
+    ) {
       throw new UnauthorizedException('Invalid Recovery Token');
     }
     const hashPassword = await hash(newPassword, 10);

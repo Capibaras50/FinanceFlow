@@ -6,12 +6,26 @@ import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    process.env.WEB_URL,
+  ].filter((origin): origin is string => Boolean(origin));
+
   app.enableCors({
-    origin:
-      process.env.NODE_ENV === 'production'
-        ? [process.env.WEB_URL ?? ''].filter(Boolean)
-        : true,
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, origin?: boolean) => void,
+    ) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
     credentials: true,
+    allowedHeaders: ['content-type', 'authorization'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT', 'OPTIONS'],
   });
   app.use(cookieParser());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(new Reflector()));

@@ -7,15 +7,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Contact } from '../entities/contact.entity';
 import { Repository } from 'typeorm';
 import { ContactStatus } from '../enums/contact-status.enum';
+import { UsersService } from 'src/users/services/users.service';
 
 @Injectable()
 export class ContactsService {
   constructor(
     @InjectRepository(Contact)
     private readonly contactsRepository: Repository<Contact>,
+    private readonly usersService: UsersService,
   ) {}
 
   async findOrCreate(requesterId: number, addresseeId: number) {
+    const addressee = await this.usersService.findProfileById(addresseeId);
     if (requesterId === addresseeId) {
       throw new BadRequestException(
         'Cannot send a contact request to yourself',
@@ -26,10 +29,10 @@ export class ContactsService {
       where: [
         {
           requester: { id: requesterId },
-          addressee: { id: addresseeId },
+          addressee: { id: addressee.id },
         },
         {
-          requester: { id: addresseeId },
+          requester: { id: addressee.id },
           addressee: { id: requesterId },
         },
       ],
@@ -48,7 +51,7 @@ export class ContactsService {
 
     const contact = this.contactsRepository.create({
       requester: { id: requesterId },
-      addressee: { id: addresseeId },
+      addressee: { id: addressee.id },
     });
     return this.contactsRepository.save(contact);
   }

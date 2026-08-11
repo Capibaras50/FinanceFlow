@@ -44,6 +44,7 @@ export class User {
   })
   role: UserRoleEnum;
 
+  @Exclude()
   @Column({ name: 'recovery_token_hash', type: 'text', nullable: true })
   recoveryTokenHash: string | null;
 
@@ -52,6 +53,7 @@ export class User {
   })
   refreshToken: RefreshToken[];
 
+  @Exclude()
   @Column({
     name: 'recovery_token_expires_at',
     type: 'timestamp with time zone',

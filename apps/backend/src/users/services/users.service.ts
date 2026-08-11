@@ -172,8 +172,19 @@ export class UsersService {
     return await this.usersRepository.save(mergedUser);
   }
 
-  async remove(id: number) {
+  async remove(id: number, password?: string) {
     const user = await this.findOne(id);
+    if (user.password) {
+      if (!password) {
+        throw new UnauthorizedException(
+          'The actual password is required for delete account',
+        );
+      }
+      const isMatch = await compare(password, user.password);
+      if (!isMatch) {
+        throw new UnauthorizedException('Incorrect Password');
+      }
+    }
     const mergedUser = this.usersRepository.merge(user, {
       deletedAt: new Date(),
     });

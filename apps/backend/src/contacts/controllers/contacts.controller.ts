@@ -21,6 +21,7 @@ import { ContactStatus } from '../enums/contact-status.enum';
 export class ContactsController {
   constructor(private readonly contactsService: ContactsService) {}
 
+  @HttpCode(201)
   @Post()
   sendRequest(
     @GetUser('profileId') profileId: number,

@@ -23,6 +23,7 @@ import { CloudinaryService } from 'src/cloudinary/services/cloudinary.service';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from 'src/decorators/roles.decorator';
 import { FindProfilesDto } from '../dto/find-profiles.dto';
+import { DeleteUserDto } from '../dto/delete-user.dto';
 
 @Controller('users')
 export class UsersController {
@@ -101,7 +102,10 @@ export class UsersController {
   @UseGuards(AuthGuard('jwt'))
   @Delete()
   @HttpCode(204)
-  remove(@GetUser('userId') userId: number) {
-    return this.usersService.remove(userId);
+  remove(
+    @GetUser('userId') userId: number,
+    @Body() deleteUserDto: DeleteUserDto,
+  ) {
+    return this.usersService.remove(userId, deleteUserDto.password);
   }
 }
