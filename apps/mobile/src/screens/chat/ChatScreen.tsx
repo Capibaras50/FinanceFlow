@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ import { goBackOrHome } from '../../utils/navigation';
 import type { ChatMessage } from '@finance-flow/shared-types';
 
 function TypingIndicator() {
+  const { colors } = useTheme();
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
@@ -40,11 +42,14 @@ function TypingIndicator() {
     b2.start();
     b3.start();
     return () => { fade.stop(); b1.stop(); b2.stop(); b3.stop(); };
-  }, []);
+  }, [dot1, dot2, dot3, fadeAnim]);
 
-  const { colors } = useTheme();
   return (
-    <Animated.View style={{ opacity: fadeAnim, alignSelf: 'flex-start', maxWidth: '80%', marginBottom: spacing.md, marginLeft: spacing.container }}>
+    <Animated.View
+      style={{ opacity: fadeAnim, alignSelf: 'flex-start', maxWidth: '80%', marginBottom: spacing.md, marginLeft: spacing.container }}
+      accessibilityLabel="El asistente está escribiendo"
+      accessibilityLiveRegion="polite"
+    >
       <GlassCard glowColor={colors.primary} style={{ borderColor: `${colors.primary}40`, paddingHorizontal: spacing.md }}>
         <View style={{ flexDirection: 'row', gap: 6, paddingVertical: spacing.xs }}>
           {[dot1, dot2, dot3].map((dot, i) => (
@@ -65,6 +70,72 @@ function TypingIndicator() {
   );
 }
 
+// Memoized bubble: the Markdown parser is expensive, so avoid re-rendering
+// every previous message when a new one arrives.
+const MessageBubble = memo(function MessageBubble({ item }: { item: ChatMessage }) {
+  const { colors } = useTheme();
+  const markdownStyles = useMemo(
+    () => ({
+      body: { color: colors.onSurface, ...typography.bodyMd },
+      heading1: { color: colors.onSurface, fontSize: 20, fontWeight: '700' as const, marginBottom: 4, marginTop: 4 },
+      heading2: { color: colors.onSurface, fontSize: 18, fontWeight: '700' as const, marginBottom: 4, marginTop: 4 },
+      heading3: { color: colors.onSurface, fontSize: 16, fontWeight: '600' as const, marginBottom: 4, marginTop: 4 },
+      strong: { color: colors.primary, fontWeight: '700' as const },
+      link: { color: colors.tertiary },
+      blockquote: { borderLeftColor: colors.primary, borderLeftWidth: 3, paddingLeft: 8, opacity: 0.8 },
+      bullet_list: { marginVertical: 2 },
+      ordered_list: { marginVertical: 2 },
+      list_item: { marginVertical: 1 },
+      code_inline: { backgroundColor: colors.surfaceContainerHighest, color: colors.secondary, paddingHorizontal: 4, borderRadius: 4 },
+      fence: { backgroundColor: colors.surfaceContainerHighest, padding: 8, borderRadius: 8, marginVertical: 4 },
+      code_block: { backgroundColor: colors.surfaceContainerHighest, padding: 8, borderRadius: 8 },
+    }),
+    [colors]
+  );
+
+  const isUser = item.role === 'user';
+  return (
+    <View
+      style={{
+        alignSelf: isUser ? 'flex-end' : 'flex-start',
+        maxWidth: '80%',
+        marginBottom: spacing.md,
+      }}
+      accessibilityLabel={isUser ? `Tú: ${item.message}` : `Asistente: ${item.message}`}
+    >
+      {isUser ? (
+        <View
+          style={{
+            backgroundColor: colors.primary,
+            borderRadius: borderRadius.xl,
+            borderBottomRightRadius: borderRadius.sm,
+            padding: spacing.md,
+          }}
+        >
+          <Text style={[typography.bodyMd, { color: '#FFFFFF' }]}>
+            {item.message}
+          </Text>
+        </View>
+      ) : (
+        <GlassCard
+          glowColor={colors.primary}
+          style={{ borderColor: `${colors.primary}40`, padding: spacing.md, gap: spacing.xs }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.xs }}>
+            <Ionicons name="sparkles" size={14} color={colors.primary} />
+            <Text style={[typography.labelMd, { color: colors.primary }]}>Finance Flow IA</Text>
+          </View>
+          <Markdown style={markdownStyles}>
+            {item.message}
+          </Markdown>
+        </GlassCard>
+      )}
+    </View>
+  );
+});
+
+const chatKeyExtractor = (item: ChatMessage) => item.id.toString();
+
 export function ChatScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const { colors } = useTheme();
@@ -73,33 +144,42 @@ export function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlashListRef<ChatMessage>>(null);
   const hasScrolledToBottom = useRef(false);
-
-  useEffect(() => {
-    loadMessages();
-  }, []);
 
   useEffect(() => {
     if (messages.length === 0 || hasScrolledToBottom.current) return;
     let attempts = 0;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     const tryScroll = () => {
       if (attempts >= 10 || hasScrolledToBottom.current) return;
       attempts++;
       flatListRef.current?.scrollToEnd({ animated: true });
-      if (attempts < 10) setTimeout(tryScroll, 300);
+      if (attempts < 10) timeout = setTimeout(tryScroll, 300);
     };
     tryScroll();
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
   }, [messages]);
 
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     try {
       const data = await chatApi.getMessages(50);
       setMessages(data.reverse());
     } catch {
       showError('Error al cargar mensajes');
     }
-  };
+  }, [showError]);
+
+  useEffect(() => {
+    loadMessages();
+  }, [loadMessages]);
+
+  const renderMessage = useCallback(
+    ({ item }: { item: ChatMessage }) => <MessageBubble item={item} />,
+    []
+  );
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -144,7 +224,12 @@ export function ChatScreen() {
         style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: spacing.container }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <TouchableOpacity onPress={() => goBackOrHome(navigation)}>
+          <TouchableOpacity
+            onPress={() => goBackOrHome(navigation)}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View
@@ -168,6 +253,8 @@ export function ChatScreen() {
             </Text>
           </View>
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Más opciones"
             style={{
               width: 36,
               height: 36,
@@ -182,68 +269,13 @@ export function ChatScreen() {
         </View>
       </LinearGradient>
 
-      <FlatList
+      <FlashList
         ref={flatListRef}
         data={messages}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={chatKeyExtractor}
+        renderItem={renderMessage}
         contentContainerStyle={{ padding: spacing.container, paddingBottom: spacing.md }}
-        initialNumToRender={15}
-        maxToRenderPerBatch={15}
-        windowSize={11}
         ListFooterComponent={loading ? <TypingIndicator /> : null}
-        renderItem={({ item }) => (
-          <View
-            style={{
-              alignSelf: item.role === 'user' ? 'flex-end' : 'flex-start',
-              maxWidth: '80%',
-              marginBottom: spacing.md,
-            }}
-          >
-            {item.role === 'user' ? (
-              <View
-                style={{
-                  backgroundColor: colors.primary,
-                  borderRadius: borderRadius.xl,
-                  borderBottomRightRadius: borderRadius.sm,
-                  padding: spacing.md,
-                }}
-              >
-                <Text style={[typography.bodyMd, { color: '#FFFFFF' }]}>
-                  {item.message}
-                </Text>
-              </View>
-            ) : (
-              <GlassCard
-                glowColor={colors.primary}
-                style={{ borderColor: `${colors.primary}40`, padding: spacing.md, gap: spacing.xs }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.xs }}>
-                  <Ionicons name="sparkles" size={14} color={colors.primary} />
-                  <Text style={[typography.labelMd, { color: colors.primary }]}>Finance Flow IA</Text>
-                </View>
-                <Markdown
-                  style={{
-                    body: { color: colors.onSurface, ...typography.bodyMd },
-                    heading1: { color: colors.onSurface, fontSize: 20, fontWeight: '700', marginBottom: 4, marginTop: 4 },
-                    heading2: { color: colors.onSurface, fontSize: 18, fontWeight: '700', marginBottom: 4, marginTop: 4 },
-                    heading3: { color: colors.onSurface, fontSize: 16, fontWeight: '600', marginBottom: 4, marginTop: 4 },
-                    strong: { color: colors.primary, fontWeight: '700' },
-                    link: { color: colors.tertiary },
-                    blockquote: { borderLeftColor: colors.primary, borderLeftWidth: 3, paddingLeft: 8, opacity: 0.8 },
-                    bullet_list: { marginVertical: 2 },
-                    ordered_list: { marginVertical: 2 },
-                    list_item: { marginVertical: 1 },
-                    code_inline: { backgroundColor: colors.surfaceContainerHighest, color: colors.secondary, paddingHorizontal: 4, borderRadius: 4 },
-                    fence: { backgroundColor: colors.surfaceContainerHighest, padding: 8, borderRadius: 8, marginVertical: 4 },
-                    code_block: { backgroundColor: colors.surfaceContainerHighest, padding: 8, borderRadius: 8 },
-                  }}
-                >
-                  {item.message}
-                </Markdown>
-              </GlassCard>
-            )}
-          </View>
-        )}
         ListEmptyComponent={loading ? null :
           <View style={{ alignItems: 'center', marginTop: spacing['2xl'], gap: spacing.md }}>
             <LinearGradient
@@ -284,6 +316,8 @@ export function ChatScreen() {
         }}
       >
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Adjuntar archivo"
           style={{
             width: 40,
             height: 40,
@@ -313,6 +347,7 @@ export function ChatScreen() {
             value={input}
             onChangeText={setInput}
             multiline
+            accessibilityLabel="Escribe tu mensaje para el asistente"
             style={[
               typography.bodyMd,
               {
@@ -326,6 +361,9 @@ export function ChatScreen() {
           <TouchableOpacity
             onPress={sendMessage}
             disabled={!input.trim() || loading}
+            accessibilityRole="button"
+            accessibilityLabel="Enviar mensaje"
+            accessibilityState={{ disabled: !input.trim() || loading }}
             style={{
               width: 40,
               height: 40,

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,6 +6,8 @@ import { NavigationContainer, NavigationContainerRef, type LinkingOptions } from
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
+import { ShareIntentHandler } from '../components/share/ShareIntentHandler';
+import { setPendingSharedImage } from '../services/sharedImage';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
@@ -82,6 +84,13 @@ export function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
+  // Receives an image shared into the app (share sheet / PWA share target),
+  // stashes it and opens the receipt scanner, which consumes it on focus.
+  const handleSharedImage = useCallback((uri: string) => {
+    setPendingSharedImage({ uri });
+    navigationRef.current?.navigate('ReceiptScanner');
+  }, []);
+
   if (isLoading) {
     return <SplashScreen />;
   }
@@ -113,6 +122,7 @@ export function RootNavigator() {
         <Stack.Screen name="Chat" component={ChatScreen} options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="Categories" component={CategoriesScreen} options={{ animation: 'slide_from_right' }} />
       </Stack.Navigator>
+      <ShareIntentHandler onSharedImage={handleSharedImage} />
     </NavigationContainer>
   );
 }

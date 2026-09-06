@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,11 +28,7 @@ export function HomeScreen() {
   const [debtSummary, setDebtSummary] = useState<DebtSummary | null>(null);
   const [pendingRequests, setPendingRequests] = useState(0);
 
-  useFocusEffect(
-    useCallback(() => { loadData(); }, [])
-  );
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [balData, expData, earnData, summaryData, pendingData] = await Promise.all([
         walletsApi.getBalance(),
@@ -49,7 +45,16 @@ export function HomeScreen() {
     } catch {
       showError('Error al cargar datos del inicio');
     }
-  };
+  }, [showError]);
+
+  const loadDataRef = useRef(loadData);
+  useEffect(() => {
+    loadDataRef.current = loadData;
+  }, [loadData]);
+
+  useFocusEffect(
+    useCallback(() => { loadDataRef.current(); }, [])
+  );
 
   const totalEarnings = useMemo(() => balanceData.reduce((sum, w) => sum + Number(w.totalEarnings), 0), [balanceData]);
   const totalExpenses = useMemo(() => balanceData.reduce((sum, w) => sum + Number(w.totalExpenses), 0), [balanceData]);
@@ -113,6 +118,12 @@ export function HomeScreen() {
             </View>
             <TouchableOpacity
               onPress={() => navigation.navigate('Contacts')}
+              accessibilityRole="button"
+              accessibilityLabel={
+                pendingRequests > 0
+                  ? `Notificaciones, ${pendingRequests} solicitudes pendientes`
+                  : 'Notificaciones'
+              }
               style={{
                 width: 44,
                 height: 44,
@@ -162,6 +173,8 @@ export function HomeScreen() {
           <View style={{ flexDirection: 'row', gap: spacing.md }}>
             <TouchableOpacity
               onPress={() => navigation.navigate('AddEarning')}
+              accessibilityRole="button"
+              accessibilityLabel="Registrar ingreso"
               style={{ flex: 1, alignItems: 'center', gap: spacing.xs }}
             >
               <LinearGradient
@@ -184,6 +197,8 @@ export function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.navigate('AddExpense')}
+              accessibilityRole="button"
+              accessibilityLabel="Registrar gasto"
               style={{ flex: 1, alignItems: 'center', gap: spacing.xs }}
             >
               <LinearGradient
@@ -206,6 +221,8 @@ export function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.navigate('ReceiptScanner')}
+              accessibilityRole="button"
+              accessibilityLabel="Escanear recibo"
               style={{ flex: 1, alignItems: 'center', gap: spacing.xs }}
             >
               <View
@@ -226,6 +243,8 @@ export function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.navigate('Chat')}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir chat con IA"
               style={{ flex: 1, alignItems: 'center', gap: spacing.xs }}
             >
               <View

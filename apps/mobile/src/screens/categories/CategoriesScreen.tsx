@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Modal } from 'react-native';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,11 +41,7 @@ export function CategoriesScreen() {
   const [formType, setFormType] = useState<'expense' | 'earning'>('expense');
   const [filterType, setFilterType] = useState<FilterType>('all');
 
-  useFocusEffect(
-    useCallback(() => { loadFirstPage(); }, [])
-  );
-
-  const loadFirstPage = async () => {
+  const loadFirstPage = useCallback(async () => {
     try {
       const [catData, brkData] = await Promise.all([
         categoriesApi.getAll({ limit: PAGE_SIZE, page: 1 }),
@@ -63,9 +60,18 @@ export function CategoriesScreen() {
     } catch {
       showError('Error al cargar categorías');
     }
-  };
+  }, [showError]);
 
-  const loadMore = async () => {
+  const loadFirstPageRef = useRef(loadFirstPage);
+  useEffect(() => {
+    loadFirstPageRef.current = loadFirstPage;
+  }, [loadFirstPage]);
+
+  useFocusEffect(
+    useCallback(() => { loadFirstPageRef.current(); }, [])
+  );
+
+  const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     const nextPage = page + 1;
@@ -86,10 +92,13 @@ export function CategoriesScreen() {
     } finally {
       setLoadingMore(false);
     }
-  };
+  }, [loadingMore, hasMore, page, showError]);
 
-  const getCategoryTransactionCount = (catId: number) =>
-    breakdown.reduce((sum, item) => sum + (item.categoryId === catId ? item.count : 0), 0);
+  const getCategoryTransactionCount = useCallback(
+    (catId: number) =>
+      breakdown.reduce((sum, item) => sum + (item.categoryId === catId ? item.count : 0), 0),
+    [breakdown]
+  );
 
   const filteredCategories = useMemo(() =>
     filterType === 'all'
@@ -116,25 +125,25 @@ export function CategoriesScreen() {
     ? totalBalance
     : filterType === 'expense' ? totalExpenses : totalEarnings;
 
-  const openCreate = () => {
+  const openCreate = useCallback(() => {
     setEditCategory(null);
     setFormName('');
     setFormDescription('');
     setFormColor(presetColors[0]);
     setFormType('expense');
     setModalVisible(true);
-  };
+  }, []);
 
-  const openEdit = (cat: Category) => {
+  const openEdit = useCallback((cat: Category) => {
     setEditCategory(cat);
     setFormName(cat.name);
     setFormDescription(cat.description || '');
     setFormColor(cat.color);
     setFormType(cat.type);
     setModalVisible(true);
-  };
+  }, []);
 
-  const handleDelete = (cat: Category) => {
+  const handleDelete = useCallback((cat: Category) => {
     const totalTx = getCategoryTransactionCount(cat.id);
     if (totalTx > 0) {
       showAlert({
@@ -177,7 +186,7 @@ export function CategoriesScreen() {
         ],
       });
     }
-  };
+  }, [getCategoryTransactionCount, loadFirstPage, showError]);
 
   const handleSave = async () => {
     if (!formName.trim()) return;
@@ -230,6 +239,111 @@ export function CategoriesScreen() {
     return formatCurrency(value);
   };
 
+  // O(1) per-row lookup instead of filtering the breakdown for every row.
+  const totalsByCategory = useMemo(() => {
+    const map = new Map<number, { expenses: number; earnings: number; count: number }>();
+    for (const item of breakdown) {
+      const entry = map.get(item.categoryId) ?? { expenses: 0, earnings: 0, count: 0 };
+      if (item.type === 'expense') entry.expenses += Number(item.value);
+      else entry.earnings += Number(item.value);
+      entry.count += item.count;
+      map.set(item.categoryId, entry);
+    }
+    return map;
+  }, [breakdown]);
+
+  const keyExtractor = useCallback((item: Category) => item.id.toString(), []);
+
+  const renderCategory: ListRenderItem<Category> = useCallback(
+    ({ item }) => {
+      const totals = totalsByCategory.get(item.id);
+      const catExpenseTotal = totals?.expenses ?? 0;
+      const catEarningTotal = totals?.earnings ?? 0;
+      const totalTx = totals?.count ?? 0;
+
+      const displayTotal = filterType === 'expense'
+        ? catExpenseTotal
+        : filterType === 'earning'
+          ? catEarningTotal
+          : catEarningTotal - catExpenseTotal;
+
+      return (
+        <TouchableOpacity
+          onPress={() => openEdit(item)}
+          accessibilityRole="button"
+          accessibilityLabel={`Categoría ${item.name}, ${totalTx} transacciones`}
+          accessibilityHint="Toca para editar la categoría"
+          style={{ marginBottom: spacing.md }}
+        >
+          <GlassCard>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  backgroundColor: item.color + '20',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="folder" size={22} color={item.color} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.titleMd, { color: colors.onSurface }]}>
+                  {item.name}
+                </Text>
+                <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
+                  {totalTx} transacciones
+                </Text>
+              </View>
+              <Text style={[typography.titleMd, { color: colors.onSurface }]}>
+                {formatAmount(displayTotal)}
+              </Text>
+              <TouchableOpacity
+                onPress={() => handleDelete(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`Eliminar categoría ${item.name}`}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={{ padding: spacing.xs }}
+              >
+                <Ionicons name="trash-outline" size={20} color={colors.error} />
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        </TouchableOpacity>
+      );
+    },
+    [totalsByCategory, filterType, openEdit, handleDelete, colors]
+  );
+
+  const listFooter = useCallback(
+    () =>
+      loadingMore ? (
+        <View style={{ paddingVertical: spacing.md, alignItems: 'center' }}>
+          <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>Cargando...</Text>
+        </View>
+      ) : null,
+    [loadingMore, colors]
+  );
+
+  const listEmpty = useCallback(
+    () => (
+      <GlassCard>
+        <View style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }}>
+          <Ionicons name="apps-outline" size={48} color={colors.onSurfaceVariant} />
+          <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
+            {filterType === 'all'
+              ? 'No hay categorías aún'
+              : `No hay categorías de ${filterType === 'expense' ? 'gastos' : 'ingresos'}`}
+          </Text>
+          <GradientButton title="Crear categoría" onPress={openCreate} />
+        </View>
+      </GlassCard>
+    ),
+    [colors, filterType, openCreate]
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <LinearGradient
@@ -239,7 +353,12 @@ export function CategoriesScreen() {
         style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: spacing.container }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <TouchableOpacity onPress={() => goBackOrHome(navigation)}>
+          <TouchableOpacity
+            onPress={() => goBackOrHome(navigation)}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View
@@ -257,16 +376,22 @@ export function CategoriesScreen() {
           <Text style={[typography.headlineMd, { color: '#FFFFFF', flex: 1 }]}>
             Categorías
           </Text>
-          <TouchableOpacity onPress={openCreate}>
+          <TouchableOpacity
+            onPress={openCreate}
+            accessibilityRole="button"
+            accessibilityLabel="Crear categoría"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons name="add-circle" size={28} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </LinearGradient>
 
-      <FlatList
+      <FlashList
         data={filteredCategories}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={{ padding: spacing.container, gap: spacing.md }}
+        keyExtractor={keyExtractor}
+        renderItem={renderCategory}
+        contentContainerStyle={{ padding: spacing.container }}
         ListHeaderComponent={() => (
           <>
             <View
@@ -286,6 +411,9 @@ export function CategoriesScreen() {
                 <TouchableOpacity
                   key={t.key}
                   onPress={() => setFilterType(t.key)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: filterType === t.key }}
+                  accessibilityLabel={`Mostrar ${t.label.toLowerCase()}`}
                   style={{
                     flex: 1,
                     paddingVertical: spacing.sm + 2,
@@ -346,76 +474,10 @@ export function CategoriesScreen() {
             </View>
           </>
         )}
-        renderItem={({ item }) => {
-          const catExpenseTotal = breakdown
-            .filter(i => i.categoryId === item.id && i.type === 'expense')
-            .reduce((s, i) => s + Number(i.value), 0);
-          const catEarningTotal = breakdown
-            .filter(i => i.categoryId === item.id && i.type === 'earning')
-            .reduce((s, i) => s + Number(i.value), 0);
-          const totalTx = getCategoryTransactionCount(item.id);
-
-          const displayTotal = filterType === 'expense'
-            ? catExpenseTotal
-            : filterType === 'earning'
-              ? catEarningTotal
-              : catEarningTotal - catExpenseTotal;
-
-          return (
-            <TouchableOpacity onPress={() => openEdit(item)}>
-              <GlassCard>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 14,
-                      backgroundColor: item.color + '20',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Ionicons name="folder" size={22} color={item.color} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[typography.titleMd, { color: colors.onSurface }]}>
-                      {item.name}
-                    </Text>
-                    <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
-                      {totalTx} transacciones
-                    </Text>
-                  </View>
-                  <Text style={[typography.titleMd, { color: colors.onSurface }]}>
-                    {formatAmount(displayTotal)}
-                  </Text>
-                  <TouchableOpacity onPress={() => handleDelete(item)} style={{ padding: spacing.xs }}>
-                    <Ionicons name="trash-outline" size={20} color={colors.error} />
-                  </TouchableOpacity>
-                </View>
-              </GlassCard>
-            </TouchableOpacity>
-          );
-        }}
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
-        ListFooterComponent={loadingMore ? (
-          <View style={{ paddingVertical: spacing.md, alignItems: 'center' }}>
-            <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>Cargando...</Text>
-          </View>
-        ) : null}
-        ListEmptyComponent={
-          <GlassCard>
-            <View style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }}>
-              <Ionicons name="apps-outline" size={48} color={colors.onSurfaceVariant} />
-              <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
-                {filterType === 'all'
-                  ? 'No hay categorías aún'
-                  : `No hay categorías de ${filterType === 'expense' ? 'gastos' : 'ingresos'}`}
-              </Text>
-              <GradientButton title="Crear categoría" onPress={openCreate} />
-            </View>
-          </GlassCard>
-        }
+        ListFooterComponent={listFooter}
+        ListEmptyComponent={listEmpty}
       />
 
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>

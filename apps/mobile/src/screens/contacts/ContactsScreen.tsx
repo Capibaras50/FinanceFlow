@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,11 +36,7 @@ export function ContactsScreen() {
   const [results, setResults] = useState<Profile[]>([]);
   const [searching, setSearching] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => { loadData(); }, [])
-  );
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [accepted, received, sent] = await Promise.all([
         contactsApi.getAll(),
@@ -53,7 +49,16 @@ export function ContactsScreen() {
     } catch {
       showError('Error al cargar contactos');
     }
-  };
+  }, [showError]);
+
+  const loadDataRef = useRef(loadData);
+  useEffect(() => {
+    loadDataRef.current = loadData;
+  }, [loadData]);
+
+  useFocusEffect(
+    useCallback(() => { loadDataRef.current(); }, [])
+  );
 
   const relatedProfileIds = useMemo(() => {
     const ids = new Set<number>();
@@ -199,6 +204,8 @@ export function ContactsScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
             <TouchableOpacity
               onPress={handleBack}
+              accessibilityRole="button"
+              accessibilityLabel="Volver"
               style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
             >
               <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
@@ -218,7 +225,12 @@ export function ContactsScreen() {
             <Text style={[typography.headlineSm, { color: '#FFFFFF', flex: 1 }]}>
               Contactos
             </Text>
-            <TouchableOpacity onPress={openSearch}>
+            <TouchableOpacity
+              onPress={openSearch}
+              accessibilityRole="button"
+              accessibilityLabel="Agregar contacto"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Ionicons name="add-circle" size={28} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
@@ -251,6 +263,8 @@ export function ContactsScreen() {
                       <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
                         <TouchableOpacity
                           onPress={() => handleAccept(c)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Aceptar solicitud de ${profile.name}`}
                           style={{
                             flex: 1,
                             alignItems: 'center',
@@ -265,6 +279,8 @@ export function ContactsScreen() {
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => handleReject(c)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Rechazar solicitud de ${profile.name}`}
                           style={{
                             flex: 1,
                             alignItems: 'center',
@@ -299,7 +315,12 @@ export function ContactsScreen() {
                             Pendiente de aceptar
                           </Text>
                         </View>
-                        <TouchableOpacity onPress={() => handleCancelSent(c)}>
+                        <TouchableOpacity
+                          onPress={() => handleCancelSent(c)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Cancelar solicitud enviada a ${profile.name}`}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
                           <Ionicons name="close-circle" size={22} color={colors.onSurfaceVariant} />
                         </TouchableOpacity>
                       </View>

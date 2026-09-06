@@ -2,6 +2,26 @@
 
 Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before writing any code.
 
+# FlashList + Share Intent (September 6, 2026)
+- **New deps**: `@shopify/flash-list@2.0.2` (SDK 56 official), `expo-share-intent@^7` (v7 = SDK 56; v8 requires SDK 57 — do NOT upgrade until Expo 57)
+- **FlashList migrations**: ChatScreen, CategoriesScreen (both were FlatList), TransactionListScreen (was SectionList — sections flattened into header/transaction rows with `getItemType`; row keys now `${type}-${id}` to avoid expense/earning id collisions)
+- **Stable-load pattern everywhere**: `loadData` wrapped in `useCallback` + `loadDataRef` synced by effect; `useFocusEffect` only refetches on focus (fixed double-fetch in DebtsScreen filters and Wallets/Categories/Contacts/Home)
+- **Memoized**: `DebtCard`, `ContactCard` (+ per-category totals Map in CategoriesScreen for O(1) row lookups)
+- **Share into the app**:
+  - Android: `expo-share-intent` plugin in app.json with `androidIntentFilters: ["image/*"]` → after ANY change here, run `npx expo prebuild --clean` then `npx expo run:android` (existing `android/` folder blocks auto-reapply)
+  - PWA: `public/manifest.json` `share_target` POSTs to `/share-target`; `public/sw.js` stashes the image in cache `finance-flow-shared-image` and redirects to `/?shared=1`
+  - Flow: `ShareIntentHandler` (`.tsx` = native via `useShareIntent`, `.web.tsx` = Cache API reader) inside NavigationContainer → `setPendingSharedImage()` in `src/services/sharedImage.ts` → navigate `ReceiptScanner` → screen consumes pending image in `useFocusEffect`
+  - Safe without rebuild: `useShareIntent` no-ops if native module missing; web never imports expo-share-intent
+- **a11y**: roles/labels on wallet cards, debt cards, contact cards, all filter chips, FABs, back buttons
+
+# Performance & Accessibility Pass (September 4, 2026)
+- **format.ts**: `Intl.NumberFormat` cached (single instance) — was re-created per `formatCurrency()` call
+- **Memoized components**: `GlassCard`, `TransactionCard`, chat `MessageBubble` (React Rendering markdown is expensive)
+- **SnackbarContext**: context value memoized so showing a snackbar no longer re-renders every consumer
+- **TransactionListScreen**: single-pass section grouping (was 3 filters with a `new Date` per item each), `walletsById` Map (O(1) wallet lookup per row), stable `keyExtractor`/`renderItem`/header/footer via `useCallback`, `SectionList` perf props (`initialNumToRender`, `maxToRenderPerBatch`, `windowSize`, `removeClippedSubviews`), fixed double-fetch on tab switch (focus effect now uses `loadDataRef` + tab effect skips first render)
+- **Accessibility**: `accessibilityRole`/`accessibilityLabel`/`accessibilityState`/`hitSlop` on tabs, FAB, add-movement menu, chat buttons, filter chips, transaction rows (with delete hint), `Input` labels linked, error text uses `accessibilityLiveRegion`
+- **MainTabNavigator**: removed `as any` casts; `ADD_OPTIONS` typed with `Ionicons.glyphMap` keys and shared `description`
+
 # Session Context (July 2, 2026)
 
 ## Changes

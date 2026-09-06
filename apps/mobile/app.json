@@ -56,7 +56,16 @@
       "expo-font",
       "expo-splash-screen",
       "expo-web-browser",
-      "./plugins/withCleartextTraffic"
+      "./plugins/withCleartextTraffic",
+      [
+        "expo-share-intent",
+        {
+          "androidIntentFilters": ["image/*"],
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsImageWithMaxCount": 1
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {

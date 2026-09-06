@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -31,11 +31,7 @@ export function WalletsScreen() {
   const [editWallet, setEditWallet] = useState<WalletBalance | null>(null);
   const [walletName, setWalletName] = useState('');
 
-  useFocusEffect(
-    useCallback(() => { loadData(); }, [])
-  );
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [balData, expData] = await Promise.all([
         walletsApi.getBalance(),
@@ -46,7 +42,16 @@ export function WalletsScreen() {
     } catch {
       showError('Error al cargar carteras');
     }
-  };
+  }, [showError]);
+
+  const loadDataRef = useRef(loadData);
+  useEffect(() => {
+    loadDataRef.current = loadData;
+  }, [loadData]);
+
+  useFocusEffect(
+    useCallback(() => { loadDataRef.current(); }, [])
+  );
 
   const openCreate = () => {
     setEditWallet(null);
@@ -155,7 +160,11 @@ export function WalletsScreen() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity onPress={openCreate}>
+            <TouchableOpacity
+              onPress={openCreate}
+              accessibilityRole="button"
+              accessibilityLabel="Crear nueva cartera"
+            >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primaryContainer, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: borderRadius.full }}>
                 <Ionicons name="add" size={18} color={colors.onPrimaryContainer} />
                 <Text style={[typography.labelMd, { color: colors.onPrimaryContainer }]}>Nueva</Text>
@@ -180,7 +189,14 @@ export function WalletsScreen() {
               {balances.map((wallet, index) => {
                 const color = walletColors[index % walletColors.length];
                 return (
-                  <TouchableOpacity key={wallet.id} onPress={() => openEdit(wallet)} onLongPress={() => handleDelete(wallet)}>
+                  <TouchableOpacity
+                    key={wallet.id}
+                    onPress={() => openEdit(wallet)}
+                    onLongPress={() => handleDelete(wallet)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Cartera ${wallet.name}, saldo ${formatCurrency(wallet.balance)}`}
+                    accessibilityHint="Toca para editar. Mantén presionado para eliminar."
+                  >
                     <GlassCard
                       glowColor={color}
                       style={{ width: 170, gap: spacing.sm }}
@@ -225,7 +241,11 @@ export function WalletsScreen() {
               <Text style={[typography.titleLg, { color: colors.onSurface }]}>
                 Movimientos Recientes
               </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'Transactions' })}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('MainTabs', { screen: 'Transactions' })}
+                accessibilityRole="button"
+                accessibilityLabel="Ver todas las transacciones"
+              >
                 <Text style={[typography.bodySm, { color: colors.primary }]}>Ver todo</Text>
               </TouchableOpacity>
             </View>
@@ -279,7 +299,12 @@ export function WalletsScreen() {
                 {editWallet ? 'Editar cartera' : 'Nueva cartera'}
               </Text>
               {editWallet && (
-                <TouchableOpacity onPress={() => { setModalVisible(false); handleDelete(editWallet); }}>
+                <TouchableOpacity
+                  onPress={() => { setModalVisible(false); handleDelete(editWallet); }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Eliminar cartera ${editWallet.name}`}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
                   <Ionicons name="trash-outline" size={24} color={colors.error} />
                 </TouchableOpacity>
               )}

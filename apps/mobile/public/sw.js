@@ -1,5 +1,7 @@
 /* Finance Flow - Service Worker */
-const CACHE_VERSION = 'finance-flow-v2';
+const CACHE_VERSION = 'finance-flow-v3';
+const SHARE_CACHE = 'finance-flow-shared-image';
+const SHARE_TARGET_PATH = '/share-target';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -37,10 +39,30 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
+  const url = new URL(request.url);
+
+  // Web Share Target: the system share sheet POSTs the shared image here.
+  // Stash it in a cache and redirect to the app, which picks it up on boot.
+  if (request.method === 'POST' && url.pathname === SHARE_TARGET_PATH) {
+    event.respondWith(
+      (async () => {
+        try {
+          const formData = await request.formData();
+          const file = formData.get('image');
+          if (file) {
+            const cache = await caches.open(SHARE_CACHE);
+            await cache.put('/latest', new Response(file, { headers: { 'Content-Type': file.type || 'image/jpeg' } }));
+          }
+        } catch (e) {
+          // Ignore and still open the app.
+        }
+        return Response.redirect('/?shared=1', 303);
+      })()
+    );
+    return;
+  }
 
   if (request.method !== 'GET') return;
-
-  const url = new URL(request.url);
 
   // Never cache cross-origin requests (e.g. the API or Cloudinary uploads).
   if (url.origin !== self.location.origin) return;

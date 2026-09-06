@@ -12,9 +12,10 @@ import { useTheme } from '../../hooks/useTheme';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { useSnackbar } from '../../context/SnackbarContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 import { getTokenSync } from '../../services/storage';
+import { consumePendingSharedImage } from '../../services/sharedImage';
 import { getErrorMessage } from '../../utils/format';
 import { goBackOrHome } from '../../utils/navigation';
 import { receiptsApi } from '../../services/api';
@@ -92,6 +93,17 @@ export function ReceiptScannerScreen() {
     setCompressedFile(compressed.file ?? null);
     setShowConfirm(true);
   };
+
+  // Pick up an image shared into the app (share sheet / PWA share target).
+  useFocusEffect(
+    useCallback(() => {
+      const shared = consumePendingSharedImage();
+      if (shared?.uri) {
+        processCaptured(shared.uri);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- processCaptured only sets state
+    }, [])
+  );
 
   const takePicture = async () => {
     if (cameraRef.current) {

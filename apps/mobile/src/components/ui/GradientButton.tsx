@@ -10,6 +10,7 @@ interface GradientButtonProps {
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   variant?: 'primary' | 'outlined' | 'ghost';
+  accessibilityLabel?: string;
 }
 
 export function GradientButton({
@@ -19,14 +20,21 @@ export function GradientButton({
   disabled,
   style,
   variant = 'primary',
+  accessibilityLabel,
 }: GradientButtonProps) {
   const { colors } = useTheme();
   const resolvedGradient = gradient ?? colors.gradient.primary;
+  const a11yProps = {
+    accessibilityRole: 'button' as const,
+    accessibilityLabel: accessibilityLabel ?? title,
+    accessibilityState: { disabled: !!disabled },
+  };
   if (variant === 'outlined') {
     return (
       <TouchableOpacity
         onPress={onPress}
         disabled={disabled}
+        {...a11yProps}
         style={[
           {
             borderRadius: borderRadius.full,
@@ -57,6 +65,7 @@ export function GradientButton({
       <TouchableOpacity
         onPress={onPress}
         disabled={disabled}
+        {...a11yProps}
         style={[
           {
             borderRadius: borderRadius.full,
@@ -81,7 +90,7 @@ export function GradientButton({
   }
 
   return (
-    <TouchableOpacity onPress={onPress} disabled={disabled} style={style}>
+    <TouchableOpacity onPress={onPress} disabled={disabled} {...a11yProps} style={style}>
       <LinearGradient
         colors={resolvedGradient}
         start={{ x: 0, y: 0 }}

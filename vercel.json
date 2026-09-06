@@ -1,0 +1,9 @@
+{
+  "buildCommand": "cd apps/mobile && npx expo export --platform web",
+  "outputDirectory": "apps/mobile/dist",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "rewrites": [
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+  ]
+}

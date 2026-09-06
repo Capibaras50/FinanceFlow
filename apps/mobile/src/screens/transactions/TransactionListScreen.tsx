@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, SectionList, Modal, ScrollView } from 'react-native';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, TextInput, Modal, ScrollView, ActivityIndicator } from 'react-native';
+import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,10 +21,23 @@ import type { TransactionTimelineItem } from '@finance-flow/api-client';
 
 type TabType = 'all' | 'expenses' | 'earnings';
 
+type TransactionItem = Expense | Earning | (TransactionTimelineItem & { createdAt: string });
+
 type TransactionSection = {
   title: string;
-  data: (Expense | Earning | (TransactionTimelineItem & { createdAt: string }))[];
+  data: TransactionItem[];
 };
+
+// FlashList has no section API: sections are flattened into a single row list.
+type ListRow =
+  | { kind: 'header'; key: string; title: string }
+  | { kind: 'transaction'; key: string; item: TransactionItem; itemType: 'expense' | 'earning' };
+
+const FILTER_TABS: { key: TabType; label: string }[] = [
+  { key: 'all', label: 'Todos' },
+  { key: 'expenses', label: 'Gastos' },
+  { key: 'earnings', label: 'Ingresos' },
+];
 
 export function TransactionListScreen() {
   const navigation = useNavigation<RootNavigationProp>();
@@ -65,7 +79,7 @@ export function TransactionListScreen() {
     } catch {}
   }, []);
 
-  const buildParams = (overrides?: { page?: number; category?: string; wallet?: string; sortBy?: 'value' | 'createdAt'; sortOrder?: 'ASC' | 'DESC' }) => {
+  const buildParams = useCallback((overrides?: { page?: number; category?: string; wallet?: string; sortBy?: 'value' | 'createdAt'; sortOrder?: 'ASC' | 'DESC' }) => {
     const params: Record<string, string | number | undefined> = {
       page: overrides?.page ?? 1,
       limit: PAGE_SIZE,
@@ -79,7 +93,7 @@ export function TransactionListScreen() {
     if (sb) params.sortBy = sb;
     if (so) params.sortOrder = so;
     return params;
-  };
+  }, [filterCategory, filterWallet, filterSortBy, filterSortOrder]);
 
   const loadData = useCallback(async (filterOverrides?: { category?: string; wallet?: string; sortBy?: 'value' | 'createdAt'; sortOrder?: 'ASC' | 'DESC' }) => {
     try {
@@ -112,7 +126,7 @@ export function TransactionListScreen() {
     } catch {
       showError('Error al cargar transacciones');
     }
-  }, [tab, filterCategory, filterWallet, filterSortBy, filterSortOrder, showError]);
+  }, [tab, buildParams, showError]);
 
   const loadMore = async () => {
     if (loadingMore) return;
@@ -165,15 +179,30 @@ export function TransactionListScreen() {
     }
   };
 
+  // Keep a ref to the latest loadData so the focus effect only re-runs when
+  // the screen is actually focused (not on every filter/tab state change).
+  const loadDataRef = useRef(loadData);
+  useEffect(() => {
+    loadDataRef.current = loadData;
+  }, [loadData]);
+
   useFocusEffect(
     useCallback(() => {
       loadMeta();
-      loadData();
-    }, [loadMeta, loadData])
+      loadDataRef.current();
+    }, [loadMeta])
   );
 
+  // Reload only when the tab actually changes (skip the mount pass, the focus
+  // effect already covers it) to avoid duplicate network requests.
+  const isFirstTabRender = useRef(true);
   useEffect(() => {
+    if (isFirstTabRender.current) {
+      isFirstTabRender.current = false;
+      return;
+    }
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to tab switches
   }, [tab]);
 
   const handleDelete = useCallback(async (item: Expense | Earning | (TransactionTimelineItem & { createdAt: string })) => {
@@ -233,18 +262,104 @@ export function TransactionListScreen() {
     t.name.toLowerCase().includes(search.toLowerCase())
   ), [data, search]);
 
+  // Single-pass grouping: builds sections in O(n) instead of 3 filtered passes.
   const sections: TransactionSection[] = useMemo(() => {
     const today = new Date().toDateString();
     const yesterday = new Date(Date.now() - 86400000).toDateString();
-    return [
-      { title: 'Hoy', data: filtered.filter((t) => new Date(t.createdAt).toDateString() === today) },
-      { title: 'Ayer', data: filtered.filter((t) => new Date(t.createdAt).toDateString() === yesterday) },
-      { title: 'Anteriores', data: filtered.filter((t) => {
-        const d = new Date(t.createdAt).toDateString();
-        return d !== today && d !== yesterday;
-      }) },
-    ].filter(s => s.data.length > 0);
-  }, [filtered, wallets]);
+    const todayItems: TransactionItem[] = [];
+    const yesterdayItems: TransactionItem[] = [];
+    const olderItems: TransactionItem[] = [];
+    for (const t of filtered) {
+      const d = new Date(t.createdAt).toDateString();
+      if (d === today) todayItems.push(t);
+      else if (d === yesterday) yesterdayItems.push(t);
+      else olderItems.push(t);
+    }
+    const result: TransactionSection[] = [];
+    if (todayItems.length > 0) result.push({ title: 'Hoy', data: todayItems });
+    if (yesterdayItems.length > 0) result.push({ title: 'Ayer', data: yesterdayItems });
+    if (olderItems.length > 0) result.push({ title: 'Anteriores', data: olderItems });
+    return result;
+  }, [filtered]);
+
+  const walletsById = useMemo(() => new Map(wallets.map((w) => [w.id, w.name])), [wallets]);
+
+  // Flatten sections into rows for FlashList. Keys include the type so an
+  // expense and an earning can never collide on the same numeric id.
+  const listRows = useMemo<ListRow[]>(() => {
+    const rows: ListRow[] = [];
+    for (const section of sections) {
+      rows.push({ kind: 'header', key: `header-${section.title}`, title: section.title });
+      for (const item of section.data) {
+        const itemType: 'expense' | 'earning' =
+          tab === 'all' ? (item as TransactionTimelineItem).type : (tab === 'expenses' ? 'expense' : 'earning');
+        rows.push({ kind: 'transaction', key: `${itemType}-${item.id}`, item, itemType });
+      }
+    }
+    return rows;
+  }, [sections, tab]);
+
+  const keyExtractor = useCallback((row: ListRow) => row.key, []);
+
+  const getItemType = useCallback((row: ListRow) => row.kind, []);
+
+  const renderItem: ListRenderItem<ListRow> = useCallback(
+    ({ item: row }) => {
+      if (row.kind === 'header') {
+        return (
+          <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm, marginTop: spacing.md }]}>
+            {row.title}
+          </Text>
+        );
+      }
+      const { item, itemType } = row;
+      const resolvedWalletName = tab === 'all'
+        ? walletsById.get((item as TransactionTimelineItem).wallet_id)
+        : undefined;
+      const isExpense = itemType === 'expense';
+      return (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('TransactionDetail', { transactionId: item.id, type: itemType })}
+          onLongPress={() => handleDelete(item)}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.name}, ${isExpense ? 'gasto' : 'ingreso'} de ${formatCurrency(item.value)}`}
+          accessibilityHint="Toca para ver el detalle. Mantén presionado para eliminar."
+        >
+          <TransactionCard
+            transaction={item as Expense | Earning}
+            type={itemType}
+            walletName={resolvedWalletName}
+          />
+        </TouchableOpacity>
+      );
+    },
+    [tab, walletsById, navigation, handleDelete, colors]
+  );
+
+  const listFooter = useCallback(
+    () =>
+      loadingMore ? (
+        <View style={{ paddingVertical: spacing.md, alignItems: 'center' }}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : null,
+    [loadingMore, colors]
+  );
+
+  const listEmpty = useCallback(
+    () => (
+      <GlassCard style={{ marginTop: spacing.lg }}>
+        <View style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }}>
+          <Ionicons name="receipt-outline" size={48} color={colors.onSurfaceVariant} />
+          <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
+            {tab === 'all' ? 'No hay transacciones registradas' : `No hay ${tab === 'expenses' ? 'gastos' : 'ingresos'} registrados`}
+          </Text>
+        </View>
+      </GlassCard>
+    ),
+    [tab, colors]
+  );
 
   const hasAmountFilters = filterCategory !== undefined || filterWallet !== undefined;
 
@@ -302,25 +417,29 @@ export function TransactionListScreen() {
             marginVertical: spacing.md,
           }}
         >
-          {(['all', 'expenses', 'earnings'] as const).map((t) => (
+          {FILTER_TABS.map(({ key, label }) => (
             <TouchableOpacity
-              key={t}
-              onPress={() => setTab(t)}
+              key={key}
+              onPress={() => setTab(key)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: tab === key }}
+              accessibilityLabel={`Mostrar ${label.toLowerCase()}`}
               style={{
                 flex: 1,
-                paddingVertical: spacing.sm + 2,
+                minHeight: 44,
+                justifyContent: 'center',
                 borderRadius: borderRadius.full,
-                backgroundColor: tab === t ? colors.primary : 'transparent',
+                backgroundColor: tab === key ? colors.primary : 'transparent',
                 alignItems: 'center',
               }}
             >
               <Text
                 style={[
                   typography.labelMd,
-                  { color: tab === t ? '#FFFFFF' : colors.onSurfaceVariant, fontWeight: '600' },
+                  { color: tab === key ? '#FFFFFF' : colors.onSurfaceVariant, fontWeight: '600' },
                 ]}
               >
-                {t === 'all' ? 'Todos' : t === 'expenses' ? 'Gastos' : 'Ingresos'}
+                {label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -344,12 +463,20 @@ export function TransactionListScreen() {
             placeholderTextColor={colors.onSurfaceVariant}
             value={search}
             onChangeText={setSearch}
+            accessibilityLabel="Buscar transacciones"
+            returnKeyType="search"
             style={[
               typography.bodyMd,
               { flex: 1, color: colors.onSurface, paddingVertical: spacing.sm + 2, marginLeft: spacing.sm },
             ]}
           />
-          <TouchableOpacity onPress={() => setShowFilters(true)}>
+          <TouchableOpacity
+            onPress={() => setShowFilters(true)}
+            accessibilityRole="button"
+            accessibilityLabel={hasActiveFilters ? 'Filtros (activos)' : 'Abrir filtros'}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={{ minWidth: 28, minHeight: 28, alignItems: 'center', justifyContent: 'center' }}
+          >
             <Ionicons
               name="filter"
               size={18}
@@ -381,53 +508,17 @@ export function TransactionListScreen() {
           </GlassCard>
         )}
 
-        <SectionList
-          sections={sections}
-          keyExtractor={(item) => `${item.id}-${tab}`}
-          renderSectionHeader={({ section: { title } }) => (
-            <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm, marginTop: spacing.md }]}>
-              {title}
-            </Text>
-          )}
-          renderItem={({ item }) => {
-            const itemType = tab === 'all' ? (item as TransactionTimelineItem).type : (tab === 'expenses' ? 'expense' : 'earning');
-            const timelineItem = tab === 'all' ? (item as TransactionTimelineItem) : null;
-            const resolvedWalletName = timelineItem
-              ? wallets.find(w => w.id === timelineItem.wallet_id)?.name
-              : undefined;
-            return (
-              <TouchableOpacity
-                onPress={() => navigation.navigate('TransactionDetail', { transactionId: item.id, type: itemType as 'expense' | 'earning' })}
-                onLongPress={() => handleDelete(item)}
-                activeOpacity={0.7}
-              >
-                <TransactionCard
-                  transaction={item as Expense | Earning}
-                  type={itemType as 'expense' | 'earning'}
-                  walletName={resolvedWalletName}
-                />
-              </TouchableOpacity>
-            );
-          }}
+        <FlashList
+          data={listRows}
+          keyExtractor={keyExtractor}
+          getItemType={getItemType}
+          renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: spacing['2xl'] }}
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
-          ListFooterComponent={loadingMore ? (
-            <View style={{ paddingVertical: spacing.md, alignItems: 'center' }}>
-              <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>Cargando...</Text>
-            </View>
-          ) : null}
-          ListEmptyComponent={
-            <GlassCard style={{ marginTop: spacing.lg }}>
-              <View style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }}>
-                <Ionicons name="receipt-outline" size={48} color={colors.onSurfaceVariant} />
-                <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
-                  {tab === 'all' ? 'No hay transacciones registradas' : `No hay ${tab === 'expenses' ? 'gastos' : 'ingresos'} registrados`}
-                </Text>
-              </View>
-            </GlassCard>
-          }
+          ListFooterComponent={listFooter}
+          ListEmptyComponent={listEmpty}
         />
       </View>
 
@@ -445,7 +536,12 @@ export function TransactionListScreen() {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
               <Text style={[typography.titleLg, { color: colors.onSurface }]}>Filtros</Text>
-              <TouchableOpacity onPress={() => setShowFilters(false)}>
+              <TouchableOpacity
+                onPress={() => setShowFilters(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar filtros"
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
                 <Ionicons name="close" size={24} color={colors.onSurface} />
               </TouchableOpacity>
             </View>
@@ -470,6 +566,9 @@ export function TransactionListScreen() {
                   <TouchableOpacity
                     key={cat.id}
                     onPress={() => setFilterCategory(cat.name)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: filterCategory === cat.name }}
+                    accessibilityLabel={`Categoría ${cat.name}`}
                     style={{
                       paddingVertical: spacing.xs + 2,
                       paddingHorizontal: spacing.md,
@@ -503,6 +602,9 @@ export function TransactionListScreen() {
                   <TouchableOpacity
                     key={w.id}
                     onPress={() => setFilterWallet(w.name)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: filterWallet === w.name }}
+                    accessibilityLabel={`Cartera ${w.name}`}
                     style={{
                       paddingVertical: spacing.xs + 2,
                       paddingHorizontal: spacing.md,
@@ -603,6 +705,8 @@ export function TransactionListScreen() {
               <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
                 <TouchableOpacity
                   onPress={clearFilters}
+                  accessibilityRole="button"
+                  accessibilityLabel="Limpiar filtros"
                   style={{
                     flex: 1,
                     paddingVertical: spacing.md,
@@ -619,6 +723,8 @@ export function TransactionListScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={applyFilters}
+                  accessibilityRole="button"
+                  accessibilityLabel="Aplicar filtros"
                   style={{
                     flex: 1,
                     paddingVertical: spacing.md,

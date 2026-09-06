@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -89,8 +89,15 @@ export function DebtsScreen() {
     }
   }, [filters, showError]);
 
+  // Ref pattern: the focus effect only refetches when the screen gains focus.
+  // Filter/search actions call loadData explicitly with their overrides.
+  const loadDataRef = useRef(loadData);
+  useEffect(() => {
+    loadDataRef.current = loadData;
+  }, [loadData]);
+
   useFocusEffect(
-    useCallback(() => { loadData(); }, [loadData])
+    useCallback(() => { loadDataRef.current(); }, [])
   );
 
   const openFilters = () => {
@@ -138,6 +145,9 @@ export function DebtsScreen() {
       <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        accessibilityLabel={label}
         style={{
           paddingVertical: spacing.sm + 2,
           paddingHorizontal: spacing.md,
@@ -166,6 +176,8 @@ export function DebtsScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
             <TouchableOpacity
               onPress={handleBack}
+              accessibilityRole="button"
+              accessibilityLabel="Volver"
               style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
             >
               <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
@@ -187,6 +199,8 @@ export function DebtsScreen() {
             </Text>
             <TouchableOpacity
               onPress={() => navigation.navigate('Contacts')}
+              accessibilityRole="button"
+              accessibilityLabel="Ir a contactos"
               style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
             >
               <Ionicons name="people" size={20} color="#FFFFFF" />
@@ -249,11 +263,22 @@ export function DebtsScreen() {
               style={[typography.bodyMd, { flex: 1, color: colors.onSurface, paddingVertical: spacing.sm + 2, marginLeft: spacing.sm }]}
             />
             {searchText.length > 0 ? (
-              <TouchableOpacity onPress={clearSearch} hitSlop={8}>
+              <TouchableOpacity
+                onPress={clearSearch}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Limpiar búsqueda"
+              >
                 <Ionicons name="close-circle" size={18} color={colors.onSurfaceVariant} />
               </TouchableOpacity>
             ) : null}
-            <TouchableOpacity onPress={openFilters} hitSlop={8} style={{ marginLeft: spacing.sm }}>
+            <TouchableOpacity
+              onPress={openFilters}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={hasActiveFilters ? 'Filtros (activos)' : 'Abrir filtros'}
+              style={{ marginLeft: spacing.sm }}
+            >
               <Ionicons
                 name="filter"
                 size={20}
@@ -279,6 +304,8 @@ export function DebtsScreen() {
               </Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate('AddDebt')}
+                accessibilityRole="button"
+                accessibilityLabel="Crear deuda"
                 style={{
                   marginTop: spacing.md,
                   flexDirection: 'row',
@@ -319,6 +346,8 @@ export function DebtsScreen() {
 
         <TouchableOpacity
           onPress={() => navigation.navigate('AddDebt')}
+          accessibilityRole="button"
+          accessibilityLabel="Crear deuda"
           style={{
             position: 'absolute',
             right: spacing.container,
@@ -365,7 +394,12 @@ export function DebtsScreen() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
                 <Text style={[typography.titleLg, { color: colors.onSurface }]}>Filtros</Text>
-                <TouchableOpacity onPress={() => setShowFilters(false)} hitSlop={8}>
+                <TouchableOpacity
+                  onPress={() => setShowFilters(false)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar filtros"
+                >
                   <Ionicons name="close" size={24} color={colors.onSurface} />
                 </TouchableOpacity>
               </View>
@@ -378,6 +412,9 @@ export function DebtsScreen() {
                       key={f.label}
                       onPress={() => setDraftFilters((prev) => ({ ...prev, direction: f.value }))}
                       activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: draftFilters.direction === f.value }}
+                      accessibilityLabel={f.label}
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
@@ -424,6 +461,8 @@ export function DebtsScreen() {
                 <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
                   <TouchableOpacity
                     onPress={clearFilters}
+                    accessibilityRole="button"
+                    accessibilityLabel="Limpiar filtros"
                     style={{
                       flex: 1,
                       paddingVertical: spacing.md,
@@ -440,6 +479,8 @@ export function DebtsScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={applyFilters}
+                    accessibilityRole="button"
+                    accessibilityLabel="Aplicar filtros"
                     style={{
                       flex: 1,
                       paddingVertical: spacing.md,

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassCard } from './GlassCard';
@@ -14,14 +15,20 @@ interface DebtCardProps {
   onPress: () => void;
 }
 
-export function DebtCard({ debt, myProfileId, onPress }: DebtCardProps) {
+export const DebtCard = memo(function DebtCard({ debt, myProfileId, onPress }: DebtCardProps) {
   const { colors } = useTheme();
   const direction = getMyDirection(debt, myProfileId);
   const isReceivable = direction === 'receivable';
   const amountColor = isReceivable ? colors.success : colors.error;
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`${debt.name}, ${isReceivable ? 'te deben' : 'debes'} ${formatCurrency(Number(debt.amount))} a ${debt.contactName}`}
+      accessibilityHint="Toca para ver el detalle de la deuda"
+    >
       <GlassCard style={{ marginBottom: spacing.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <View
@@ -69,4 +76,4 @@ export function DebtCard({ debt, myProfileId, onPress }: DebtCardProps) {
       </GlassCard>
     </TouchableOpacity>
   );
-}
+});

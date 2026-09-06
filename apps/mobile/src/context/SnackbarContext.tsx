@@ -1,4 +1,4 @@
-import { createContext, useState, useCallback, useContext, type ReactNode } from 'react';
+import { createContext, useState, useCallback, useContext, useMemo, type ReactNode } from 'react';
 import { Snackbar } from '../components/ui/Snackbar';
 
 interface SnackbarConfig {
@@ -35,8 +35,13 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
     setVisible(false);
   }, []);
 
+  const value = useMemo(
+    () => ({ showSnackbar, showError, showSuccess }),
+    [showSnackbar, showError, showSuccess]
+  );
+
   return (
-    <SnackbarContext.Provider value={{ showSnackbar, showError, showSuccess }}>
+    <SnackbarContext.Provider value={value}>
       {children}
       <Snackbar
         message={config.message}

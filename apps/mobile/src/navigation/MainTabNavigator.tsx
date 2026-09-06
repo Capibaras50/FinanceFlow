@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, Pressable, Platform } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { createBottomTabNavigator, type BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,10 +15,16 @@ import type { MainTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-function AddButton({ onPress }: { onPress?: (...args: any[]) => void }) {
+function AddButton({ onPress }: BottomTabBarButtonProps) {
   const { colors } = useTheme();
   return (
-    <TouchableOpacity onPress={onPress as any} style={{ top: -16 }}>
+    <TouchableOpacity
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Añadir movimiento"
+      accessibilityHint="Abre las opciones para registrar un gasto, ingreso o deuda"
+      style={{ top: -16 }}
+    >
       <LinearGradient
         colors={colors.gradient.primary}
         start={{ x: 0, y: 0 }}
@@ -44,10 +50,12 @@ function AddButton({ onPress }: { onPress?: (...args: any[]) => void }) {
   );
 }
 
-const ADD_OPTIONS = [
-  { key: 'AddExpense', icon: 'trending-down', label: 'Gasto', color: 'error' as const },
-  { key: 'AddEarning', icon: 'trending-up', label: 'Ingreso', color: 'success' as const },
-  { key: 'AddDebt', icon: 'receipt', label: 'Deuda', color: 'warning' as const },
+type AddOptionColor = 'error' | 'success' | 'warning';
+
+const ADD_OPTIONS: { key: string; icon: keyof typeof Ionicons.glyphMap; label: string; description: string; color: AddOptionColor }[] = [
+  { key: 'AddExpense', icon: 'trending-down', label: 'Gasto', description: 'Registra una salida de dinero', color: 'error' },
+  { key: 'AddEarning', icon: 'trending-up', label: 'Ingreso', description: 'Registra una entrada de dinero', color: 'success' },
+  { key: 'AddDebt', icon: 'receipt', label: 'Deuda', description: 'Registra lo que te deben o debes', color: 'warning' },
 ];
 
 export function MainTabNavigator() {
@@ -151,7 +159,7 @@ export function MainTabNavigator() {
             onPress={(e) => e.stopPropagation()}
           >
             <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.outlineVariant, alignSelf: 'center', marginBottom: spacing.lg }} />
-            <Text style={[typography.titleLg, { color: colors.onSurface, marginBottom: spacing.md }]}>
+            <Text accessibilityRole="header" style={[typography.titleLg, { color: colors.onSurface, marginBottom: spacing.md }]}>
               Nuevo movimiento
             </Text>
             <Text style={[typography.bodySm, { color: colors.onSurfaceVariant, marginBottom: spacing.lg }]}>
@@ -163,6 +171,9 @@ export function MainTabNavigator() {
                   key={option.key}
                   onPress={() => handleSelectOption(option.key)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={option.label}
+                  accessibilityHint={option.description}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -184,16 +195,14 @@ export function MainTabNavigator() {
                       justifyContent: 'center',
                     }}
                   >
-                    <Ionicons name={option.icon as any} size={20} color={colors[option.color]} />
+                    <Ionicons name={option.icon} size={20} color={colors[option.color]} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[typography.titleMd, { color: colors.onSurface }]}>
                       {option.label}
                     </Text>
                     <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
-                      {option.key === 'AddExpense' ? 'Registra una salida de dinero'
-                        : option.key === 'AddEarning' ? 'Registra una entrada de dinero'
-                        : 'Registra lo que te deben o debes'}
+                      {option.description}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceVariant} />

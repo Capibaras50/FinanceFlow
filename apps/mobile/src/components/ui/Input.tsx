@@ -36,6 +36,7 @@ export function Input({ label, error, prefix, style, ...props }: InputProps) {
           </Text>
         )}
         <TextInput
+          accessibilityLabel={label}
           placeholderTextColor={colors.onSurfaceVariant}
           style={[
             typography.bodyLg,
@@ -50,7 +51,10 @@ export function Input({ label, error, prefix, style, ...props }: InputProps) {
         />
       </View>
       {error && (
-        <Text style={[typography.bodySm, { color: colors.error, marginLeft: 4 }]}>
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[typography.bodySm, { color: colors.error, marginLeft: 4 }]}
+        >
           {error}
         </Text>
       )}

@@ -1,9 +1,12 @@
+// Intl.NumberFormat instantiation is expensive; cache a single instance.
+const currencyFormatter = new Intl.NumberFormat('es-MX', {
+  style: 'currency',
+  currency: 'MXN',
+});
+
 export function formatCurrency(value: number): string {
   if (isNaN(value) || !isFinite(value)) return '$0.00';
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-  }).format(value);
+  return currencyFormatter.format(value);
 }
 
 export function formatDate(dateString: string): string {

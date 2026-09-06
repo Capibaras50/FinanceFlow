@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassCard } from './GlassCard';
@@ -14,10 +15,16 @@ interface ContactCardProps {
   onDelete?: () => void;
 }
 
-export function ContactCard({ profile, subtitle, onPress, onLongPress, onDelete }: ContactCardProps) {
+export const ContactCard = memo(function ContactCard({ profile, subtitle, onPress, onLongPress, onDelete }: ContactCardProps) {
   const { colors } = useTheme();
   return (
-    <TouchableOpacity onPress={onPress} onLongPress={onLongPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      onPress={onPress}
+      onLongPress={onLongPress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={subtitle ? `${profile.name}, ${subtitle}` : profile.name}
+    >
       <GlassCard style={{ marginBottom: spacing.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <Avatar name={profile.name} avatarUrl={profile.avatarUrl} />
@@ -32,7 +39,13 @@ export function ContactCard({ profile, subtitle, onPress, onLongPress, onDelete 
             ) : null}
           </View>
           {onDelete && (
-            <TouchableOpacity onPress={onDelete} hitSlop={8} style={{ padding: spacing.xs }}>
+            <TouchableOpacity
+              onPress={onDelete}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`Eliminar a ${profile.name}`}
+              style={{ padding: spacing.xs }}
+            >
               <Ionicons name="trash-outline" size={20} color={colors.error} />
             </TouchableOpacity>
           )}
@@ -41,4 +54,4 @@ export function ContactCard({ profile, subtitle, onPress, onLongPress, onDelete 
       </GlassCard>
     </TouchableOpacity>
   );
-}
+});
