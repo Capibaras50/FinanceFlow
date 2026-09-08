@@ -21,8 +21,10 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before 
   - `activate` was deleting the share-handoff cache (`finance-flow-shared-image`) right as the app booted after the redirect → `activate` now keeps `SHARE_CACHE`; only app-shell versions are pruned
   - cache keys were relative (`'/latest'`) → both SW write and web read now use the absolute same-origin URL
   - Web handler (`ShareIntentHandler.web.tsx`) also retries the cache read up to 6×250ms (SW may still be writing as the app boots) and uses `window.URL.createObjectURL`
-- **Navigation race (both platforms)**: `navigationRef.current?.navigate('ReceiptScanner')` on a cold start can be swallowed before the NavigationContainer is ready → RootNavigator now queues the URI in a ref and flushes it once `onReady` fires (`navReady` state)
-- **TTL**: `src/services/sharedImage.ts` expires pending shares after 120s (`consumePendingSharedImage` drops stale payloads)
+- **Navigation gating**: RootNavigator has ONE delivery point (`deliverSharedImage`) gated on `navReady && isAuthenticated && hasPendingSharedImage()`; it refires when the container reports ready AND when `isAuthenticated` flips to true — so a share received while logged out waits through login, then opens ReceiptScanner. NEVER call `navigate()` directly from the share handler.
+- **Login notice**: LoginScreen shows an amber chip "Tienes un recibo compartido…" when `hasPendingSharedImage()` is true on focus
+- **Debug**: native `ShareIntentHandler` passes `debug: __DEV__` to `useShareIntent` → raw intent is logged to Metro when share doesn't work
+- **TTL**: `src/services/sharedImage.ts` expires pending shares after 10 min (`consumePendingSharedImage` drops stale payloads) — must outlive a manual login
 
 # Performance & Accessibility Pass (September 4, 2026)
 - **format.ts**: `Intl.NumberFormat` cached (single instance) — was re-created per `formatCurrency()` call

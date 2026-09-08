@@ -10,7 +10,10 @@ interface ShareIntentHandlerProps {
  * share sheet and forwards them to the receipt scanner flow.
  */
 export function ShareIntentHandler({ onSharedImage }: ShareIntentHandlerProps) {
-  const { isReady, hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
+  // debug: logs the raw incoming intent to Metro so shares can be diagnosed.
+  const { isReady, hasShareIntent, shareIntent, resetShareIntent } = useShareIntent({
+    debug: __DEV__,
+  });
 
   useEffect(() => {
     if (!isReady || !hasShareIntent) return;

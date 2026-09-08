@@ -12,7 +12,7 @@ export interface SharedImagePayload {
   uri: string;
 }
 
-const SHARE_TTL_MS = 120_000;
+const SHARE_TTL_MS = 600_000; // 10 min: must outlive a manual login
 
 interface PendingShare {
   payload: SharedImagePayload;

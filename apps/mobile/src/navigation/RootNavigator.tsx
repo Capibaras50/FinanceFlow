@@ -7,7 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { ShareIntentHandler } from '../components/share/ShareIntentHandler';
-import { setPendingSharedImage } from '../services/sharedImage';
+import { setPendingSharedImage, hasPendingSharedImage } from '../services/sharedImage';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
@@ -84,39 +84,28 @@ export function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const [navReady, setNavReady] = useState(false);
-  const queuedSharedUri = useRef<string | null>(null);
 
-  // If the share intent fires on a cold start the NavigationContainer may not
-  // be ready yet, which would swallow navigate() silently. Queue it and flush
-  // it as soon as the container reports ready.
-  const flushQueuedNavigation = useCallback(() => {
-    if (navReady) {
-      const uri = queuedSharedUri.current;
-      if (uri) {
-        queuedSharedUri.current = null;
-        if (navigationRef.current?.isReady()) {
-          navigationRef.current.navigate('ReceiptScanner');
-        }
-      }
-    }
-  }, [navReady]);
+  // Single delivery point: only hand the shared image to the scanner when the
+  // navigator is ready AND the user is logged in. If a share arrives while on
+  // the login screen, this effect refires when isAuthenticated flips to true
+  // and delivers it right after sign-in.
+  const deliverSharedImage = useCallback(() => {
+    if (!isAuthenticated || !navReady) return;
+    if (!navigationRef.current?.isReady()) return;
+    if (!hasPendingSharedImage()) return;
+    navigationRef.current.navigate('ReceiptScanner');
+  }, [isAuthenticated, navReady]);
 
   useEffect(() => {
-    flushQueuedNavigation();
-  }, [flushQueuedNavigation]);
+    deliverSharedImage();
+  }, [deliverSharedImage]);
 
-  // Receives an image shared into the app (share sheet / PWA share target),
-  // stashes it and opens the receipt scanner, which consumes it on focus.
+  // Receives an image shared into the app (share sheet / PWA share target).
+  // Always stash it first — delivery happens via deliverSharedImage.
   const handleSharedImage = useCallback((uri: string) => {
     setPendingSharedImage({ uri });
-    if (navigationRef.current?.isReady()) {
-      navigationRef.current.navigate('ReceiptScanner');
-    } else {
-      // Container not mounted/ready yet: navigation would be lost. Queue it.
-      queuedSharedUri.current = uri;
-      flushQueuedNavigation();
-    }
-  }, [flushQueuedNavigation]);
+    deliverSharedImage();
+  }, [deliverSharedImage]);
 
   if (isLoading) {
     return <SplashScreen />;

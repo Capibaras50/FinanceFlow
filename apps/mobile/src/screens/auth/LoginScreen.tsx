@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,7 +10,8 @@ import { useSnackbar } from '../../context/SnackbarContext';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { getErrorMessage } from '../../utils/format';
-import { useNavigation } from '@react-navigation/native';
+import { hasPendingSharedImage } from '../../services/sharedImage';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { AuthNavigationProp } from '../../navigation/types';
 
 export function LoginScreen() {
@@ -23,6 +24,15 @@ export function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pendingReceipt, setPendingReceipt] = useState(false);
+
+  // If an image was shared while logged out, the navigator holds it until
+  // sign-in — tell the user why they should log in.
+  useFocusEffect(
+    useCallback(() => {
+      setPendingReceipt(hasPendingSharedImage());
+    }, [])
+  );
 
   const handleLogin = async () => {
     if (!email || !password) return;
@@ -70,6 +80,26 @@ export function LoginScreen() {
           <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, marginTop: spacing.xs }]}>
             Tu dinero, con inteligencia
           </Text>
+          {pendingReceipt && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                marginTop: spacing.md,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.sm,
+                borderRadius: borderRadius.full,
+                backgroundColor: colors.primaryContainer,
+              }}
+              accessibilityRole="alert"
+            >
+              <Ionicons name="receipt" size={16} color={colors.onPrimaryContainer} />
+              <Text style={[typography.bodySm, { color: colors.onPrimaryContainer, flexShrink: 1 }]}>
+                Tienes un recibo compartido — inicia sesión para escanearlo
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={{ gap: spacing.md }}>
