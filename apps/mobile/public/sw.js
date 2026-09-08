@@ -29,13 +29,19 @@ self.addEventListener('activate', (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key !== CACHE_VERSION)
+            // Keep the current app-shell version AND the share-handoff cache:
+            // deleting it during activation races with the app reading the
+            // shared image right after the share redirect.
+            .filter((key) => key !== CACHE_VERSION && key !== SHARE_CACHE)
             .map((key) => caches.delete(key))
         )
       )
       .then(() => self.clients.claim())
   );
 });
+
+/** Same-origin absolute URL for the share-handoff cache key. */
+const SHARE_KEY = () => new URL('/latest', self.location.origin).href;
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
@@ -51,12 +57,13 @@ self.addEventListener('fetch', (event) => {
           const file = formData.get('image');
           if (file) {
             const cache = await caches.open(SHARE_CACHE);
-            await cache.put('/latest', new Response(file, { headers: { 'Content-Type': file.type || 'image/jpeg' } }));
+            await cache.put(SHARE_KEY(), new Response(file, { headers: { 'Content-Type': file.type || 'image/jpeg' } }));
           }
         } catch (e) {
           // Ignore and still open the app.
         }
-        return Response.redirect('/?shared=1', 303);
+        // Response.redirect() needs an absolute URL — a relative one throws.
+        return Response.redirect(new URL('/?shared=1', self.location.origin).href, 303);
       })()
     );
     return;

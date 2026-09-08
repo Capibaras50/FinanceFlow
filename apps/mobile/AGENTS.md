@@ -14,6 +14,16 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before 
   - Safe without rebuild: `useShareIntent` no-ops if native module missing; web never imports expo-share-intent
 - **a11y**: roles/labels on wallet cards, debt cards, contact cards, all filter chips, FABs, back buttons
 
+# Share target bugfix (Sept 6, 2026)
+- **Android symptom**: share "opened" app to Home and did nothing → root cause was a STALE `android/` folder: `app.json` had the plugin but `AndroidManifest.xml` lacked the `ACTION_SEND image/*` filter. Fix is REGENERATING native projects (`npx expo prebuild --clean`) — that alone applied the intent-filter.
+- **PWA symptom**: same (app opened to Home) → three bugs fixed in `public/sw.js`:
+  - `Response.redirect('/?shared=1', 303)` with a RELATIVE url throws in service workers → must use an absolute URL: `new URL('/?shared=1', self.location.origin).href`
+  - `activate` was deleting the share-handoff cache (`finance-flow-shared-image`) right as the app booted after the redirect → `activate` now keeps `SHARE_CACHE`; only app-shell versions are pruned
+  - cache keys were relative (`'/latest'`) → both SW write and web read now use the absolute same-origin URL
+  - Web handler (`ShareIntentHandler.web.tsx`) also retries the cache read up to 6×250ms (SW may still be writing as the app boots) and uses `window.URL.createObjectURL`
+- **Navigation race (both platforms)**: `navigationRef.current?.navigate('ReceiptScanner')` on a cold start can be swallowed before the NavigationContainer is ready → RootNavigator now queues the URI in a ref and flushes it once `onReady` fires (`navReady` state)
+- **TTL**: `src/services/sharedImage.ts` expires pending shares after 120s (`consumePendingSharedImage` drops stale payloads)
+
 # Performance & Accessibility Pass (September 4, 2026)
 - **format.ts**: `Intl.NumberFormat` cached (single instance) — was re-created per `formatCurrency()` call
 - **Memoized components**: `GlassCard`, `TransactionCard`, chat `MessageBubble` (React Rendering markdown is expensive)

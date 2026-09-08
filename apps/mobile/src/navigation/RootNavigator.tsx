@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -83,20 +83,51 @@ function SplashScreen() {
 export function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+  const [navReady, setNavReady] = useState(false);
+  const queuedSharedUri = useRef<string | null>(null);
+
+  // If the share intent fires on a cold start the NavigationContainer may not
+  // be ready yet, which would swallow navigate() silently. Queue it and flush
+  // it as soon as the container reports ready.
+  const flushQueuedNavigation = useCallback(() => {
+    if (navReady) {
+      const uri = queuedSharedUri.current;
+      if (uri) {
+        queuedSharedUri.current = null;
+        if (navigationRef.current?.isReady()) {
+          navigationRef.current.navigate('ReceiptScanner');
+        }
+      }
+    }
+  }, [navReady]);
+
+  useEffect(() => {
+    flushQueuedNavigation();
+  }, [flushQueuedNavigation]);
 
   // Receives an image shared into the app (share sheet / PWA share target),
   // stashes it and opens the receipt scanner, which consumes it on focus.
   const handleSharedImage = useCallback((uri: string) => {
     setPendingSharedImage({ uri });
-    navigationRef.current?.navigate('ReceiptScanner');
-  }, []);
+    if (navigationRef.current?.isReady()) {
+      navigationRef.current.navigate('ReceiptScanner');
+    } else {
+      // Container not mounted/ready yet: navigation would be lost. Queue it.
+      queuedSharedUri.current = uri;
+      flushQueuedNavigation();
+    }
+  }, [flushQueuedNavigation]);
 
   if (isLoading) {
     return <SplashScreen />;
   }
 
   return (
-    <NavigationContainer ref={navigationRef} linking={linking}>
+    <NavigationContainer
+      ref={navigationRef}
+      linking={linking}
+      onReady={() => setNavReady(true)}
+    >
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           <>
