@@ -7,23 +7,33 @@ import { Env } from 'src/models/env.model';
 @Injectable()
 export class LlmService {
   private readonly aiUrl: string;
+  private readonly aiSecret: string;
   private readonly model: string;
 
   constructor(private configService: ConfigService<Env>) {
     const url = this.configService.get('AI_URL', { infer: true });
+    const secret = this.configService.get('AI_SECRET', { infer: true });
     const model = this.configService.get('MODEL_AI', { infer: true });
-    if (typeof url !== 'string' || !url.startsWith('http://')) {
+    if (typeof url !== 'string' || !url.startsWith('https://')) {
       throw new Error('Put a Ai Url valid');
     }
     if (!model) {
       throw new Error('Put a Model Name');
     }
+    if (!secret) {
+      throw new Error('Put a Secret Key');
+    }
     this.aiUrl = url;
     this.model = model;
+    this.aiSecret = secret;
   }
 
   getAiUrl(): string {
     return this.aiUrl;
+  }
+
+  getAiSecret(): string {
+    return this.aiSecret;
   }
 
   getModelName(): string {
@@ -74,6 +84,8 @@ export class LlmService {
   ) {
     try {
       const model = this.getModelName();
+      const url = this.getAiUrl();
+      const secret = this.getAiSecret();
 
       const messages = this.buildMessages(
         systemPrompt,
@@ -84,14 +96,18 @@ export class LlmService {
       );
 
       const response = await axios.post(
-        this.aiUrl,
+        url,
         {
           model,
           messages,
           temperature: 0.7,
         },
         {
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${secret}`,
+            'Content-Type': 'application/json',
+            model,
+          },
         },
       );
 

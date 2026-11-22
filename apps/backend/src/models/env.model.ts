@@ -13,6 +13,7 @@ export interface Env {
   CLOUDINARY_API_KEY: string;
   CLOUDINARY_API_SECRET: string;
   AI_URL: string;
+  AI_SECRET: string;
   HOST_QUEUE: string;
   PORT_QUEUE: number;
   EMAIL_USER: string;

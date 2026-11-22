@@ -5,28 +5,13 @@ import { Message } from 'src/chat/entities/chat.entity';
 import { ToolRegistryService } from 'src/financial-tools/services/tool-registry.service';
 import { ExtractDataDto } from 'src/transactions/dto/extract-data.dto';
 import { LlmService } from './llm.service';
-import { ConfigService } from '@nestjs/config';
-import { Env } from 'src/models/env.model';
 
 @Injectable()
 export class AiService {
-  private readonly model: string;
-
   constructor(
     private toolRegistry: ToolRegistryService,
     private llmService: LlmService,
-    private configService: ConfigService<Env>,
-  ) {
-    const model = this.configService.get('MODEL_AI', { infer: true });
-    if (!model) {
-      throw new Error('Put the model name');
-    }
-    this.model = model;
-  }
-
-  getModelName(): string {
-    return this.model;
-  }
+  ) {}
 
   async createResponseModel(
     systemPrompt: string,
@@ -100,7 +85,8 @@ export class AiService {
 
       const tools = this.toolRegistry.getTools();
       const aiUrl = this.llmService.getAiUrl();
-      const model = this.getModelName();
+      const aiSecret = this.llmService.getAiSecret();
+      const model = this.llmService.getModelName();
 
       const firstResponse = await axios.post(
         aiUrl,
@@ -111,7 +97,11 @@ export class AiService {
           temperature: 0.7,
         },
         {
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${aiSecret}`,
+            'Content-Type': 'application/json',
+            model,
+          },
         },
       );
 
@@ -177,7 +167,11 @@ export class AiService {
           temperature: 0.7,
         },
         {
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${aiSecret}`,
+            'Content-Type': 'application/json',
+            model,
+          },
         },
       );
 
