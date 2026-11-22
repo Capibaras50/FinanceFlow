@@ -51,7 +51,7 @@ export class ApiClient {
       params,
       data: formData || body,
     };
-    if (!formData) {
+    if (!formData && body !== undefined) {
       reqConfig.headers = { 'Content-Type': 'application/json' };
     }
 
