@@ -63,13 +63,16 @@ Hoy es ${hoy}.`;
         profileId,
         timezone,
       );
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const assitantMessage: AssistantMessageInterface =
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        response.data?.choices[0]?.message;
+      const assitantMessage: AssistantMessageInterface | undefined =
+        response.data.choices[0]?.message;
+      if (!assitantMessage) {
+        throw new BadRequestException('The Message Couldnt Be Sent');
+      }
       const newAssistantMessage: DeepPartial<Message> = {
         role: assitantMessage.role,
-        message: assitantMessage.content,
+        message:
+          assitantMessage.content?.trim() ||
+          'No pude generar una respuesta. Inténtalo de nuevo.',
         profile: { id: profileId },
       };
       const createdAssistantMessage =

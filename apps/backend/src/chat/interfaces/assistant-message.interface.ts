@@ -1,6 +1,3 @@
-export interface AssistantMessageInterface {
-  role: 'assistant';
-  content: string;
-  reasoning_content: string;
-  tool_calls: string[];
-}
+import { AssistantChatMessage } from 'src/ai/interfaces/llm-message.interface';
+
+export type AssistantMessageInterface = AssistantChatMessage;

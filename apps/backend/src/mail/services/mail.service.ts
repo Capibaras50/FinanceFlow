@@ -34,7 +34,7 @@ export class MailService {
       }
       await this.mailerService.sendMail(options);
       return { message: 'The Email Sent Successfully' };
-    } catch (err) {
+    } catch {
       throw new BadRequestException('The Mail Couldnt Be Sent');
     }
   }

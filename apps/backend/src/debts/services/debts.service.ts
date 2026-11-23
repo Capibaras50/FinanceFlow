@@ -114,7 +114,12 @@ export class DebtsService {
       where,
       take,
       skip: (page - 1) * take,
-      relations: ['contact', 'contact.requester', 'contact.addressee', 'profile'],
+      relations: [
+        'contact',
+        'contact.requester',
+        'contact.addressee',
+        'profile',
+      ],
       order,
     });
     return debts;
@@ -142,7 +147,12 @@ export class DebtsService {
           },
         },
       ],
-      relations: ['contact', 'contact.requester', 'contact.addressee', 'profile'],
+      relations: [
+        'contact',
+        'contact.requester',
+        'contact.addressee',
+        'profile',
+      ],
     });
     if (!debt) {
       throw new NotFoundException('The Debt Not Found');
@@ -156,7 +166,12 @@ export class DebtsService {
         profile: { id: profileId },
         id,
       },
-      relations: ['contact', 'contact.requester', 'contact.addressee', 'profile'],
+      relations: [
+        'contact',
+        'contact.requester',
+        'contact.addressee',
+        'profile',
+      ],
     });
     if (!debt) {
       throw new NotFoundException('The Debt Not Found');

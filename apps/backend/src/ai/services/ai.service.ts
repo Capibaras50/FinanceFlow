@@ -1,13 +1,21 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import axios from 'axios';
+import { AxiosResponse } from 'axios';
 import { isObject, isString, validate } from 'class-validator';
 import { Message } from 'src/chat/entities/chat.entity';
 import { ToolRegistryService } from 'src/financial-tools/services/tool-registry.service';
 import { ExtractDataDto } from 'src/transactions/dto/extract-data.dto';
+import {
+  AssistantChatMessage,
+  ChatCompletionResponse,
+  ChatMessage,
+  ChatWithToolsResult,
+} from '../interfaces/llm-message.interface';
 import { LlmService } from './llm.service';
 
 @Injectable()
 export class AiService {
+  private static readonly MAX_TOOL_ITERATIONS = 8;
+
   constructor(
     private toolRegistry: ToolRegistryService,
     private llmService: LlmService,
@@ -19,7 +27,7 @@ export class AiService {
     messagesHistory?: Message[],
     mimeType?: string,
     imageBase64?: string,
-  ) {
+  ): Promise<AxiosResponse<ChatCompletionResponse>> {
     return this.llmService.createResponseModel(
       systemPrompt,
       userMessage,
@@ -27,6 +35,32 @@ export class AiService {
       mimeType,
       imageBase64,
     );
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  private parseToolArguments(raw: string): Record<string, unknown> {
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      return this.isRecord(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private buildAssistantHistoryMessage(
+    message: AssistantChatMessage,
+  ): AssistantChatMessage {
+    return {
+      role: 'assistant',
+      content: message.content ?? null,
+      ...(message.tool_calls?.length ? { tool_calls: message.tool_calls } : {}),
+      ...(message.reasoning_content != null
+        ? { reasoning_content: message.reasoning_content }
+        : {}),
+    };
   }
 
   private formatDatesInResult(data: unknown, timezone?: string): unknown {
@@ -79,106 +113,71 @@ export class AiService {
     userMessage: string,
     profileId: number,
     timezone?: string,
-  ) {
+  ): Promise<ChatWithToolsResult> {
     try {
-      const messages = this.llmService.buildMessages(systemPrompt, userMessage);
+      const messages: ChatMessage[] = this.llmService.buildMessages(
+        systemPrompt,
+        userMessage,
+      );
 
       const tools = this.toolRegistry.getTools();
-      const aiUrl = this.llmService.getAiUrl();
-      const aiSecret = this.llmService.getAiSecret();
       const model = this.llmService.getModelName();
 
-      const firstResponse = await axios.post(
-        aiUrl,
-        {
+      for (
+        let iteration = 0;
+        iteration < AiService.MAX_TOOL_ITERATIONS;
+        iteration++
+      ) {
+        const response = await this.llmService.postChatCompletion({
           model,
           messages,
           tools,
-          temperature: 0.7,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${aiSecret}`,
-            'Content-Type': 'application/json',
-            model,
-          },
-        },
-      );
+          tool_choice: 'auto',
+          temperature: 0.2,
+        });
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      const firstChoice = firstResponse.data.choices?.[0];
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      const toolCalls = firstChoice?.message?.tool_calls;
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (!toolCalls || toolCalls.length === 0) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        return { data: firstResponse.data, messages };
-      }
-
-      const toolCallMessage: any = {
-        role: 'assistant',
-        content: null,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-        tool_calls: toolCalls.map(
-          (tc: { id: string; type: string; function: unknown }) => ({
-            id: tc.id,
-            type: tc.type,
-            function: tc.function,
-          }),
-        ),
-      };
-
-      const toolResults: any[] = [];
-      for (const tc of toolCalls) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const args: Record<string, unknown> = JSON.parse(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          tc.function.arguments as string,
-        );
-
-        let result: unknown;
-        try {
-          result = await this.toolRegistry.executeTool(
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            tc.function.name as string,
-            profileId,
-            args,
-          );
-        } catch (toolErr) {
-          result = { error: (toolErr as Error).message };
+        const choice = response.data.choices[0];
+        if (!choice) {
+          throw new Error('The AI response did not include any choice');
         }
 
-        const formattedResult = this.formatDatesInResult(result, timezone);
-        toolResults.push({
-          role: 'tool',
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-          tool_call_id: tc.id,
-          content: JSON.stringify(formattedResult),
-        });
+        const assistantMessage = choice.message;
+        messages.push(this.buildAssistantHistoryMessage(assistantMessage));
+
+        const toolCalls = assistantMessage.tool_calls ?? [];
+        if (
+          toolCalls.length === 0 ||
+          choice.finish_reason === 'stop' ||
+          choice.finish_reason === 'length'
+        ) {
+          return { data: response.data, messages };
+        }
+
+        for (const toolCall of toolCalls) {
+          const args = this.parseToolArguments(toolCall.function.arguments);
+
+          let result: unknown;
+          try {
+            result = await this.toolRegistry.executeTool(
+              toolCall.function.name,
+              profileId,
+              args,
+            );
+          } catch (toolErr) {
+            result = { error: (toolErr as Error).message };
+          }
+
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(this.formatDatesInResult(result, timezone)),
+          });
+        }
       }
 
-      const secondResponse = await axios.post(
-        aiUrl,
-        {
-          model,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          messages: [...messages, toolCallMessage, ...toolResults],
-          temperature: 0.7,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${aiSecret}`,
-            'Content-Type': 'application/json',
-            model,
-          },
-        },
-      );
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      return { data: secondResponse.data, messages };
+      throw new Error('The maximum number of tool iterations was reached');
     } catch (err) {
-      console.error(err);
+      console.error(err instanceof Error ? err.message : 'Unknown AI error');
       throw new BadRequestException('The Process Of Chat With Tools Failed');
     }
   }
@@ -197,9 +196,7 @@ export class AiService {
         mimeType,
         receipt,
       );
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const aiResult = response.data;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       const content = aiResult.choices?.[0]?.message?.content;
       if (!content || !isString(content)) {
         throw new BadRequestException('The Process Of Extract Data Failed');

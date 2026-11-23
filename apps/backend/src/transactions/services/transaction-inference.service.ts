@@ -32,8 +32,7 @@ Reglas:
       `Categorías del usuario:\n${categoriesList}\n\nNombre de la transacción: "${nameTransaction}"\n\n¿Cuál es el ID de la categoría más adecuada? Responde solo con el número.`,
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    const content: string = aiResponse.data.choices?.[0]?.message?.content;
+    const content = aiResponse.data.choices?.[0]?.message?.content;
     if (!content) {
       return categories[0]?.id;
     }
@@ -63,8 +62,7 @@ Reglas:
       `Carteras del usuario:\n${walletsList}\n\nNombre de la transacción: "${nameTransaction}"\n\n¿Cuál es el ID de la cartera más adecuada? Responde solo con el número.`,
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    const content: string = aiResponse.data.choices?.[0]?.message?.content;
+    const content = aiResponse.data.choices?.[0]?.message?.content;
     if (!content) {
       return wallets[0]?.id;
     }
