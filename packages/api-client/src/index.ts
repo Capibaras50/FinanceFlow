@@ -10,6 +10,8 @@ export { ChatApi } from './chat';
 export { TransactionsApi } from './transactions';
 export { ContactsApi } from './contacts';
 export { DebtsApi } from './debts';
+export { ExportsApi } from './exports';
 export type { TransactionTimelineItem, TransactionFilterParams } from './transactions';
 export type { ApiConfig } from './client';
 export type { CreateDebtDto, DebtFilterParams, ReceiptFile } from './debts';
+export type { CreateReportDto, CreateReportResponse } from './exports';

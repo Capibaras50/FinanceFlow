@@ -17,6 +17,7 @@ import { showAlert } from '../../components/ui/AppAlert';
 import { uploadAvatarAsync, usersApi } from '../../services/api';
 import { useNavigation } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
+import { ExportDataSection } from './ExportDataSection';
 
 export function ProfileScreen() {
   const { colors, mode, toggleTheme, isDark } = useTheme();
@@ -199,6 +200,8 @@ export function ProfileScreen() {
             </View>
           </GlassCard>
         </TouchableOpacity>
+
+        <ExportDataSection />
 
         <View style={{ marginTop: spacing.md }}>
           <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginBottom: spacing.sm, marginLeft: spacing.xs }]}>

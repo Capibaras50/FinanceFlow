@@ -12,6 +12,8 @@ interface DateTimePickerModalProps {
   onClose: () => void;
   onConfirm: (date: Date) => void;
   mode?: 'date' | 'datetime';
+  /** Por defecto arranca en "Hoy". Para rangos históricos, pasar `false`. */
+  defaultUseNow?: boolean;
 }
 
 const DAY_LABELS = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
@@ -156,13 +158,13 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
   );
 }
 
-export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode = 'datetime' }: DateTimePickerModalProps) {
+export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode = 'datetime', defaultUseNow = true }: DateTimePickerModalProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const gradientColors = colors.gradient.primary;
   const isDateMode = mode === 'date';
 
-  const [useNow, setUseNow] = useState(true);
+  const [useNow, setUseNow] = useState(defaultUseNow);
   const [viewDate, setViewDate] = useState(new Date(value));
   const [selectedDay, setSelectedDay] = useState(value.getDate());
   const [hour, setHour] = useState(value.getHours() % 12 || 12);
