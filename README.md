@@ -35,6 +35,7 @@ La misma base de código de la app móvil se publica para **Android, iOS y web (
 - Gestión de gastos e ingresos con filtros por categoría/bolsillo, orden y paginación; detalle, edición y borrado.
 - Bolsillos con balance calculado, categorías, deudas y contactos.
 - Recibos con IA procesados en segundo plano (cola, reintentos y progreso del trabajo).
+- Exportación de reportes XLSX en segundo plano (resumen y desglose), subidos a Cloudinary y enviados por correo con un enlace firmado.
 - Chat con IA y herramientas financieras registradas en el backend.
 - Tema claro/oscuro persistido, listas virtualizadas con FlashList y compartir imágenes desde otras apps (Android, iOS y PWA).
 - Perfil con avatar y recuperación de contraseña por correo.
@@ -60,10 +61,12 @@ finance-flow/
 │   │   │   ├── chat/        # Historial y endpoint de chat
 │   │   │   ├── financial-tools/ # Registro de herramientas para la IA
 │   │   │   ├── transactions/    # Gastos, ingresos, recibos y processor BullMQ
+│   │   │   ├── exports/         # Reportes XLSX: DTOs, cola `exports` y processor
 │   │   │   ├── users/ categories/ wallets/ debts/ contacts/ mail/ cloudinary/
 │   │   │   ├── common/ decorators/ models/ types/
 │   │   │   ├── app.module.ts
 │   │   │   └── main.ts
+│   │   ├── assets/templates/    # Plantilla HTML del correo de reporte listo
 │   │   ├── test/
 │   │   ├── Dockerfile
 │   │   └── .env.example
@@ -98,6 +101,8 @@ El backend es un **monolito modular**: una única aplicación NestJS expone la A
 
 La asincronía se concentra en la cola de tareas: la petición HTTP nunca espera a que el modelo de IA termine. Redis actúa como broker de la cola BullMQ; el processor consume los trabajos, reporta progreso y persiste el resultado en PostgreSQL.
 
+La exportación sigue el mismo patrón: el endpoint solo encola el trabajo y devuelve un `jobId`. El worker construye el XLSX en memoria, lo sube a Cloudinary y envía el correo con el enlace. No se escribe ningún archivo en el servidor. Redis vuelve a aparecer aquí solo como broker de BullMQ.
+
 ```mermaid
 flowchart LR
     subgraph Clientes
@@ -111,13 +116,17 @@ flowchart LR
         C[ReceiptService]
         D[ReceiptProcessor<br/>Worker BullMQ]
         E[Chat + AiService<br/>tool calling]
+        J[ExportsService]
+        K[ExportsProcessor<br/>Worker BullMQ]
     end
 
     subgraph Infra["Servicios de soporte"]
         F[(PostgreSQL<br/>pgvector)]
         G[(Cloudinary)]
         H[(Redis / BullMQ<br/>receipt.expense.created)]
+        H2[(Redis / BullMQ<br/>exports)]
         I[LLM compatible<br/>Ollama · LM Studio]
+        M[SMTP / Nodemailer]
     end
 
     A -->|HTTP| N
@@ -133,6 +142,13 @@ flowchart LR
     B --> E
     E --> I
     E -->|herramientas| F
+    B --> J
+    J -->|encola job| H2
+    H2 -->|consume job| K
+    K -->|consulta datos| F
+    K -->|sube XLSX| G
+    K -->|envía enlace firmado| M
+    M -->|correo| A
 ```
 
 En producción, Nginx es el único punto de entrada: sirve la PWA en `/` y redirige `/api/` al backend, todo bajo el mismo dominio. En desarrollo, el cliente apunta directamente a `http://localhost:3001`.
@@ -145,12 +161,24 @@ En producción, Nginx es el único punto de entrada: sirve la PWA en `/` y redir
 4. El modelo extrae un JSON con comercio, monto, descripción, confianza, bolsillo y categoría candidatos. Se valida con `class-validator`; si no es un recibo o faltan campos, el job falla y se reintenta.
 5. El worker crea el gasto asociado al recibo, al usuario y al bolsillo/categoría resueltos.
 
+**Flujo de una exportación, paso a paso**
+
+1. La app envía `POST /exports/short-reports` o `POST /exports/large-reports` con JWT y un cuerpo `{ "startDate": "…", "endDate": "…" }`. El `profileId` y el `userId` se toman del token, no del cuerpo.
+2. `ExportsService` encola `create-short-report` o `create-large-report` en la cola `exports` (3 intentos, *backoff* exponencial de 5 s) y devuelve `{ "jobId": … }` de inmediato.
+3. El worker distingue el tipo con `job.data.type` (unión discriminada) y genera el XLSX en memoria con ExcelJS: hojas `Gastos` e `Ingresos` en el corto; cuatro hojas agrupadas por categoría y bolsillo en el largo.
+4. Los importes `numeric` de PostgreSQL se convierten a `number` antes de `addRow`/`addRows`; las filas de total escriben una fórmula `SUM` con su `result` ya calculado, porque ExcelJS no evalúa fórmulas.
+5. El buffer se sube a Cloudinary en `finance-flow/reports` con `resource_type: 'raw'` y `type: 'authenticated'`. No se guarda nada en disco.
+6. Se genera una URL de descarga firmada con `private_download_url` (válida 24 h, `attachment: true`) y se envía por correo usando `assets/templates/report-ready.html`.
+7. Los jobs completados se descartan (`removeOnComplete: true`); los fallidos se conservan para inspección.
+
 **Notas de diseño**
 
 - Los DTOs se validan globalmente (`whitelist` y `forbidNonWhitelisted`); las respuestas pasan por `ClassSerializerInterceptor`.
 - CORS es una lista blanca de orígenes, `helmet` añade cabeceras de seguridad y el guard global limita peticiones (60 por minuto).
 - El cliente de IA admite *tool calling* con un máximo de 8 iteraciones por respuesta; las herramientas consultan la base de datos con el `profileId` del usuario autenticado.
 - TypeORM usa `synchronize: true` para desarrollo. Desactívalo y usa migraciones antes de cualquier despliegue con datos reales.
+- El enlace del correo es una *capability URL*: quien la tenga puede descargar hasta que caduca. La autorización se hace en el endpoint, antes de encolar; el `type: 'authenticated'` de Cloudinary solo exige firma en la entrega.
+- El `Dockerfile` copia `apps/backend/assets` al contenedor porque la plantilla del correo se lee del sistema de archivos en producción.
 
 ### Backend — `apps/backend/`
 
@@ -158,8 +186,9 @@ En producción, Nginx es el único punto de entrada: sirve la PWA en `/` y redir
 | --- | --- |
 | Identidad | `auth`, `users`: registro/login, access y refresh token, Google OAuth, perfil y avatar |
 | Finanzas | `transactions` (gastos, ingresos y recibos), `wallets`, `categories`, `debts`, `contacts` |
+| Reportes | `exports` (XLSX en segundo plano, subida a Cloudinary y aviso por correo) |
 | Inteligencia artificial | `ai` (cliente LLM y extracción de recibos), `financial-tools` (registro de herramientas), `chat` |
-| Integraciones | `cloudinary` (imágenes), `mail` (recuperación de contraseña) |
+| Integraciones | `cloudinary` (imágenes y reportes `raw`), `mail` (recuperación de contraseña y reportes listos) |
 | Transversales | `common`, `decorators`, `models`, `types`; configuración global en `app.module.ts` y `main.ts` |
 
 Comandos útiles (se ejecutan desde la raíz con el filtro de pnpm o dentro de `apps/backend/`):
@@ -227,6 +256,8 @@ Base: en desarrollo `http://localhost:3001`; en producción, el mismo dominio ba
 | Recibos | `DELETE` | `/receipts/:id` | Elimina un recibo. |
 | Transacciones | `GET` | `/transactions` | Línea de tiempo unificada de gastos e ingresos con filtros. |
 | Transacciones | `GET` | `/transactions/summary` | Resumen agregado del periodo seleccionado. |
+| Reportes | `POST` | `/exports/short-reports` | Encola un XLSX con gastos e ingresos del periodo; devuelve `{ jobId }`. |
+| Reportes | `POST` | `/exports/large-reports` | Encola un XLSX con desgloses por categoría y bolsillo; devuelve `{ jobId }`. |
 | Chat IA | `POST` | `/chat` | Envía un mensaje al asistente con herramientas financieras (máx. 10 cada 10 min). |
 | Chat IA | `GET` | `/chat` | Historial de mensajes (admite `limit`). |
 | Chat IA | `DELETE` | `/chat/:id` | Elimina un mensaje del historial. |
@@ -247,7 +278,7 @@ Base: en desarrollo `http://localhost:3001`; en producción, el mismo dominio ba
 | Deudas | `PATCH` | `/debts/:id/pay` | Marca una deuda como pagada; admite comprobante opcional (multipart `receipt`). |
 | Deudas | `DELETE` | `/debts/:id` | Elimina una deuda. |
 
-Los límites globales son 60 peticiones/minuto; login y recuperación tienen un límite específico de 5/minuto y el chat de 10 cada 10 minutos.
+Los límites globales son 60 peticiones/minuto; login y recuperación tienen un límite específico de 5/minuto y el chat de 10 cada 10 minutos. Ambos endpoints de exportación requieren JWT y reciben `{ "startDate": "…", "endDate": "…" }`; responden con `{ "jobId": … }` y el XLSX llega por correo cuando el job termina.
 
 ### Mobile app — `apps/mobile/`
 
@@ -318,7 +349,7 @@ Backend (`apps/backend/.env`, plantilla en `.env.example`):
 | `PORT` | Puerto HTTP del API (por defecto 3001) |
 | `HOST_DB`, `PORT_DB`, `USER_DB`, `PASSWORD_DB`, `NAME_DB` | Conexión a PostgreSQL |
 | `SECRET_ACCESS_KEY`, `SECRET_REFRESH_KEY`, `EXPIRES_ACCESS_KEY`, `EXPIRES_REFRESH_KEY` | Firma y caducidad de tokens JWT |
-| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Subida y lectura de imágenes |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Subida de imágenes y reportes `raw`, y firma de URLs de descarga |
 | `AI_URL`, `MODEL_AI` | Endpoint y modelo del LLM |
 | `HOST_QUEUE`, `PORT_QUEUE` | Conexión al broker de BullMQ |
 | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS` | Envío de correos |
@@ -379,6 +410,7 @@ Proyecto en desarrollo activo, construido de forma esporádica durante varios me
 - Sustituir `synchronize` por migraciones versionadas de TypeORM.
 - Ampliar la cobertura de tests (especialmente e2e del flujo de recibos).
 - Añadir CI para build, lint y tests.
+- Consultar el estado de los jobs de exportación (y conservar el resultado) si el cliente lo necesita.
 
 ---
 
@@ -401,6 +433,7 @@ The same mobile codebase targets **Android, iOS and web (PWA)**, all talking to 
 - Expenses and earnings with category/wallet filters, sorting and pagination; detail, edit and delete.
 - Wallets with computed balances, categories, debts and contacts.
 - AI-powered receipts processed in the background (queue, retries and job progress).
+- XLSX report exports processed in the background (summary and breakdown), uploaded to Cloudinary and emailed with a signed link.
 - AI chat backed by financial tools registered in the backend.
 - Dark/light theme with persistence, virtualised lists with FlashList, and image sharing from other apps (Android, iOS and PWA).
 - Profile with avatar and password recovery by email.
@@ -426,10 +459,12 @@ finance-flow/
 │   │   │   ├── chat/        # History and chat endpoint
 │   │   │   ├── financial-tools/ # Tool registry for the AI
 │   │   │   ├── transactions/    # Expenses, earnings, receipts and BullMQ processor
+│   │   │   ├── exports/         # XLSX reports: DTOs, `exports` queue and processor
 │   │   │   ├── users/ categories/ wallets/ debts/ contacts/ mail/ cloudinary/
 │   │   │   ├── common/ decorators/ models/ types/
 │   │   │   ├── app.module.ts
 │   │   │   └── main.ts
+│   │   ├── assets/templates/    # HTML template for the report-ready email
 │   │   ├── test/
 │   │   ├── Dockerfile
 │   │   └── .env.example
@@ -464,6 +499,8 @@ The backend is a **modular monolith**: a single NestJS application exposes the R
 
 Asynchrony is concentrated in the task queue: the HTTP request never waits for the model to finish. Redis acts as the BullMQ broker, while the processor consumes jobs, reports progress and persists the result in PostgreSQL.
 
+Exports follow the same pattern: the endpoint only enqueues the job and returns a `jobId`. The worker builds the XLSX in memory, uploads it to Cloudinary and sends the email with the link. No file is written to the server. Redis appears here only as the BullMQ broker.
+
 ```mermaid
 flowchart LR
     subgraph Clients
@@ -477,13 +514,17 @@ flowchart LR
         C[ReceiptService]
         D[ReceiptProcessor<br/>BullMQ worker]
         E[Chat + AiService<br/>tool calling]
+        J[ExportsService]
+        K[ExportsProcessor<br/>BullMQ worker]
     end
 
     subgraph Supporting["Supporting services"]
         F[(PostgreSQL<br/>pgvector)]
         G[(Cloudinary)]
         H[(Redis / BullMQ<br/>receipt.expense.created)]
+        H2[(Redis / BullMQ<br/>exports)]
         I[LLM compatible<br/>Ollama · LM Studio]
+        M[SMTP / Nodemailer]
     end
 
     A -->|HTTP| N
@@ -499,6 +540,13 @@ flowchart LR
     B --> E
     E --> I
     E -->|tools| F
+    B --> J
+    J -->|enqueue job| H2
+    H2 -->|consume job| K
+    K -->|query data| F
+    K -->|upload XLSX| G
+    K -->|email signed link| M
+    M -->|email| A
 ```
 
 In production, Nginx is the single entry point: it serves the PWA at `/` and forwards `/api/` to the backend, all under the same domain. In development, the client points directly to `http://localhost:3001`.
@@ -511,12 +559,24 @@ In production, Nginx is the single entry point: it serves the PWA at `/` and for
 4. The model extracts JSON with merchant, amount, description, confidence and candidate wallet/category. It is validated with `class-validator`; a non-receipt or missing fields fails the job and triggers a retry.
 5. The worker creates the expense linked to the receipt, the user and the resolved wallet/category.
 
+**Export flow, step by step**
+
+1. The app sends `POST /exports/short-reports` or `POST /exports/large-reports` with JWT and a body `{ "startDate": "…", "endDate": "…" }`. `profileId` and `userId` come from the token, not the body.
+2. `ExportsService` enqueues `create-short-report` or `create-large-report` on the `exports` queue (3 attempts, 5 s exponential backoff) and immediately returns `{ "jobId": … }`.
+3. The worker discriminates the type with `job.data.type` and builds the XLSX in memory with ExcelJS: `Gastos`/`Ingresos` sheets for the short report; four sheets grouped by category and wallet for the large one.
+4. PostgreSQL `numeric` amounts are converted to `number` before `addRow`/`addRows`; total rows write a `SUM` formula with an already computed `result`, since ExcelJS does not evaluate formulas.
+5. The buffer is uploaded to Cloudinary under `finance-flow/reports` with `resource_type: 'raw'` and `type: 'authenticated'`. Nothing is stored on disk.
+6. A signed download URL is generated with `private_download_url` (valid for 24 h, `attachment: true`) and emailed using `assets/templates/report-ready.html`.
+7. Completed jobs are discarded (`removeOnComplete: true`); failed jobs are kept for inspection.
+
 **Design notes**
 
 - DTOs are validated globally (`whitelist` and `forbidNonWhitelisted`); responses go through `ClassSerializerInterceptor`.
 - CORS uses an allowlist, `helmet` sets security headers and a global guard rate-limits requests (60 per minute).
 - The LLM client supports tool calling with a maximum of 8 iterations per response; tools query the database using the authenticated user's `profileId`.
 - TypeORM uses `synchronize: true` for development. Disable it and use migrations before deploying with real data.
+- The emailed link is a *capability URL*: anyone holding it can download until it expires. Authorisation happens at the endpoint, before enqueueing; Cloudinary's `type: 'authenticated'` only requires a signature at delivery time.
+- The backend `Dockerfile` copies `apps/backend/assets` into the container because the email template is read from the filesystem in production.
 
 ### Backend — `apps/backend/`
 
@@ -524,8 +584,9 @@ In production, Nginx is the single entry point: it serves the PWA at `/` and for
 | --- | --- |
 | Identity | `auth`, `users`: sign-up/login, access and refresh tokens, Google OAuth, profile and avatar |
 | Finance | `transactions` (expenses, earnings and receipts), `wallets`, `categories`, `debts`, `contacts` |
+| Reports | `exports` (background XLSX generation, Cloudinary upload and email notification) |
 | Artificial intelligence | `ai` (LLM client and receipt extraction), `financial-tools` (tool registry), `chat` |
-| Integrations | `cloudinary` (images), `mail` (password recovery) |
+| Integrations | `cloudinary` (images and raw reports), `mail` (password recovery and ready reports) |
 | Cross-cutting | `common`, `decorators`, `models`, `types`; global setup in `app.module.ts` and `main.ts` |
 
 Useful commands (run from the root with the pnpm filter or inside `apps/backend/`):
@@ -593,6 +654,8 @@ Base URL: `http://localhost:3001` in development; in production the same domain 
 | Receipts | `DELETE` | `/receipts/:id` | Deletes a receipt. |
 | Transactions | `GET` | `/transactions` | Unified timeline of expenses and earnings with filters. |
 | Transactions | `GET` | `/transactions/summary` | Aggregated summary for the selected period. |
+| Reports | `POST` | `/exports/short-reports` | Enqueues an XLSX with expenses and earnings for the period; returns `{ jobId }`. |
+| Reports | `POST` | `/exports/large-reports` | Enqueues an XLSX with category and wallet breakdowns; returns `{ jobId }`. |
 | AI chat | `POST` | `/chat` | Sends a message to the assistant with financial tools (max. 10 per 10 min). |
 | AI chat | `GET` | `/chat` | Message history (accepts `limit`). |
 | AI chat | `DELETE` | `/chat/:id` | Deletes a message from the history. |
@@ -613,7 +676,7 @@ Base URL: `http://localhost:3001` in development; in production the same domain 
 | Debts | `PATCH` | `/debts/:id/pay` | Marks a debt as paid; accepts an optional receipt (multipart `receipt`). |
 | Debts | `DELETE` | `/debts/:id` | Deletes a debt. |
 
-Global limits are 60 requests/minute; login and recovery are capped at 5/minute and chat at 10 per 10 minutes.
+Global limits are 60 requests/minute; login and recovery are capped at 5/minute and chat at 10 per 10 minutes. Both export endpoints require JWT and accept `{ "startDate": "…", "endDate": "…" }`; they respond with `{ "jobId": … }` and the XLSX is emailed when the job finishes.
 
 ### Mobile app — `apps/mobile/`
 
@@ -684,7 +747,7 @@ Backend (`apps/backend/.env`, template in `.env.example`):
 | `PORT` | API HTTP port (3001 by default) |
 | `HOST_DB`, `PORT_DB`, `USER_DB`, `PASSWORD_DB`, `NAME_DB` | PostgreSQL connection |
 | `SECRET_ACCESS_KEY`, `SECRET_REFRESH_KEY`, `EXPIRES_ACCESS_KEY`, `EXPIRES_REFRESH_KEY` | JWT signing and expiry |
-| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Image upload and retrieval |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Image and raw report uploads, and signed download URLs |
 | `AI_URL`, `MODEL_AI` | LLM endpoint and model |
 | `HOST_QUEUE`, `PORT_QUEUE` | BullMQ broker connection |
 | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS` | Email delivery |
@@ -745,6 +808,7 @@ Actively developed project, built sporadically over several months. Next steps:
 - Replace `synchronize` with versioned TypeORM migrations.
 - Expand test coverage (especially e2e for the receipt flow).
 - Add CI for build, lint and tests.
+- Expose export job status (and keep the result) if the client needs it.
 
 ---
 
