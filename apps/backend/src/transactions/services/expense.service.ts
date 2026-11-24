@@ -24,6 +24,8 @@ import { ReceiptService } from './receipt.service';
 import { TopCategoriesInterface } from '../interfaces/top-categories.interface';
 import { TotalExpensesInterface } from '../interfaces/monthly-summary.interface';
 import { FilterTransactionDto } from '../dto/filter-transaction.dto';
+import { TransactionsGroupedByCategory } from '../interfaces/transactions-grouped-by-category.interface';
+import { TransactionsGroupedByWallet } from '../interfaces/transactions-grouped-by-wallet.interface';
 
 @Injectable()
 export class ExpenseService {
@@ -155,6 +157,47 @@ export class ExpenseService {
       },
       relations: ['category', 'wallet'],
     });
+    return expenses;
+  }
+
+  async findExpensesGroupedByCategory(
+    startDate: Date,
+    endDate: Date,
+    profileId: number,
+  ) {
+    const expenses = await this.expensesRepository
+      .createQueryBuilder('expense')
+      .innerJoin('expense.category', 'category')
+      .select('category.name', 'name')
+      .addSelect('category.description', 'description')
+      .addSelect('SUM(expense.value)', 'total')
+      .where(
+        'expense.profile_id = :profileId AND expense.created_at BETWEEN :startDate AND :endDate',
+        { profileId, startDate, endDate },
+      )
+      .groupBy('category.id')
+      .getRawMany<TransactionsGroupedByCategory>();
+
+    return expenses;
+  }
+
+  async findExpensesGroupedByWallet(
+    startDate: Date,
+    endDate: Date,
+    profileId: number,
+  ) {
+    const expenses = await this.expensesRepository
+      .createQueryBuilder('expense')
+      .innerJoin('expense.wallet', 'wallet')
+      .select('wallet.name', 'name')
+      .addSelect('SUM(expense.value)', 'total')
+      .where(
+        'expense.profile_id = :profileId AND expense.created_at BETWEEN :startDate AND :endDate',
+        { profileId, startDate, endDate },
+      )
+      .groupBy('wallet.id')
+      .getRawMany<TransactionsGroupedByWallet>();
+
     return expenses;
   }
 

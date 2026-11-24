@@ -4,7 +4,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, Repository, EntityManager, ILike } from 'typeorm';
+import {
+  DeepPartial,
+  Repository,
+  EntityManager,
+  ILike,
+  Between,
+} from 'typeorm';
 import { Earning } from '../entities/earning.entity';
 import { CreateEarningDto } from '../dto/create-earning.dto';
 import { UpdateEarningDto } from '../dto/update-earning.dto';
@@ -12,6 +18,8 @@ import { WalletsService } from 'src/wallets/services/wallets.service';
 import { CategoriesService } from 'src/categories/services/categories.service';
 import { TotalEarningsInterface } from '../interfaces/monthly-summary.interface';
 import { FilterTransactionDto } from '../dto/filter-transaction.dto';
+import { TransactionsGroupedByCategory } from '../interfaces/transactions-grouped-by-category.interface';
+import { TransactionsGroupedByWallet } from '../interfaces/transactions-grouped-by-wallet.interface';
 
 @Injectable()
 export class EarningService {
@@ -79,6 +87,62 @@ export class EarningService {
       .andWhere('earnings.deleted_at IS NULL')
       .getRawOne<TotalEarningsInterface>();
     return totalEarnings;
+  }
+
+  async findEarningsByDateRange(
+    startDate: Date,
+    endDate: Date,
+    profileId: number,
+  ) {
+    const expenses = await this.earningRepository.find({
+      where: {
+        createdAt: Between(startDate, endDate),
+        profile: { id: profileId },
+      },
+      relations: ['category', 'wallet'],
+    });
+    return expenses;
+  }
+
+  async findExpensesGroupedByCategory(
+    startDate: Date,
+    endDate: Date,
+    profileId: number,
+  ) {
+    const earnings = await this.earningRepository
+      .createQueryBuilder('earning')
+      .innerJoin('earning.category', 'category')
+      .select('category.name', 'name')
+      .addSelect('category.description', 'description')
+      .addSelect('SUM(earning.value)', 'total')
+      .where(
+        'earning.profile_id = :profileId AND earning.created_at BETWEEN :startDate AND :endDate',
+        { profileId, startDate, endDate },
+      )
+      .groupBy('category.id')
+      .getRawMany<TransactionsGroupedByCategory>();
+
+    return earnings;
+  }
+
+  async findExpensesGroupedByWallet(
+    startDate: Date,
+    endDate: Date,
+    profileId: number,
+  ) {
+    const earnings = await this.earningRepository
+      .createQueryBuilder('earning')
+      .innerJoin('earning.wallet', 'wallet')
+      .select('wallet.name', 'name')
+      .addSelect('SUM(earning.value)', 'total')
+      .where(
+        'earning.profile_id = :profileId AND earning.created_at BETWEEN :startDate AND :endDate',
+        { profileId, startDate, endDate },
+      )
+      .groupBy('wallet.id')
+      .getRawMany<TransactionsGroupedByWallet>();
+
+    return earnings;
   }
 
   async create(

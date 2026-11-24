@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <title>Tu reporte de Finance Flow está listo</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial,
+        Helvetica, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    "
+  >
+    <div style="display: none; max-height: 0; overflow: hidden">
+      Tu reporte de Finance Flow está listo. Descárgalo desde el botón.
+    </div>
+
+    <table
+      role="presentation"
+      align="center"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      width="100%"
+      style="background: #0f172a; padding: 32px 16px"
+    >
+      <tr>
+        <td align="center">
+          <table
+            role="presentation"
+            align="center"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            width="600"
+            style="
+              width: 100%;
+              max-width: 600px;
+              background: #ffffff;
+              border-radius: 18px;
+              overflow: hidden;
+              box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+            "
+          >
+            <tr>
+              <td
+                align="center"
+                style="
+                  background: #0f172a;
+                  padding: 30px 24px 24px;
+                  border-bottom: 3px solid #6d28d9;
+                "
+              >
+                <img
+                  src="cid:financeflow-logo"
+                  alt="Finance Flow"
+                  width="150"
+                  style="display: block; max-width: 150px; height: auto"
+                />
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding: 40px 40px 8px; color: #1f2937">
+                <div
+                  style="
+                    display: inline-block;
+                    background: #ede9fe;
+                    color: #6d28d9;
+                    font-size: 12px;
+                    font-weight: 700;
+                    letter-spacing: 0.08em;
+                    text-transform: uppercase;
+                    padding: 7px 12px;
+                    border-radius: 999px;
+                  "
+                >
+                  Reporte listo
+                </div>
+
+                <h1
+                  style="
+                    margin: 22px 0 0;
+                    font-size: 28px;
+                    line-height: 1.25;
+                    font-weight: 700;
+                    color: #111827;
+                  "
+                >
+                  Hola {{NAME}}, tu reporte ya está listo 👋
+                </h1>
+
+                <p
+                  style="
+                    margin: 18px 0 0;
+                    font-size: 16px;
+                    line-height: 27px;
+                    color: #4b5563;
+                  "
+                >
+                  Terminamos de generar tu
+                  <strong>reporte corto de movimientos</strong>. Haz clic en el
+                  botón de abajo para descargar tu archivo Excel.
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding: 16px 40px 8px">
+                <table
+                  role="presentation"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  width="100%"
+                  style="
+                    background: #f8fafc;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 12px;
+                  "
+                >
+                  <tr>
+                    <td style="padding: 20px 24px; font-size: 14px; color: #6b7280">
+                      Período del reporte
+                    </td>
+                  </tr>
+                  <tr>
+                    <td
+                      style="
+                        padding: 0 24px 20px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        color: #111827;
+                      "
+                    >
+                      {{START_DATE}} — {{END_DATE}}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td align="center" style="padding: 28px 40px 12px">
+                <a
+                  href="{{DOWNLOAD_URL}}"
+                  style="
+                    display: inline-block;
+                    background: #6d28d9;
+                    color: #ffffff;
+                    font-size: 16px;
+                    font-weight: 700;
+                    text-decoration: none;
+                    padding: 16px 36px;
+                    border-radius: 10px;
+                  "
+                >
+                  Descargar reporte
+                </a>
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                align="center"
+                style="
+                  padding: 8px 40px 32px;
+                  font-size: 14px;
+                  line-height: 23px;
+                  color: #6b7280;
+                "
+              >
+                El enlace es de uso único para tu cuenta y vence en
+                <strong style="color: #4b5563">{{EXPIRES}}</strong>.
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding: 0 40px 32px">
+                <hr
+                  style="
+                    border: none;
+                    border-top: 1px solid #e5e7eb;
+                    margin: 0 0 24px;
+                  "
+                />
+                <p
+                  style="
+                    margin: 0;
+                    font-size: 13px;
+                    line-height: 22px;
+                    color: #6b7280;
+                    word-break: break-all;
+                  "
+                >
+                  Si el botón no funciona, copia y pega este enlace en tu
+                  navegador:<br />
+                  <a href="{{DOWNLOAD_URL}}" style="color: #6d28d9"
+                    >{{DOWNLOAD_URL}}</a
+                  >
+                </p>
+                <p
+                  style="
+                    margin: 20px 0 0;
+                    font-size: 13px;
+                    line-height: 22px;
+                    color: #9ca3af;
+                  "
+                >
+                  Si no solicitaste este reporte, puedes ignorar este correo.
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                align="center"
+                style="
+                  background: #f8fafc;
+                  padding: 24px;
+                  font-size: 13px;
+                  color: #6b7280;
+                  border-top: 1px solid #e5e7eb;
+                "
+              >
+                © {{YEAR}} Finance Flow. Todos los derechos reservados.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

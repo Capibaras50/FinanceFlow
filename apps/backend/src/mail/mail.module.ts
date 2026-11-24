@@ -19,7 +19,7 @@ import { Env } from 'src/models/env.model';
           },
         },
         defaults: {
-          from: `"Finance Flow" <${configService.get('EMAIL_HOST', { infer: true })}>`,
+          from: `"Finance Flow" <${configService.get('EMAIL_USER', { infer: true })}>`,
         },
       }),
     }),

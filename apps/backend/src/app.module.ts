@@ -15,6 +15,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { MailModule } from './mail/mail.module';
 import { DebtsModule } from './debts/debts.module';
 import { ContactsModule } from './contacts/contacts.module';
+import { ExportsModule } from './exports/exports.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { ContactsModule } from './contacts/contacts.module';
     MailModule,
     DebtsModule,
     ContactsModule,
+    ExportsModule,
   ],
   providers: [
     {
