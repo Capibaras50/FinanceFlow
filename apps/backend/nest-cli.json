@@ -5,6 +5,21 @@
   "entryFile": "main",
   "compilerOptions": {
     "deleteOutDir": true,
-    "tsConfigPath": "tsconfig.json"
+    "tsConfigPath": "tsconfig.json",
+    "plugins": [
+      {
+        "name": "@nestjs/swagger",
+        "options": {
+          "classValidatorShim": true,
+          "classTransformerShim": true,
+          "dtoFileNameSuffix": [
+            ".dto.ts",
+            ".entity.ts"
+          ],
+          "controllerFileNameSuffix": [".controller.ts"],
+          "dtoKeyOfComment": "description"
+        }
+      }
+    ]
   }
 }

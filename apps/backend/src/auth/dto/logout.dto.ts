@@ -4,5 +4,5 @@ export class LogoutDto {
   @IsString()
   @IsOptional()
   @IsJWT()
-  refreshToken: string;
+  refreshToken?: string;
 }

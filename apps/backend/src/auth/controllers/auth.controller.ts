@@ -23,6 +23,18 @@ import { RefreshDto } from '../dto/refresh.dto';
 import { GoogleOAuthGuard } from '../guards/google-oauth.guard';
 import { ConfigService } from '@nestjs/config';
 import { Env } from 'src/models/env.model';
+import {
+  ApiBadRequestResponse,
+  ApiBasicAuth,
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOAuth2,
+  ApiQuery,
+  ApiTemporaryRedirectResponse,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 
 @Controller('auth')
 export class AuthController {
@@ -44,9 +56,42 @@ export class AuthController {
     };
   }
 
+  @ApiBasicAuth()
   @UseGuards(AuthGuard('local'))
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('login')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+          example: 'example@example.com',
+        },
+        password: {
+          type: 'string',
+          example: ']Q-fM}6:uFkk]d,e',
+        },
+      },
+    },
+  })
+  @ApiCreatedResponse({
+    description: 'Return accessToken and refreshToken and set the cookies',
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: {
+          type: 'string',
+        },
+        refreshToken: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unhauthrized',
+  })
   async login(
     @Req() req: express.Request,
     @Res({ passthrough: true }) res: Response,
@@ -74,6 +119,24 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @ApiBody({ type: RefreshDto })
+  @ApiCreatedResponse({
+    description: 'Return accessToken and refreshToken and set the cookies',
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: {
+          type: 'string',
+        },
+        refreshToken: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unhautorized',
+  })
   async refresh(
     @Body() refreshDto: RefreshDto,
     @Req() req: Request,
@@ -102,6 +165,14 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Post('logout')
   @HttpCode(204)
+  @ApiBearerAuth()
+  @ApiBody({ type: LogoutDto })
+  @ApiNoContentResponse({
+    description: 'Revoke the refresh token and clear the cookies',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unhautorized',
+  })
   async logout(
     @Body() logoutDto: LogoutDto,
     @Req() req: Request,
@@ -119,11 +190,28 @@ export class AuthController {
 
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('forgot-password')
+  @ApiBody({ type: ForgotPasswordDto })
+  @ApiCreatedResponse({
+    description: 'Sent email for recovery password',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'Email Sent Successfully',
+        },
+      },
+    },
+  })
   forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.recoveryPassword(forgotPasswordDto.email);
   }
 
   @Get('recovery-password')
+  @ApiQuery({ name: 'token', type: String })
+  @ApiTemporaryRedirectResponse({
+    description: 'Redirect to reset password endpoint',
+  })
   recoveryPasswordRedirect(
     @Query('token') recoveryToken: string,
     @Req() req: Request,
@@ -141,6 +229,26 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @ApiQuery({ name: 'token', type: String })
+  @ApiBody({ type: ResetPasswordDto })
+  @ApiCreatedResponse({
+    description: 'The password change',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'The Password was changed successfully',
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Bad Request',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unhautorized',
+  })
   resetPassword(
     @Query('token') recoveryToken: string,
     @Body() resetPasswordDto: ResetPasswordDto,
@@ -153,10 +261,20 @@ export class AuthController {
 
   @UseGuards(GoogleOAuthGuard)
   @Get()
+  @ApiOAuth2(['email', 'profile'], 'google')
+  @ApiTemporaryRedirectResponse({
+    description: 'succesfull redirection to Google',
+  })
   async googleAuth() {}
 
   @UseGuards(GoogleOAuthGuard)
   @Get('google-redirect')
+  @ApiTemporaryRedirectResponse({
+    description: 'Successfull redirect to home page',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid google token or dont authorize.',
+  })
   async googleAuthRedirect(@Req() req: express.Request, @Res() res: Response) {
     const tokens = await this.authService.googleLogin(req);
     const userAgent = req.get('user-agent') || '';

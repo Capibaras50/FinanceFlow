@@ -1,6 +1,7 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 
@@ -36,6 +37,41 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  const config = new DocumentBuilder()
+    .addGlobalResponse({
+      status: 500,
+      description: 'Internal Server Error',
+    })
+    .addBearerAuth()
+    .addCookieAuth('accessToken')
+    .addOAuth2(
+      {
+        type: 'oauth2',
+        flows: {
+          authorizationCode: {
+            authorizationUrl: 'https://google.com',
+            tokenUrl: 'https://googleapis.com',
+            scopes: {
+              email: 'Acceso al correo electrónico',
+              profile: 'Acceso al perfil básico',
+            },
+          },
+        },
+      },
+      'google',
+    )
+    .setTitle('Finance Flow API')
+    .setDescription(
+      'The API have different endpoints for get, create, update and delete expenses, earnings, wallets and categories and you can use AI for manage your finances',
+    )
+    .setVersion('1.0')
+    .build();
+  const documentFactory = () => SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, documentFactory, {
+    jsonDocumentUrl: 'api/json',
+  });
+
   await app.listen(process.env.PORT ?? 3000);
   console.log(`NestJs esta corriendo en el puerto ${process.env.PORT || 3000}`);
 }

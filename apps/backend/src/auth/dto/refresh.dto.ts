@@ -4,5 +4,5 @@ export class RefreshDto {
   @IsString()
   @IsOptional()
   @IsJWT()
-  refreshToken: string;
+  refreshToken?: string;
 }
