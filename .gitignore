@@ -86,3 +86,6 @@ apps/backend/dist/
 # EAS auto-generated root config
 /app.json
 /eas.json
+
+.agents
+skills-lock.json

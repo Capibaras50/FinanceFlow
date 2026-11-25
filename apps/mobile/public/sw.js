@@ -74,6 +74,10 @@ self.addEventListener('fetch', (event) => {
   // Never cache cross-origin requests (e.g. the API or Cloudinary uploads).
   if (url.origin !== self.location.origin) return;
 
+  // In the Docker deployment the API is same-origin at /api. It must stay
+  // network-only: no SW cache for authenticated financial responses.
+  if (url.pathname.startsWith('/api/')) return;
+
   // Network-first for navigations: serve the app shell from cache when offline.
   if (request.mode === 'navigate') {
     event.respondWith(

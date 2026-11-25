@@ -1,13 +1,12 @@
 import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect, type RouteProp } from '@react-navigation/native';
-import { GlassCard } from '../../components/ui/GlassCard';
+import { SkeletonDebtDetailHeader, SkeletonDetailBody } from '../../components/ui/Skeleton';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { GradientButton } from '../../components/ui/GradientButton';
-import { typography, spacing, borderRadius } from '../../theme';
+import { typography, strokeWidth, spacing, borderRadius, layout } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
@@ -114,8 +113,9 @@ export function DebtDetailScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={colors.primary} size="large" />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <SkeletonDebtDetailHeader paddingTop={insets.top + spacing.md} />
+        <SkeletonDetailBody rows={4} actions={2} framed label="Cargando deuda…" />
       </View>
     );
   }
@@ -126,8 +126,29 @@ export function DebtDetailScreen() {
   const amountColor = isReceivable ? colors.success : colors.error;
   const isPayable = debt.status === 'pending' || debt.status === 'overdue';
 
+  const iconButton = {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: colors.surfaceContainerHigh,
+    borderWidth: strokeWidth.medium,
+    borderColor: colors.outlineVariant,
+  };
+
   const InfoRow = ({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) => (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        minHeight: 44,
+        paddingVertical: spacing.sm,
+        borderBottomWidth: strokeWidth.medium,
+        borderBottomColor: colors.outlineVariant,
+      }}
+    >
       <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>{label}</Text>
       <Text style={[typography.titleMd, { color: valueColor ?? colors.onSurface, maxWidth: '60%', textAlign: 'right' }]} numberOfLines={1}>
         {value}
@@ -137,20 +158,27 @@ export function DebtDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        colors={colors.gradient.primary}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing['2xl'], paddingHorizontal: spacing.container }}
+      <View
+        style={{
+          backgroundColor: colors.surface,
+          borderBottomWidth: strokeWidth.medium,
+          borderBottomColor: colors.outlineVariant,
+          paddingTop: insets.top + spacing.md,
+          paddingBottom: spacing.lg,
+          paddingHorizontal: spacing.container,
+        }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, width: '100%', maxWidth: layout.readingMaxWidth, alignSelf: 'center' }}>
           <TouchableOpacity
             onPress={() => goBackOrHome(navigation)}
-            style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
+            hitSlop={4}
+            style={iconButton}
           >
-            <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+            <Ionicons accessible={false} name="arrow-back" size={20} color={colors.onSurface} />
           </TouchableOpacity>
-          <Text style={[typography.headlineSm, { color: '#FFFFFF', flex: 1 }]}>
+          <Text accessibilityRole="header" numberOfLines={1} style={[typography.headlineSm, { color: colors.onSurface, flex: 1 }]}>
             {debt.name}
           </Text>
           <TouchableOpacity
@@ -161,89 +189,145 @@ export function DebtDetailScreen() {
                 contactName: debt.contactName,
               })
             }
-            style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
+            accessibilityRole="button"
+            accessibilityLabel="Editar deuda"
+            hitSlop={4}
+            style={iconButton}
           >
-            <Ionicons name="pencil" size={20} color="#FFFFFF" />
+            <Ionicons accessible={false} name="pencil" size={18} color={colors.primary} />
           </TouchableOpacity>
         </View>
-        <View style={{ alignItems: 'center', marginTop: spacing.md, gap: spacing.sm }}>
-          <Text style={[typography.labelMd, { color: 'rgba(255,255,255,0.75)' }]}>
-            {isReceivable ? 'Te deben' : 'Debes'}
+        <View style={{ width: '100%', maxWidth: layout.readingMaxWidth, alignSelf: 'center', marginTop: spacing.lg, gap: spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            <Ionicons accessible={false} name={isReceivable ? 'arrow-down-circle' : 'arrow-up-circle'} size={16} color={amountColor} />
+            <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
+              {isReceivable ? 'Te deben' : 'Debes'}
+            </Text>
+          </View>
+          <Text
+            accessibilityLabel={`${isReceivable ? 'Te deben' : 'Debes'} ${formatCurrency(Number(debt.amount))}`}
+            style={[typography.displayMd, { color: amountColor }]}
+          >
+            {isReceivable ? '+' : '−'}{formatCurrency(Number(debt.amount))}
           </Text>
-          <Text style={[typography.displayMd, { color: '#FFFFFF' }]}>
-            {formatCurrency(Number(debt.amount))}
-          </Text>
-          <StatusBadge status={debt.status} />
+          <View style={{ marginTop: spacing.xs, alignSelf: 'flex-start' }}>
+            <StatusBadge status={debt.status} />
+          </View>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: spacing['2xl'] + 40, paddingTop: spacing.lg }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          width: '100%',
+          maxWidth: layout.readingMaxWidth,
+          alignSelf: 'center',
+          paddingHorizontal: spacing.container,
+          paddingBottom: spacing['2xl'] + 40,
+          paddingTop: spacing.lg,
+          gap: spacing.lg,
+        }}
       >
-        <View style={{ paddingHorizontal: spacing.container, gap: spacing.md }}>
-          <GlassCard>
-            <View style={{ gap: spacing.md }}>
-              <InfoRow label="Persona" value={debt.contactName} />
-              <InfoRow label="Tipo" value={DEBT_TYPE_LABELS[debt.debtType]} />
-              <InfoRow label="Prioridad" value={DEBT_PRIORITY_LABELS[debt.priority]} />
-              {debt.dueDate && (
-                <InfoRow
-                  label="Vence"
-                  value={new Date(debt.dueDate).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
-                />
-              )}
-              {debt.paidAt && (
-                <InfoRow
-                  label="Pagada el"
-                  value={new Date(debt.paidAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  valueColor={colors.success}
-                />
-              )}
-            </View>
-          </GlassCard>
-
-          {debt.description ? (
-            <GlassCard>
-              <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginBottom: spacing.sm }]}>
-                Descripción
-              </Text>
-              <Text style={[typography.bodyMd, { color: colors.onSurface }]}>
-                {debt.description}
-              </Text>
-            </GlassCard>
-          ) : null}
-
-          {debt.receiptUrl ? (
-            <TouchableOpacity onPress={() => Linking.openURL(debt.receiptUrl!)}>
-              <GlassCard style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="image" size={20} color={colors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[typography.titleMd, { color: colors.onSurface }]}>Comprobante</Text>
-                  <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>Toca para ver el comprobante</Text>
-                </View>
-                <Ionicons name="open-outline" size={20} color={colors.primary} />
-              </GlassCard>
-            </TouchableOpacity>
-          ) : null}
-
-          {isPayable && (
-            <GradientButton
-              title={paying ? 'Procesando pago...' : 'Marcar como pagada'}
-              onPress={handlePay}
-              disabled={paying}
-            />
-          )}
-
-          <GradientButton
-            title="Eliminar deuda"
-            variant="ghost"
-            onPress={handleDelete}
-            style={{ borderWidth: 1, borderColor: colors.error + '40' }}
-          />
+        <View
+          style={{
+            backgroundColor: colors.surfaceContainerHigh,
+            borderRadius: borderRadius.lg,
+            borderWidth: strokeWidth.medium,
+            borderColor: colors.outlineVariant,
+            paddingHorizontal: spacing.md,
+          }}
+        >
+          <Text accessibilityRole="header" style={[typography.titleMd, { color: colors.onSurface, paddingTop: spacing.md }]}>
+            Detalles
+          </Text>
+          <View style={{ marginTop: spacing.sm }}>
+            <InfoRow label="Persona" value={debt.contactName} />
+            <InfoRow label="Tipo" value={DEBT_TYPE_LABELS[debt.debtType]} />
+            <InfoRow label="Prioridad" value={DEBT_PRIORITY_LABELS[debt.priority]} />
+            {debt.dueDate && (
+              <InfoRow
+                label="Vence"
+                value={new Date(debt.dueDate).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+              />
+            )}
+            {debt.paidAt && (
+              <InfoRow
+                label="Pagada el"
+                value={new Date(debt.paidAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                valueColor={colors.success}
+              />
+            )}
+          </View>
         </View>
+
+        {debt.description ? (
+          <View style={{ gap: spacing.sm }}>
+            <Text accessibilityRole="header" style={[typography.titleMd, { color: colors.onSurface }]}>
+              Descripción
+            </Text>
+            <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>
+              {debt.description}
+            </Text>
+          </View>
+        ) : null}
+
+        {debt.receiptUrl ? (
+          <TouchableOpacity
+            onPress={() => Linking.openURL(debt.receiptUrl!)}
+            accessibilityRole="button"
+            accessibilityLabel="Ver comprobante"
+            accessibilityHint="Abre el comprobante de la deuda"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.md,
+              minHeight: 64,
+              padding: spacing.md,
+              backgroundColor: colors.surfaceContainerHigh,
+              borderRadius: borderRadius.lg,
+              borderWidth: strokeWidth.medium,
+              borderColor: colors.outlineVariant,
+            }}
+          >
+            <View
+              accessible={false}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: borderRadius.md,
+                backgroundColor: colors.primaryContainer,
+                borderWidth: strokeWidth.medium,
+                borderColor: colors.outline,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="image" size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.titleMd, { color: colors.onSurface }]}>Comprobante</Text>
+              <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>Toca para ver el comprobante</Text>
+            </View>
+            <Ionicons accessible={false} name="open-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        ) : null}
+
+        {isPayable && (
+          <GradientButton
+            title="Marcar como pagada"
+            onPress={handlePay}
+            disabled={paying}
+            loading={paying}
+          />
+        )}
+
+        <GradientButton
+          title="Eliminar deuda"
+          variant="ghost"
+          onPress={handleDelete}
+          style={{ borderWidth: strokeWidth.medium, borderColor: colors.error }}
+        />
       </ScrollView>
     </View>
   );

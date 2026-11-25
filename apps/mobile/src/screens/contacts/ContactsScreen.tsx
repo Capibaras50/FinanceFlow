@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { GlassCard } from '../../components/ui/GlassCard';
@@ -9,7 +8,10 @@ import { ContactCard } from '../../components/ui/ContactCard';
 import { Avatar } from '../../components/ui/Avatar';
 import { FocusFadeIn } from '../../components/ui/FocusFadeIn';
 import { Input } from '../../components/ui/Input';
-import { typography, spacing, borderRadius } from '../../theme';
+import { StatePanel } from '../../components/ui/StatePanel';
+import { SkeletonContactRows } from '../../components/ui/Skeleton';
+import { Glyph } from '../../components/ui/Glyph';
+import { typography, strokeWidth, spacing, borderRadius, layout } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
@@ -35,6 +37,7 @@ export function ContactsScreen() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Profile[]>([]);
   const [searching, setSearching] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     try {
@@ -48,6 +51,8 @@ export function ContactsScreen() {
       setPendingSent(sent);
     } catch {
       showError('Error al cargar contactos');
+    } finally {
+      setInitialLoading(false);
     }
   }, [showError]);
 
@@ -69,36 +74,60 @@ export function ContactsScreen() {
   }, [contacts, pendingReceived, pendingSent, myProfileId]);
 
   const openSearch = () => {
+    searchRequestId.current += 1;
     setQuery('');
     setResults([]);
+    setSearching(false);
     setSearchVisible(true);
   };
 
-  const handleSearch = async (text: string) => {
+  const searchRequestId = useRef(0);
+  const relatedProfileIdsRef = useRef(relatedProfileIds);
+  useEffect(() => {
+    relatedProfileIdsRef.current = relatedProfileIds;
+  }, [relatedProfileIds]);
+
+  const handleSearch = useCallback((text: string) => {
     setQuery(text);
     if (text.trim().length < 3) {
+      searchRequestId.current += 1;
       setResults([]);
-      return;
-    }
-    setSearching(true);
-    try {
-      const data = await usersApi.findProfilesByName(text.trim());
-      const seen = new Set<number>();
-      setResults(
-        data.filter((p) => {
-          if (p.id === myProfileId || relatedProfileIds.has(p.id) || seen.has(p.id)) {
-            return false;
-          }
-          seen.add(p.id);
-          return true;
-        })
-      );
-    } catch {
-      setResults([]);
-    } finally {
       setSearching(false);
     }
-  };
+  }, []);
+
+  // Debounce typing and ignore out-of-order responses so older results cannot
+  // overwrite the latest search.
+  useEffect(() => {
+    const term = query.trim();
+    if (term.length < 3) return;
+
+    const requestId = ++searchRequestId.current;
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const data = await usersApi.findProfilesByName(term);
+        if (requestId !== searchRequestId.current) return;
+        const related = relatedProfileIdsRef.current;
+        const seen = new Set<number>();
+        setResults(
+          data.filter((p) => {
+            if (p.id === myProfileId || related.has(p.id) || seen.has(p.id)) {
+              return false;
+            }
+            seen.add(p.id);
+            return true;
+          })
+        );
+      } catch {
+        if (requestId === searchRequestId.current) setResults([]);
+      } finally {
+        if (requestId === searchRequestId.current) setSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [query, myProfileId]);
 
   const handleSendRequest = async (profile: Profile) => {
     try {
@@ -186,43 +215,61 @@ export function ContactsScreen() {
     goBackOrHome(navigation);
   };
 
+  const iconButton = {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: colors.surfaceContainerHigh,
+    borderWidth: strokeWidth.medium,
+    borderColor: colors.outlineVariant,
+  };
+
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-    <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: spacing.xs, marginBottom: spacing.sm, marginTop: spacing.md }]}>
+    <Text accessibilityRole="header" style={[typography.titleMd, { color: colors.onSurfaceVariant, marginBottom: spacing.sm }]}>
       {children}
     </Text>
   );
 
+  const addButton = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.xs,
+    minHeight: layout.touchTarget - 8,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primaryContainer,
+    borderWidth: strokeWidth.medium,
+    borderColor: colors.outline,
+  };
+
   return (
     <FocusFadeIn>
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <LinearGradient
-          colors={colors.gradient.primary}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: spacing.container }}
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderBottomWidth: strokeWidth.medium,
+            borderBottomColor: colors.outlineVariant,
+            paddingTop: insets.top + spacing.md,
+            paddingBottom: spacing.md,
+            paddingHorizontal: spacing.container,
+          }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, width: '100%', maxWidth: layout.contentMaxWidth, alignSelf: 'center' }}>
             <TouchableOpacity
               onPress={handleBack}
               accessibilityRole="button"
               accessibilityLabel="Volver"
-              style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
+              hitSlop={4}
+              style={iconButton}
             >
-              <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+              <Ionicons accessible={false} name="arrow-back" size={20} color={colors.onSurface} />
             </TouchableOpacity>
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name="people" size={20} color="#FFFFFF" />
-            </View>
-            <Text style={[typography.headlineSm, { color: '#FFFFFF', flex: 1 }]}>
+            <Glyph name="people" tone="primary" size={44} />
+            <Text accessibilityRole="header" style={[typography.headlineSm, { color: colors.onSurface, flex: 1 }]}>
               Contactos
             </Text>
             <TouchableOpacity
@@ -230,21 +277,30 @@ export function ContactsScreen() {
               accessibilityRole="button"
               accessibilityLabel="Agregar contacto"
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={{ minHeight: layout.touchTarget, minWidth: layout.touchTarget, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Ionicons name="add-circle" size={28} color="#FFFFFF" />
+              <Ionicons accessible={false} name="add-circle" size={26} color={colors.primary} />
             </TouchableOpacity>
           </View>
-        </LinearGradient>
+        </View>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: spacing['2xl'] }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            width: '100%',
+            maxWidth: layout.contentMaxWidth,
+            alignSelf: 'center',
+            paddingHorizontal: spacing.container,
+            paddingBottom: spacing['2xl'],
+            paddingTop: spacing.lg,
+          }}
         >
-          <View style={{ paddingTop: spacing.lg, paddingHorizontal: spacing.container, gap: spacing.lg }}>
+          <View style={{ gap: spacing.lg }}>
 
             {pendingReceived.length > 0 && (
               <View>
-                <SectionTitle>SOLICITUDES RECIBIDAS</SectionTitle>
+                <SectionTitle>Solicitudes recibidas</SectionTitle>
                 {pendingReceived.map((c) => {
                   const profile = getOtherProfile(c, myProfileId);
                   return (
@@ -267,14 +323,18 @@ export function ContactsScreen() {
                           accessibilityLabel={`Aceptar solicitud de ${profile.name}`}
                           style={{
                             flex: 1,
+                            flexDirection: 'row',
                             alignItems: 'center',
-                            paddingVertical: spacing.sm + 2,
-                            borderRadius: borderRadius.full,
-                            backgroundColor: colors.success + '1F',
-                            borderWidth: 1,
-                            borderColor: colors.success + '50',
+                            justifyContent: 'center',
+                            gap: spacing.xs,
+                            minHeight: layout.touchTarget,
+                            borderRadius: borderRadius.md,
+                            backgroundColor: colors.surfaceContainerHigh,
+                            borderWidth: strokeWidth.medium,
+                            borderColor: colors.success,
                           }}
                         >
+                          <Ionicons accessible={false} name="checkmark-circle" size={16} color={colors.success} />
                           <Text style={[typography.labelLg, { color: colors.success }]}>Aceptar</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -283,10 +343,13 @@ export function ContactsScreen() {
                           accessibilityLabel={`Rechazar solicitud de ${profile.name}`}
                           style={{
                             flex: 1,
+                            minHeight: layout.touchTarget,
                             alignItems: 'center',
-                            paddingVertical: spacing.sm + 2,
-                            borderRadius: borderRadius.full,
-                            backgroundColor: colors.surfaceContainerHighest,
+                            justifyContent: 'center',
+                            borderRadius: borderRadius.md,
+                            backgroundColor: colors.surfaceContainerHigh,
+                            borderWidth: strokeWidth.medium,
+                            borderColor: colors.outlineVariant,
                           }}
                         >
                           <Text style={[typography.labelLg, { color: colors.onSurfaceVariant }]}>Rechazar</Text>
@@ -300,7 +363,7 @@ export function ContactsScreen() {
 
             {pendingSent.length > 0 && (
               <View>
-                <SectionTitle>SOLICITUDES ENVIADAS</SectionTitle>
+                <SectionTitle>Solicitudes enviadas</SectionTitle>
                 {pendingSent.map((c) => {
                   const profile = getOtherProfile(c, myProfileId);
                   return (
@@ -311,7 +374,7 @@ export function ContactsScreen() {
                           <Text style={[typography.titleMd, { color: colors.onSurface }]} numberOfLines={1}>
                             {profile.name}
                           </Text>
-                          <Text style={[typography.bodySm, { color: colors.warning }]}>
+                          <Text style={[typography.bodySm, { color: colors.secondary }]}>
                             Pendiente de aceptar
                           </Text>
                         </View>
@@ -320,8 +383,9 @@ export function ContactsScreen() {
                           accessibilityRole="button"
                           accessibilityLabel={`Cancelar solicitud enviada a ${profile.name}`}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          style={{ minHeight: layout.touchTarget, minWidth: layout.touchTarget, alignItems: 'center', justifyContent: 'center' }}
                         >
-                          <Ionicons name="close-circle" size={22} color={colors.onSurfaceVariant} />
+                          <Ionicons accessible={false} name="close-circle" size={22} color={colors.onSurfaceVariant} />
                         </TouchableOpacity>
                       </View>
                     </GlassCard>
@@ -331,24 +395,21 @@ export function ContactsScreen() {
             )}
 
             <View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <SectionTitle>TUS CONTACTOS</SectionTitle>
-                <TouchableOpacity onPress={openSearch}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primaryContainer, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: borderRadius.full }}>
-                    <Ionicons name="add" size={16} color={colors.onPrimaryContainer} />
-                    <Text style={[typography.labelMd, { color: colors.onPrimaryContainer }]}>Agregar</Text>
-                  </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+                <SectionTitle>Tus contactos</SectionTitle>
+                <TouchableOpacity onPress={openSearch} accessibilityRole="button" accessibilityLabel="Agregar contacto" style={addButton}>
+                  <Ionicons accessible={false} name="add" size={16} color={colors.primary} />
+                  <Text style={[typography.labelMd, { color: colors.primary }]}>Agregar</Text>
                 </TouchableOpacity>
               </View>
-              {contacts.length === 0 ? (
-                <GlassCard>
-                  <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
-                    Aún no tienes contactos
-                  </Text>
-                  <Text style={[typography.bodySm, { color: colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.xs }]}>
-                    Busca a tus amigos para registrar deudas con ellos
-                  </Text>
-                </GlassCard>
+              {initialLoading ? (
+                <SkeletonContactRows rows={3} label="Cargando contactos…" />
+              ) : contacts.length === 0 ? (
+                <StatePanel
+                  state="empty"
+                  title="Aún no tienes contactos"
+                  message="Busca a tus amigos para registrar deudas con ellos"
+                />
               ) : (
                 contacts.map((c) => {
                   const profile = getOtherProfile(c, myProfileId);
@@ -368,13 +429,42 @@ export function ContactsScreen() {
         </ScrollView>
 
         <Modal visible={searchVisible} transparent animationType="slide" onRequestClose={() => setSearchVisible(false)}>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-            <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: borderRadius['2xl'], borderTopRightRadius: borderRadius['2xl'], padding: spacing.container, paddingBottom: insets.bottom + spacing.md, minHeight: '60%' }}>
-              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.outlineVariant, alignSelf: 'center', marginBottom: spacing.lg }} />
+          <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+            <View
+              accessible={false}
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                backgroundColor: colors.surfaceContainerLowest,
+                opacity: 0.75,
+              }}
+            />
+            <View
+              style={{
+                backgroundColor: colors.surface,
+                borderTopLeftRadius: borderRadius['2xl'],
+                borderTopRightRadius: borderRadius['2xl'],
+                borderTopWidth: strokeWidth.medium,
+                borderTopColor: colors.outlineVariant,
+                padding: spacing.container,
+                paddingBottom: insets.bottom + spacing.md,
+                minHeight: '60%',
+              }}
+            >
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.outlineVariant, alignSelf: 'center', marginBottom: spacing.lg }} accessible={false} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
-                <Text style={[typography.titleLg, { color: colors.onSurface }]}>Agregar contacto</Text>
-                <TouchableOpacity onPress={() => setSearchVisible(false)}>
-                  <Ionicons name="close" size={24} color={colors.onSurfaceVariant} />
+                <Text accessibilityRole="header" style={[typography.titleLg, { color: colors.onSurface }]}>Agregar contacto</Text>
+                <TouchableOpacity
+                  onPress={() => setSearchVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar búsqueda"
+                  hitSlop={8}
+                  style={{ minHeight: layout.touchTarget, minWidth: layout.touchTarget, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Ionicons accessible={false} name="close" size={22} color={colors.onSurfaceVariant} />
                 </TouchableOpacity>
               </View>
               <Input
@@ -386,17 +476,17 @@ export function ContactsScreen() {
               />
               <ScrollView style={{ marginTop: spacing.md }} keyboardShouldPersistTaps="handled">
                 {searching ? (
-                  <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+                  <SkeletonContactRows rows={3} label="Buscando contactos…" />
                 ) : query.trim().length >= 3 && results.length === 0 ? (
-                  <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.xl }]}>
-                    Sin resultados
-                  </Text>
+                  <StatePanel state="empty" title="Sin resultados" message="Prueba con otro nombre." />
                 ) : (
                   results.map((profile) => (
                     <TouchableOpacity
                       key={profile.id}
                       onPress={() => handleSendRequest(profile)}
                       activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Agregar a ${profile.name}`}
                     >
                       <GlassCard style={{ marginBottom: spacing.sm }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
@@ -406,9 +496,9 @@ export function ContactsScreen() {
                               {profile.name}
                             </Text>
                           </View>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primaryContainer, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: borderRadius.full }}>
-                            <Ionicons name="person-add" size={14} color={colors.onPrimaryContainer} />
-                            <Text style={[typography.labelMd, { color: colors.onPrimaryContainer }]}>Agregar</Text>
+                          <View style={addButton}>
+                            <Ionicons accessible={false} name="person-add" size={14} color={colors.primary} />
+                            <Text style={[typography.labelMd, { color: colors.primary }]}>Agregar</Text>
                           </View>
                         </View>
                       </GlassCard>

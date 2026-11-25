@@ -6,10 +6,9 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { GlassCard } from '../../components/ui/GlassCard';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { DateTimePickerModal } from '../../components/ui/DateTimePickerModal';
-import { typography, spacing, borderRadius } from '../../theme';
+import { typography, strokeWidth, spacing, borderRadius, layout } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
@@ -121,83 +120,74 @@ export function ExportDataSection() {
     }
   };
 
-  const chipStyle = (active: boolean) => ({
-    backgroundColor: active
-      ? colors.primaryContainer
-      : colors.surfaceContainerHighest,
-    borderColor: active ? colors.primary : colors.outlineVariant + '60',
+  const chipStyle = (active: boolean, disabled = false) => ({
+    backgroundColor: disabled
+      ? colors.surfaceContainerLowest
+      : active
+        ? colors.primaryContainer
+        : colors.surfaceContainerHigh,
+    borderColor: active && !disabled ? colors.primary : colors.outlineVariant,
   });
+
+  const chipTextColor = (active: boolean, disabled = false) =>
+    disabled ? colors.onSurfaceVariant : active ? colors.onPrimaryContainer : colors.onSurface;
 
   const reportRow = (
     type: ReportType,
     icon: 'document-text-outline' | 'grid-outline',
     title: string,
     description: string,
+    first: boolean,
   ) => (
     <TouchableOpacity
       onPress={() => handleExport(type)}
       disabled={!!loading}
       accessibilityRole="button"
       accessibilityLabel={`Generar ${title}`}
-      accessibilityState={{ disabled: !!loading }}
+      accessibilityHint={description}
+      accessibilityState={{ disabled: !!loading, busy: loading === type }}
       activeOpacity={0.7}
+      hitSlop={4}
+      style={{ opacity: loading && loading !== type ? 0.55 : 1 }}
     >
-      <GlassCard style={{ opacity: loading && loading !== type ? 0.55 : 1 }}>
-        <View style={s.menuRow}>
-          <View style={[s.menuIcon, { backgroundColor: `${colors.secondary}15` }]}>
-            <Ionicons name={icon} size={20} color={colors.secondary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[typography.titleMd, { color: colors.onSurface }]}>
-              {title}
-            </Text>
-            <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
-              {description}
-            </Text>
-          </View>
-          <View style={s.trailing}>
-            {loading === type ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Ionicons name="download-outline" size={20} color={colors.primary} />
-            )}
-          </View>
+      <View style={[s.reportRow, first ? undefined : { borderTopWidth: strokeWidth.medium, borderTopColor: colors.outlineVariant }]}>
+        <View style={[s.rowIcon, { backgroundColor: colors.secondaryContainer }]}>
+          <Ionicons name={icon} size={20} color={colors.secondary} accessible={false} />
         </View>
-      </GlassCard>
+        <View style={{ flex: 1 }}>
+          <Text style={[typography.titleMd, { color: colors.onSurface }]}>
+            {title}
+          </Text>
+          <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
+            {description}
+          </Text>
+        </View>
+        <View style={s.trailing}>
+          {loading === type ? (
+            <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Generando reporte" />
+          ) : (
+            <Ionicons name="download-outline" size={20} color={colors.primary} accessible={false} />
+          )}
+        </View>
+      </View>
     </TouchableOpacity>
   );
 
   return (
-    <View style={{ marginTop: spacing.md }}>
-      <Text
-        style={[
-          typography.labelMd,
-          {
-            color: colors.onSurfaceVariant,
-            marginBottom: spacing.xs,
-            marginLeft: spacing.xs,
-          },
-        ]}
-      >
-        TUS DATOS
+    <View style={s.section}>
+      <Text accessibilityRole="header" style={[typography.labelMd, { color: colors.onSurfaceVariant, marginBottom: spacing.xs, paddingLeft: spacing.xs }]}>
+        Tus datos
       </Text>
       <Text
-        style={[
-          typography.bodySm,
-          {
-            color: colors.onSurfaceVariant,
-            marginBottom: spacing.sm,
-            marginLeft: spacing.xs,
-          },
-        ]}
+        style={[typography.bodySm, { color: colors.onSurfaceVariant, marginBottom: spacing.sm, paddingLeft: spacing.xs }]}
       >
         Exporta un reporte con tu información
       </Text>
 
-      <GlassCard style={s.card}>
-        <View style={s.menuRow}>
-          <View style={[s.menuIcon, { backgroundColor: `${colors.primary}15` }]}>
-            <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+      <View style={[s.group, { backgroundColor: colors.surface, borderColor: colors.outlineVariant, marginBottom: spacing.sm }]}>
+        <View style={s.periodRow}>
+          <View style={[s.rowIcon, { backgroundColor: colors.surfaceContainerHighest }]}>
+            <Ionicons name="calendar-outline" size={20} color={colors.primary} accessible={false} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[typography.titleMd, { color: colors.onSurface }]}>
@@ -214,9 +204,11 @@ export function ExportDataSection() {
             onPress={() => setPicker('start')}
             accessibilityRole="button"
             accessibilityLabel={`Cambiar fecha de inicio: ${formatDate(startDate)}`}
+            accessibilityHint="Abre el selector de fecha"
+            hitSlop={4}
             style={[s.chip, chipStyle(false)]}
           >
-            <Text style={[typography.labelMd, { color: colors.onSurface }]}>
+            <Text style={[typography.labelMd, { color: chipTextColor(false) }]}>
               Desde: {formatDate(startDate)}
             </Text>
           </TouchableOpacity>
@@ -224,9 +216,11 @@ export function ExportDataSection() {
             onPress={() => setPicker('end')}
             accessibilityRole="button"
             accessibilityLabel={`Cambiar fecha de fin: ${formatDate(endDate)}`}
+            accessibilityHint="Abre el selector de fecha"
+            hitSlop={4}
             style={[s.chip, chipStyle(false)]}
           >
-            <Text style={[typography.labelMd, { color: colors.onSurface }]}>
+            <Text style={[typography.labelMd, { color: chipTextColor(false) }]}>
               Hasta: {formatDate(endDate)}
             </Text>
           </TouchableOpacity>
@@ -248,42 +242,42 @@ export function ExportDataSection() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={`Periodo ${label}`}
+                hitSlop={4}
                 style={[s.chip, chipStyle(active)]}
               >
-                <Text
-                  style={[
-                    typography.labelMd,
-                    { color: active ? colors.onPrimaryContainer : colors.onSurfaceVariant },
-                  ]}
-                >
+                <Text style={[typography.labelMd, { color: chipTextColor(active) }]}>
                   {label}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </View>
-      </GlassCard>
+      </View>
 
-      {reportRow(
-        'short',
-        'document-text-outline',
-        'Reporte corto',
-        'Gastos e ingresos por fecha',
-      )}
-      {reportRow(
-        'large',
-        'grid-outline',
-        'Reporte completo',
-        'Totales por categoría y bolsillo',
-      )}
+      <View style={[s.group, { backgroundColor: colors.surface, borderColor: colors.outlineVariant }]}>
+        {reportRow(
+          'short',
+          'document-text-outline',
+          'Reporte corto',
+          'Gastos e ingresos por fecha',
+          true,
+        )}
+        {reportRow(
+          'large',
+          'grid-outline',
+          'Reporte completo',
+          'Totales por categoría y bolsillo',
+          false,
+        )}
+      </View>
 
       <Text
         style={[
           typography.bodySm,
           {
             color: colors.onSurfaceVariant,
-            marginTop: spacing.xs,
-            marginLeft: spacing.xs,
+            marginTop: spacing.sm,
+            paddingLeft: spacing.xs,
           },
         ]}
       >
@@ -304,35 +298,52 @@ export function ExportDataSection() {
 }
 
 const s = StyleSheet.create({
-  card: {
-    gap: spacing.md,
-    marginBottom: spacing.sm,
+  section: {
+    marginTop: spacing.xs,
   },
-  menuRow: {
+  group: {
+    borderRadius: borderRadius.lg,
+    borderWidth: strokeWidth.medium,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  periodRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+    minHeight: 56,
+    paddingVertical: spacing.xs,
   },
-  menuIcon: {
+  rowIcon: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  reportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    minHeight: 64,
+    paddingVertical: spacing.sm,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   chip: {
+    minHeight: layout.touchTarget,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
+    justifyContent: 'center',
     borderRadius: borderRadius.full,
-    borderWidth: 1,
+    borderWidth: strokeWidth.medium,
   },
   trailing: {
-    width: 24,
+    minWidth: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },

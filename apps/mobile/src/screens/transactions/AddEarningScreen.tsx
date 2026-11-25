@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { typography, spacing, borderRadius } from '../../theme';
+import { typography, strokeWidth, spacing, borderRadius, layout, outlineColor } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { DateTimePickerModal } from '../../components/ui/DateTimePickerModal';
+import { showAlert } from '../../components/ui/AppAlert';
 import { categoriesApi, walletsApi, earningsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { getErrorMessage, formatCurrencyInput, parseCurrencyInput } from '../../utils/format';
@@ -15,12 +15,15 @@ import { goBackOrHome } from '../../utils/navigation';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
 import type { Category, Wallet } from '@finance-flow/shared-types';
+import type { ThemeColors } from '../../theme';
 
 export function AddEarningScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'AddEarning'>>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const amountType = width < 380 ? typography.headlineMd : typography.displayMd;
   const earningId = route.params?.earningId;
   const isEditing = !!earningId;
 
@@ -93,6 +96,28 @@ export function AddEarningScreen() {
     }
   };
 
+  const handleDelete = () => {
+    showAlert({
+      title: 'Eliminar ingreso',
+      message: `¿Estás seguro de eliminar "${name}"?`,
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await earningsApi.delete(earningId!);
+              goBackOrHome(navigation);
+            } catch (e) {
+              showError(getErrorMessage(e, 'Error al eliminar ingreso'));
+            }
+          },
+        },
+      ],
+    });
+  };
+
   const formatDateLabel = () => {
     const now = new Date();
     const isToday = createdAt.toDateString() === now.toDateString();
@@ -103,88 +128,75 @@ export function AddEarningScreen() {
     return createdAt.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) + `, ${timeStr}`;
   };
 
-  const gradientColors = colors.gradient.accent;
   const rawValue = parseCurrencyInput(value);
   const numValue = parseFloat(rawValue);
   const isValueValid = !isNaN(numValue) && numValue > 0;
   const canSave = name && isValueValid && selectedCategory && selectedWallet;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        colors={gradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: spacing.container }}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View
+        style={{
+          paddingTop: insets.top + spacing.sm,
+          paddingBottom: spacing.md,
+          paddingHorizontal: spacing.container,
+          backgroundColor: colors.surface,
+          borderBottomWidth: strokeWidth.medium,
+          borderBottomColor: colors.outlineVariant,
+        }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <TouchableOpacity
-            onPress={() => goBackOrHome(navigation)}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Ionicons name="close" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <HeaderIconButton icon="close" label="Cerrar" onPress={() => goBackOrHome(navigation)} colors={colors} />
           <View
+            accessible={false}
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              backgroundColor: 'rgba(255,255,255,0.15)',
+              width: layout.touchTarget,
+              height: layout.touchTarget,
+              borderRadius: borderRadius.md,
+              backgroundColor: colors.primaryContainer,
+              borderWidth: strokeWidth.medium,
+              borderColor: colors.outline,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="trending-up" size={20} color="#FFFFFF" />
+            <Ionicons name="trending-up" size={20} color={colors.success} />
           </View>
-          <Text style={[typography.headlineSm, { color: '#FFFFFF', flex: 1 }]}>
+          <Text style={[typography.headlineSm, { color: colors.onSurface, flex: 1 }]}>
             {isEditing ? 'Editar Ingreso' : 'Nuevo Ingreso'}
           </Text>
+          {isEditing && (
+            <HeaderIconButton icon="trash-outline" label="Eliminar ingreso" onPress={handleDelete} colors={colors} danger />
+          )}
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView
-        style={{ flex: 1, paddingHorizontal: spacing.container }}
-        contentContainerStyle={{ paddingBottom: spacing['2xl'], gap: spacing.md, paddingTop: spacing.lg }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          width: '100%',
+          maxWidth: layout.readingMaxWidth,
+          alignSelf: 'center',
+          paddingHorizontal: spacing.container,
+          paddingTop: spacing.lg,
+          paddingBottom: spacing['2xl'] + insets.bottom,
+          gap: spacing.md,
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View style={{ alignItems: 'center', paddingVertical: spacing.md }}>
-          <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginBottom: spacing.sm }]}>
-            Valor del ingreso
-          </Text>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: colors.surfaceContainerHigh,
-            borderRadius: borderRadius.lg,
-            borderWidth: 1,
-            borderColor: colors.outlineVariant,
-            paddingHorizontal: spacing.md,
-          }}>
-            <Text style={[typography.displayMd, { color: colors.primary, marginRight: spacing.xs }]}>$</Text>
-            <TextInput
-              value={value}
-              onChangeText={(text) => setValue(formatCurrencyInput(text))}
-              placeholder="0.00"
-              placeholderTextColor={colors.onSurfaceVariant}
-              keyboardType="decimal-pad"
-              style={[
-                typography.bodyLg,
-                {
-                  flex: 1,
-                  color: colors.onSurface,
-                  paddingVertical: spacing.md,
-                  textAlign: 'center',
-                },
-              ]}
-            />
-          </View>
-        </View>
+        <Input
+          label="Valor del ingreso"
+          prefix="$"
+          value={value}
+          onChangeText={(text) => setValue(formatCurrencyInput(text))}
+          placeholder="0.00"
+          keyboardType="decimal-pad"
+          style={[amountType, { textAlign: 'center' }]}
+        />
 
         <Input
           label="¿Qué ingreso recibiste?"
@@ -194,85 +206,65 @@ export function AddEarningScreen() {
         />
 
         <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4 }]}>
+          <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
             Categoría
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
             {categories.map((cat) => (
-              <TouchableOpacity
+              <PickerChip
                 key={cat.id}
+                label={cat.name}
+                selected={selectedCategory === cat.id}
                 onPress={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: spacing.xs,
-                  paddingVertical: spacing.sm,
-                  paddingHorizontal: spacing.md,
-                  borderRadius: borderRadius.full,
-                  backgroundColor: selectedCategory === cat.id ? colors.primaryContainer + '33' : colors.surfaceContainerHigh,
-                  borderWidth: 1,
-                  borderColor: selectedCategory === cat.id ? colors.primary : 'transparent',
-                }}
-              >
-                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: cat.color }} />
-                <Text style={[typography.labelMd, { color: selectedCategory === cat.id ? colors.primary : colors.onSurfaceVariant }]}>
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
+                dotColor={cat.color}
+                colors={colors}
+              />
             ))}
           </ScrollView>
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4 }]}>
+          <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
             Cartera
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
             {wallets.map((w) => (
-              <TouchableOpacity
+              <PickerChip
                 key={w.id}
+                label={w.name}
+                selected={selectedWallet === w.id}
                 onPress={() => setSelectedWallet(w.id)}
-                style={{
-                  paddingVertical: spacing.sm + 2,
-                  paddingHorizontal: spacing.md,
-                  borderRadius: borderRadius.full,
-                  backgroundColor: selectedWallet === w.id ? colors.primary : colors.surfaceContainerHigh,
-                }}
-              >
-                <Text
-                  style={[
-                    typography.labelMd,
-                    { color: selectedWallet === w.id ? '#FFFFFF' : colors.onSurfaceVariant },
-                  ]}
-                >
-                  {w.name}
-                </Text>
-              </TouchableOpacity>
+                colors={colors}
+              />
             ))}
           </ScrollView>
         </View>
 
         <TouchableOpacity
           onPress={() => setShowDatePicker(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Fecha: ${formatDateLabel()}`}
+          accessibilityHint="Toca para cambiar la fecha y la hora"
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingVertical: spacing.md,
+            minHeight: layout.touchTarget,
+            paddingVertical: spacing.sm,
             paddingHorizontal: spacing.md,
-            borderRadius: borderRadius.lg,
+            borderRadius: borderRadius.md,
             backgroundColor: colors.surfaceContainerHigh,
-            borderWidth: 1,
+            borderWidth: strokeWidth.medium,
             borderColor: colors.outlineVariant,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary }} />
+            <Ionicons name="calendar-outline" size={20} color={colors.primary} accessible={false} />
             <Text style={[typography.bodyMd, { color: colors.onSurface }]}>
               {formatDateLabel()}
             </Text>
           </View>
-          <Ionicons name="time-outline" size={20} color={colors.primary} />
+          <Ionicons name="time-outline" size={20} color={colors.primary} accessible={false} />
         </TouchableOpacity>
 
         <DateTimePickerModal
@@ -298,8 +290,96 @@ export function AddEarningScreen() {
           title={isEditing ? 'Actualizar Ingreso' : 'Guardar Ingreso'}
           onPress={handleSave}
           disabled={loading || !canSave}
+          loading={loading}
         />
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+function HeaderIconButton({
+  icon,
+  label,
+  onPress,
+  colors,
+  danger = false,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  colors: ThemeColors;
+  danger?: boolean;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={4}
+      style={({ pressed }) => [
+        {
+          width: layout.touchTarget,
+          height: layout.touchTarget,
+          borderRadius: borderRadius.md,
+          backgroundColor: colors.surfaceContainerHigh,
+          borderWidth: strokeWidth.medium,
+          borderColor: colors.outlineVariant,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: pressed ? 0.85 : 1,
+        },
+        focused ? outlineColor(danger ? colors.error : colors.primary) : undefined,
+      ]}
+    >
+      <Ionicons name={icon} size={20} color={danger ? colors.error : colors.onSurface} accessible={false} />
+    </Pressable>
+  );
+}
+
+function PickerChip({
+  label,
+  selected,
+  onPress,
+  dotColor,
+  colors,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  dotColor?: string;
+  colors: ThemeColors;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
+      hitSlop={4}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        minHeight: layout.touchTarget,
+        paddingHorizontal: spacing.md,
+        borderRadius: borderRadius.full,
+        backgroundColor: selected ? colors.primaryContainer : colors.surfaceContainerHigh,
+        borderWidth: strokeWidth.medium,
+        borderColor: selected ? colors.primary : colors.outlineVariant,
+      }}
+    >
+      {dotColor && (
+        <View
+          accessible={false}
+          style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: dotColor }}
+        />
+      )}
+      <Text style={[typography.labelMd, { color: selected ? colors.primary : colors.onSurfaceVariant }]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
   );
 }

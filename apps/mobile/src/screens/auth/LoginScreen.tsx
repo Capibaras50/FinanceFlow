@@ -1,13 +1,21 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+} from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { typography, spacing, borderRadius } from '../../theme';
+import { typography, strokeWidth, spacing, borderRadius, layout } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { Input } from '../../components/ui/Input';
+import { Glyph } from '../../components/ui/Glyph';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { getErrorMessage } from '../../utils/format';
 import { hasPendingSharedImage } from '../../services/sharedImage';
@@ -62,19 +70,23 @@ export function LoginScreen() {
     >
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, backgroundColor: colors.background, paddingTop: insets.top + spacing['2xl'], paddingHorizontal: spacing.container }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          width: '100%',
+          maxWidth: layout.readingMaxWidth,
+          alignSelf: 'center',
+          backgroundColor: colors.background,
+          paddingTop: insets.top + spacing['2xl'],
+          paddingBottom: insets.bottom + spacing['2xl'],
+          paddingHorizontal: spacing.container,
+        }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
-          <LinearGradient
-            colors={colors.gradient.primary}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.logoCircle}
-          >
-            <Ionicons name="wallet" size={36} color="#FFFFFF" />
-          </LinearGradient>
-          <Text style={[typography.displayMd, { color: colors.onSurface }]}>
+        <View style={s.header}>
+          <View accessible={false} style={s.logoMark}>
+            <Glyph name="wallet" tone="primary" size={64} active />
+          </View>
+          <Text accessibilityRole="header" style={[typography.headlineLg, { color: colors.onSurface }]}>
             Finance Flow
           </Text>
           <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, marginTop: spacing.xs }]}>
@@ -82,27 +94,29 @@ export function LoginScreen() {
           </Text>
           {pendingReceipt && (
             <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: spacing.sm,
-                marginTop: spacing.md,
-                paddingHorizontal: spacing.md,
-                paddingVertical: spacing.sm,
-                borderRadius: borderRadius.full,
-                backgroundColor: colors.primaryContainer,
-              }}
+              style={[
+                s.receiptNotice,
+                {
+                  backgroundColor: colors.secondaryContainer,
+                  borderColor: colors.outline,
+                },
+              ]}
               accessibilityRole="alert"
             >
-              <Ionicons name="receipt" size={16} color={colors.onPrimaryContainer} />
-              <Text style={[typography.bodySm, { color: colors.onPrimaryContainer, flexShrink: 1 }]}>
+              <Ionicons
+                name="receipt-outline"
+                size={18}
+                color={colors.secondary}
+                accessible={false}
+              />
+              <Text style={[typography.bodySm, { color: colors.onSecondaryContainer, flexShrink: 1 }]}>
                 Tienes un recibo compartido — inicia sesión para escanearlo
               </Text>
             </View>
           )}
         </View>
 
-        <View style={{ gap: spacing.md }}>
+        <View style={s.form}>
           <Input
             label="Correo electrónico"
             placeholder="tu@correo.com"
@@ -121,19 +135,28 @@ export function LoginScreen() {
             />
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeIcon}
+              style={s.eyeIcon}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              accessibilityState={{ selected: showPassword }}
             >
               <Ionicons
-                name={showPassword ? 'eye-off' : 'eye'}
-                size={20}
+                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={22}
                 color={colors.onSurfaceVariant}
+                accessible={false}
               />
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
             onPress={() => navigation.navigate('ForgotPassword')}
-            style={styles.forgotLink}
+            style={s.forgotLink}
+            hitSlop={4}
+            accessibilityRole="button"
+            accessibilityLabel="¿Olvidaste tu contraseña?"
+            accessibilityHint="Abre la recuperación de contraseña"
           >
             <Text style={[typography.bodySm, { color: colors.primary }]}>
               ¿Olvidaste tu contraseña?
@@ -142,36 +165,52 @@ export function LoginScreen() {
         </View>
 
         <GradientButton
-          title="Iniciar Sesión"
+          title="Iniciar sesión"
           onPress={handleLogin}
-          disabled={loading || !email || !password}
-          style={{ marginTop: spacing['2xl'] }}
+          loading={loading}
+          disabled={!email || !password}
+          style={{ marginTop: spacing.xl }}
         />
 
-        <View style={styles.divider}>
-          <View style={[styles.dividerLine, { backgroundColor: colors.outlineVariant }]} />
+        <View style={s.divider}>
+          <View style={[s.dividerLine, { backgroundColor: colors.outlineVariant }]} />
           <Text style={[typography.bodySm, { color: colors.onSurfaceVariant, marginHorizontal: spacing.md }]}>
-            O
+            o
           </Text>
-          <View style={[styles.dividerLine, { backgroundColor: colors.outlineVariant }]} />
+          <View style={[s.dividerLine, { backgroundColor: colors.outlineVariant }]} />
         </View>
 
         <TouchableOpacity
           onPress={handleGoogleLogin}
-          style={[styles.googleButton, { backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 }]}
+          style={[
+            s.googleButton,
+            {
+              backgroundColor: colors.surfaceContainerHigh,
+              borderColor: colors.outlineVariant,
+              opacity: loading ? 0.6 : 1,
+            },
+          ]}
           disabled={loading}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel="Continuar con Google"
+          accessibilityState={{ disabled: loading, busy: loading }}
         >
-          <Ionicons name="logo-google" size={20} color={colors.primary} />
-          <Text style={[typography.labelLg, { color: colors.onSurface, marginLeft: spacing.sm, fontWeight: '600' }]}>
+          <Ionicons name="logo-google" size={20} color={colors.primary} accessible={false} />
+          <Text style={[typography.labelLg, { color: colors.onSurface, marginLeft: spacing.sm }]}>
             Continuar con Google
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => navigation.navigate('Register')}
-          style={[styles.registerButton, { borderColor: colors.primary }]}
+          style={s.registerLink}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel="Registrarse"
+          accessibilityHint="Crea una cuenta nueva"
         >
-          <Text style={[typography.labelLg, { color: colors.primary }]}>
+          <Text style={[typography.bodyMd, { color: colors.primary, textDecorationLine: 'underline' }]}>
             Registrarse
           </Text>
         </TouchableOpacity>
@@ -180,27 +219,44 @@ export function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   header: {
-    alignItems: 'center',
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.xl,
   },
-  logoCircle: {
+  logoMark: {
     width: 72,
     height: 72,
-    borderRadius: 22,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  receiptNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: strokeWidth.medium,
+  },
+  form: {
+    gap: spacing.md,
   },
   eyeIcon: {
     position: 'absolute',
-    right: 12,
-    bottom: 14,
+    right: spacing.sm,
+    bottom: spacing.sm,
+    minHeight: layout.touchTarget,
+    minWidth: layout.touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   forgotLink: {
     alignSelf: 'flex-end',
-    marginTop: spacing.xs,
+    minHeight: layout.touchTarget,
+    justifyContent: 'center',
   },
   divider: {
     flexDirection: 'row',
@@ -209,21 +265,21 @@ const styles = StyleSheet.create({
   },
   dividerLine: {
     flex: 1,
-    height: 1,
+    height: strokeWidth.medium,
   },
   googleButton: {
     flexDirection: 'row',
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
+    minHeight: layout.touchTarget,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: strokeWidth.medium,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  registerButton: {
-    marginTop: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.full,
-    borderWidth: 1.5,
-    alignItems: 'center',
+  registerLink: {
+    alignSelf: 'center',
+    minHeight: layout.touchTarget,
+    justifyContent: 'center',
+    marginTop: spacing.sm,
   },
 });

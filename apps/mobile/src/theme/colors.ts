@@ -1,100 +1,138 @@
 import { Appearance } from 'react-native';
 
+/**
+ * Caja Fuerte — a weighted, high-contrast palette for Android, iOS and web.
+ *
+ * Every historical ThemeColors key is retained for compatibility; new keys add
+ * the strong strokes, solid action fill and skeleton tones used by this design.
+ * Screens must read colours through `useTheme()`, never through literals.
+ */
 const darkPalette = {
-  background: '#0B1326',
-  surface: '#131B2E',
-  surfaceDim: '#0B1326',
-  surfaceBright: '#1E2A45',
-  surfaceContainer: '#171F33',
-  surfaceContainerHigh: '#222A3D',
-  surfaceContainerHighest: '#2D3449',
-  surfaceContainerLow: '#131B2E',
-  surfaceContainerLowest: '#060E20',
+  background: '#101516',
+  surface: '#1A2223',
+  surfaceDim: '#101516',
+  surfaceBright: '#25302F',
+  surfaceContainer: '#1A2223',
+  surfaceContainerHigh: '#25302F',
+  surfaceContainerHighest: '#2E3B39',
+  surfaceContainerLow: '#151C1E',
+  surfaceContainerLowest: '#0B1011',
 
-  primary: '#D2BBFF',
-  primaryContainer: '#7C3AED',
-  onPrimary: '#3F008E',
-  onPrimaryContainer: '#EDE0FF',
-  inversePrimary: '#7C3AED',
+  primary: '#FF8A4C',
+  primaryContainer: '#3A1E10',
+  onPrimary: '#1A0E06',
+  onPrimaryContainer: '#FFD8C2',
+  primarySolid: '#FF6A2A',
+  onPrimarySolid: '#1A0E06',
+  inversePrimary: '#B8430A',
 
-  secondary: '#FFB0CD',
-  secondaryContainer: '#AA0266',
-  onSecondary: '#640039',
-  onSecondaryContainer: '#FFBAD3',
+  secondary: '#8CA8FF',
+  secondaryContainer: '#1E2A45',
+  onSecondary: '#0B1224',
+  onSecondaryContainer: '#DCE6FF',
 
-  tertiary: '#4CD7F6',
-  tertiaryContainer: '#007184',
-  onTertiary: '#003640',
-  onTertiaryContainer: '#B7EFFF',
+  tertiary: '#A9BAB5',
+  tertiaryContainer: '#2A3635',
+  onTertiary: '#101516',
+  onTertiaryContainer: '#DCE8E3',
 
-  error: '#FB7185',
-  errorContainer: '#93000A',
-  onError: '#690005',
-  onErrorContainer: '#FFDAD6',
+  error: '#FF8577',
+  errorContainer: '#46201D',
+  onError: '#24100E',
+  onErrorContainer: '#FFE1DE',
 
-  success: '#4ADE80',
-  warning: '#FBBF24',
+  success: '#5DE0B6',
+  successContainer: '#12352D',
+  onSuccessContainer: '#C9F6E6',
+  warning: '#FF8A4C',
 
-  onBackground: '#DAE2FD',
-  onSurface: '#DAE2FD',
-  onSurfaceVariant: '#CCC3D8',
+  info: '#8CA8FF',
+  infoContainer: '#1E2A45',
+  onInfo: '#0B1224',
 
-  outline: '#958DA1',
-  outlineVariant: '#4A4455',
+  onBackground: '#F3F7F4',
+  onSurface: '#F3F7F4',
+  onSurfaceVariant: '#A9BAB5',
 
+  outline: '#4A5D59',
+  outlineVariant: '#354744',
+  stroke: '#4A5D59',
+  strokeStrong: '#7C9A93',
+
+  skeletonBase: '#2A3635',
+  skeletonShine: '#3D4E4B',
+
+  scrim: 'rgba(4, 8, 9, 0.76)',
+
+  // Retained for API compatibility. Values are flat; no data surface is a gradient.
   gradient: {
-    primary: ['#7C3AED', '#D2BBFF'] as const,
-    secondary: ['#EC4899', '#7C3AED'] as const,
-    accent: ['#7C3AED', '#4CD7F6'] as const,
+    primary: ['#FF8A4C', '#FF8A4C'] as const,
+    secondary: ['#8CA8FF', '#8CA8FF'] as const,
+    accent: ['#25302F', '#25302F'] as const,
   },
 } as const;
 
 const lightPalette = {
-  background: '#F0FDFA',
+  background: '#E9EFEC',
   surface: '#FFFFFF',
-  surfaceDim: '#CCFBF1',
+  surfaceDim: '#DCE6E1',
   surfaceBright: '#FFFFFF',
-  surfaceContainer: '#F0FDFA',
-  surfaceContainerHigh: '#E0F2F1',
-  surfaceContainerHighest: '#CCFBF1',
-  surfaceContainerLow: '#F9FFFE',
+  surfaceContainer: '#F4F8F5',
+  surfaceContainerHigh: '#F4F8F5',
+  surfaceContainerHighest: '#E9EFEC',
+  surfaceContainerLow: '#F7FAF8',
   surfaceContainerLowest: '#FFFFFF',
 
-  primary: '#06B6D4',
-  primaryContainer: '#06B6D4',
+  primary: '#B8430A',
+  primaryContainer: '#FFE3D2',
   onPrimary: '#FFFFFF',
-  onPrimaryContainer: '#FFFFFF',
-  inversePrimary: '#06B6D4',
+  onPrimaryContainer: '#7A2C05',
+  primarySolid: '#C2410C',
+  onPrimarySolid: '#FFFFFF',
+  inversePrimary: '#FF8A4C',
 
-  secondary: '#EC4899',
-  secondaryContainer: '#EC4899',
+  secondary: '#3155B5',
+  secondaryContainer: '#E1E8FF',
   onSecondary: '#FFFFFF',
-  onSecondaryContainer: '#FFFFFF',
+  onSecondaryContainer: '#1B2F6B',
 
-  tertiary: '#7C3AED',
-  tertiaryContainer: '#7C3AED',
+  tertiary: '#4F615C',
+  tertiaryContainer: '#DCE8E3',
   onTertiary: '#FFFFFF',
-  onTertiaryContainer: '#FFFFFF',
+  onTertiaryContainer: '#263A35',
 
-  error: '#DC2626',
-  errorContainer: '#DC2626',
+  error: '#B02E2E',
+  errorContainer: '#FFE1DE',
   onError: '#FFFFFF',
-  onErrorContainer: '#FFFFFF',
+  onErrorContainer: '#57191A',
 
-  success: '#16A34A',
-  warning: '#D97706',
+  success: '#0B6E56',
+  successContainer: '#DCF5EA',
+  onSuccessContainer: '#0B4F3E',
+  warning: '#B8430A',
 
-  onBackground: '#0B1326',
-  onSurface: '#0B1326',
-  onSurfaceVariant: '#475569',
+  info: '#3155B5',
+  infoContainer: '#E1E8FF',
+  onInfo: '#FFFFFF',
 
-  outline: '#94A3B8',
-  outlineVariant: '#CBD5E1',
+  onBackground: '#101716',
+  onSurface: '#101716',
+  onSurfaceVariant: '#4F615C',
+
+  outline: '#B7C6C1',
+  outlineVariant: '#D3DEDA',
+  stroke: '#B7C6C1',
+  strokeStrong: '#6E837D',
+
+  skeletonBase: '#E1E9E5',
+  skeletonShine: '#F3F7F5',
+
+  scrim: 'rgba(16, 23, 22, 0.42)',
 
   gradient: {
-    primary: ['#06B6D4', '#0EA5E9'] as const,
-    secondary: ['#7C3AED', '#06B6D4'] as const,
-    accent: ['#EC4899', '#06B6D4'] as const,
+    primary: ['#B8430A', '#B8430A'] as const,
+    secondary: ['#3155B5', '#3155B5'] as const,
+    accent: ['#F4F8F5', '#F4F8F5'] as const,
   },
 } as const;
 

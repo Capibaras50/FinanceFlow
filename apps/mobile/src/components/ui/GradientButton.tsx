@@ -1,116 +1,107 @@
-import { TouchableOpacity, Text, type StyleProp, type ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { borderRadius, typography, spacing } from '../../theme';
+import { useRef, useState } from 'react';
+import { Animated, Pressable, Text, View, ActivityIndicator, type StyleProp, type ViewStyle } from 'react-native';
+import { borderRadius, layout, outlineColor, spacing, strokeWidth, typography } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 interface GradientButtonProps {
   title: string;
   onPress: () => void;
+  /** Retained for API compatibility; the button uses the solid action token. */
   gradient?: readonly [string, string];
   disabled?: boolean;
+  loading?: boolean;
   style?: StyleProp<ViewStyle>;
   variant?: 'primary' | 'outlined' | 'ghost';
   accessibilityLabel?: string;
 }
 
+type Variant = NonNullable<GradientButtonProps['variant']>;
+
 export function GradientButton({
   title,
   onPress,
-  gradient,
   disabled,
+  loading = false,
   style,
   variant = 'primary',
   accessibilityLabel,
 }: GradientButtonProps) {
   const { colors } = useTheme();
-  const resolvedGradient = gradient ?? colors.gradient.primary;
-  const a11yProps = {
-    accessibilityRole: 'button' as const,
-    accessibilityLabel: accessibilityLabel ?? title,
-    accessibilityState: { disabled: !!disabled },
-  };
-  if (variant === 'outlined') {
-    return (
-      <TouchableOpacity
-        onPress={onPress}
-        disabled={disabled}
-        {...a11yProps}
-        style={[
-          {
-            borderRadius: borderRadius.full,
-            borderWidth: 1.5,
-            borderColor: colors.tertiary,
-            paddingVertical: spacing.md,
-            paddingHorizontal: spacing.lg,
-            alignItems: 'center',
-            opacity: disabled ? 0.5 : 1,
-          },
-          style,
-        ]}
-      >
-        <Text
-          style={[
-            typography.labelLg,
-            { color: colors.tertiary },
-          ]}
-        >
-          {title}
-        </Text>
-      </TouchableOpacity>
-    );
-  }
+  const reduceMotion = useReducedMotion();
+  const scale = useRef(new Animated.Value(1)).current;
+  const [focused, setFocused] = useState(false);
+  const inactive = disabled || loading;
 
-  if (variant === 'ghost') {
-    return (
-      <TouchableOpacity
-        onPress={onPress}
-        disabled={disabled}
-        {...a11yProps}
-        style={[
-          {
-            borderRadius: borderRadius.full,
-            paddingVertical: spacing.md,
-            paddingHorizontal: spacing.lg,
-            alignItems: 'center',
-            opacity: disabled ? 0.5 : 1,
-          },
-          style,
-        ]}
-      >
-        <Text
-          style={[
-            typography.labelLg,
-            { color: colors.onSurfaceVariant },
-          ]}
-        >
-          {title}
-        </Text>
-      </TouchableOpacity>
-    );
-  }
+  const animateTo = (value: number) => {
+    if (reduceMotion) {
+      scale.setValue(1);
+      return;
+    }
+    Animated.spring(scale, {
+      toValue: value,
+      damping: 20,
+      stiffness: 380,
+      mass: 0.5,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const tones: Record<Variant, { background: string; foreground: string; border: string }> = {
+    primary: {
+      background: inactive ? colors.surfaceContainerHighest : colors.primarySolid,
+      foreground: inactive ? colors.onSurfaceVariant : colors.onPrimarySolid,
+      border: inactive ? colors.outlineVariant : colors.primary,
+    },
+    outlined: {
+      background: inactive ? colors.surfaceContainerLow : colors.primaryContainer,
+      foreground: inactive ? colors.onSurfaceVariant : colors.primary,
+      border: colors.primary,
+    },
+    ghost: {
+      background: 'transparent',
+      foreground: colors.onSurfaceVariant,
+      border: 'transparent',
+    },
+  };
+  const tone = tones[variant];
 
   return (
-    <TouchableOpacity onPress={onPress} disabled={disabled} {...a11yProps} style={style}>
-      <LinearGradient
-        colors={resolvedGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+      <Pressable
+        onPress={inactive ? undefined : onPress}
+        onPressIn={() => animateTo(0.96)}
+        onPressOut={() => animateTo(1)}
+        disabled={inactive}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        hitSlop={4}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? title}
+        accessibilityState={{ disabled: inactive, busy: loading }}
         style={{
-          borderRadius: borderRadius.full,
-          paddingVertical: spacing.md,
+          minHeight: layout.primaryButtonHeight,
+          minWidth: layout.touchTarget,
           alignItems: 'center',
-          opacity: disabled ? 0.5 : 1,
+          justifyContent: 'center',
+          paddingVertical: spacing.sm,
+          paddingHorizontal: spacing.lg,
+          borderRadius: borderRadius.md,
+          backgroundColor: tone.background,
+          borderWidth: variant === 'ghost' ? 0 : strokeWidth.thick,
+          borderColor: tone.border,
+          ...(focused && !inactive ? outlineColor(colors.primary) : {}),
         }}
       >
-        <Text
-          style={[
-            typography.labelLg,
-            { color: '#FFFFFF' },
-          ]}
-        >
-          {title}
-        </Text>
-      </LinearGradient>
-    </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          {loading && (
+            <ActivityIndicator size="small" color={tone.foreground} accessibilityLabel="Cargando" />
+          )}
+          <Text style={[typography.labelLg, { color: tone.foreground, textAlign: 'center' }]}>
+            {title}
+          </Text>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }

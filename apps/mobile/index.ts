@@ -1,3 +1,5 @@
+// Module side effect: prevent native auto-hide before App is evaluated.
+import './src/utils/nativeSplash';
 import { registerRootComponent } from 'expo';
 import { Platform } from 'react-native';
 

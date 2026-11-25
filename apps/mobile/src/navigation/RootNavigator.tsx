@@ -1,29 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { NavigationContainer, NavigationContainerRef, type LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
+import { useReducedMotion } from '../hooks/useReducedMotion';
+import { typography, strokeWidth, borderRadius, spacing } from '../theme';
 import { ShareIntentHandler } from '../components/share/ShareIntentHandler';
+import { Dial } from '../components/ui/Dial';
 import { setPendingSharedImage, hasPendingSharedImage } from '../services/sharedImage';
 import { LoginScreen } from '../screens/auth/LoginScreen';
-import { RegisterScreen } from '../screens/auth/RegisterScreen';
-import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
-import { ResetPasswordScreen } from '../screens/auth/ResetPasswordScreen';
 import { MainTabNavigator } from './MainTabNavigator';
-import { AddExpenseScreen } from '../screens/transactions/AddExpenseScreen';
-import { AddEarningScreen } from '../screens/transactions/AddEarningScreen';
-import { TransactionDetailScreen } from '../screens/transactions/TransactionDetailScreen';
-import { ChatScreen } from '../screens/chat/ChatScreen';
-import { ReceiptScannerScreen } from '../screens/scanner/ReceiptScannerScreen';
-import { CategoriesScreen } from '../screens/categories/CategoriesScreen';
-import { DebtsScreen } from '../screens/debts/DebtsScreen';
-import { DebtDetailScreen } from '../screens/debts/DebtDetailScreen';
-import { AddDebtScreen } from '../screens/debts/AddDebtScreen';
-import { ContactsScreen } from '../screens/contacts/ContactsScreen';
-import { ContactDetailScreen } from '../screens/contacts/ContactDetailScreen';
+import {
+  AddDebtScreen,
+  AddEarningScreen,
+  AddExpenseScreen,
+  CategoriesScreen,
+  ChatScreen,
+  ContactDetailScreen,
+  ContactsScreen,
+  DebtDetailScreen,
+  DebtsScreen,
+  ForgotPasswordScreen,
+  ReceiptScannerScreen,
+  RegisterScreen,
+  ResetPasswordScreen,
+  TransactionDetailScreen,
+} from './lazyScreens';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -61,21 +64,40 @@ const linking: LinkingOptions<RootStackParamList> = {
 
 function SplashScreen() {
   const { colors } = useTheme();
+  const reduceMotion = useReducedMotion();
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
-      <LinearGradient
-        colors={colors.gradient.primary}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ width: 72, height: 72, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}
+    <View
+      accessible
+      accessibilityLabel="Cargando Finance Flow"
+      style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}
+    >
+      <View
+        accessible={false}
+        style={{
+          width: 112,
+          height: 112,
+          borderRadius: borderRadius.xl,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.surface,
+          borderWidth: strokeWidth.thick,
+          borderColor: colors.strokeStrong,
+          marginBottom: spacing.lg,
+        }}
       >
-        <Ionicons name="wallet" size={36} color="#FFFFFF" />
-      </LinearGradient>
-      <Text style={{ color: colors.onSurface, fontSize: 22, fontWeight: '700', marginBottom: 8 }}>
+        <Dial progress={reduceMotion ? 1 : 0.65} size={72} />
+      </View>
+      <Text style={[typography.headlineMd, { color: colors.onSurface, marginBottom: spacing.sm }]}>
         Finance Flow
       </Text>
-      <ActivityIndicator size="large" color={colors.primary} />
+      {reduceMotion ? (
+        <Text accessibilityLiveRegion="polite" style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
+          Cargando…
+        </Text>
+      ) : (
+        <ActivityIndicator size="small" color={colors.primary} />
+      )}
     </View>
   );
 }

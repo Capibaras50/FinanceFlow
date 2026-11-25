@@ -1,14 +1,14 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { useState, useCallback, useMemo, useRef, useEffect, type ComponentProps } from 'react';
+import { View, Text, Pressable, Modal, type StyleProp, type ViewStyle, type TextStyle } from 'react-native';
 import { FlashList, type ListRenderItem } from '@shopify/flash-list';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { typography, spacing, borderRadius } from '../../theme';
+import { typography, strokeWidth, spacing, borderRadius, layout, outlineColor } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
-import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
+import { SkeletonCategoryRows, SkeletonCategorySummary } from '../../components/ui/Skeleton';
+import { Glyph } from '../../components/ui/Glyph';
 import { categoriesApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { showAlert } from '../../components/ui/AppAlert';
@@ -18,7 +18,35 @@ import { formatCurrency } from '../../utils/format';
 import { goBackOrHome } from '../../utils/navigation';
 import type { Category, CategoryBreakdownItem } from '@finance-flow/shared-types';
 
-const presetColors = ['#7C3AED', '#EC4899', '#06B6D4', '#4ADE80', '#F59E0B', '#8B5CF6', '#F472B6', '#14B8A6', '#3B82F6', '#EF4444', '#10B981', '#F97316'];
+type PressableBaseProps = ComponentProps<typeof Pressable>;
+
+interface LedgerPressableProps extends Omit<PressableBaseProps, 'style' | 'onFocus' | 'onBlur'> {
+  style?: StyleProp<ViewStyle>;
+  onFocus?: PressableBaseProps['onFocus'];
+  onBlur?: PressableBaseProps['onBlur'];
+}
+
+/** Quiet press/focus feedback that keeps the web keyboard ring visible. */
+function LedgerPressable({ style, onFocus, onBlur, ...rest }: LedgerPressableProps) {
+  const { colors } = useTheme();
+  const [focused, setFocused] = useState(false);
+  return (
+    <Pressable
+      {...rest}
+      onFocus={(event) => { setFocused(true); onFocus?.(event); }}
+      onBlur={(event) => { setFocused(false); onBlur?.(event); }}
+      style={({ pressed }) => [
+        style,
+        pressed ? { opacity: 0.88 } : undefined,
+        focused ? outlineColor(colors.primary) : undefined,
+      ]}
+    >
+      {rest.children}
+    </Pressable>
+  );
+}
+
+const tabularNumbers: TextStyle['fontVariant'] = ['tabular-nums'];
 
 type FilterType = 'all' | 'expense' | 'earning';
 
@@ -28,6 +56,27 @@ export function CategoriesScreen() {
   const insets = useSafeAreaInsets();
   const { showError } = useSnackbar();
   const PAGE_SIZE = 100;
+
+  // Swatches come from the active theme tokens; the stored category colour is
+  // user data and is always rendered as a solid token-free value.
+  const presetColors = useMemo(
+    () => [
+      colors.primary,
+      colors.secondary,
+      colors.success,
+      colors.error,
+      colors.tertiary,
+      colors.inversePrimary,
+      colors.primaryContainer,
+      colors.secondaryContainer,
+      colors.tertiaryContainer,
+      colors.onSurfaceVariant,
+      colors.onPrimaryContainer,
+      colors.onSecondaryContainer,
+    ],
+    [colors]
+  );
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [breakdown, setBreakdown] = useState<CategoryBreakdownItem[]>([]);
   const [page, setPage] = useState(1);
@@ -37,9 +86,10 @@ export function CategoriesScreen() {
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formColor, setFormColor] = useState(presetColors[0]);
+  const [formColor, setFormColor] = useState<string>(presetColors[0]);
   const [formType, setFormType] = useState<'expense' | 'earning'>('expense');
   const [filterType, setFilterType] = useState<FilterType>('all');
+  const [loading, setLoading] = useState(true);
 
   const loadFirstPage = useCallback(async () => {
     try {
@@ -59,6 +109,8 @@ export function CategoriesScreen() {
       setHasMore(catData.length >= PAGE_SIZE);
     } catch {
       showError('Error al cargar categorías');
+    } finally {
+      setLoading(false);
     }
   }, [showError]);
 
@@ -125,6 +177,13 @@ export function CategoriesScreen() {
     ? totalBalance
     : filterType === 'expense' ? totalExpenses : totalEarnings;
 
+  // Expenses read red, earnings green, and the overall balance follows its sign.
+  const summaryColor = filterType === 'expense'
+    ? colors.error
+    : filterType === 'earning'
+      ? colors.success
+      : summaryValue < 0 ? colors.error : summaryValue > 0 ? colors.success : colors.onSurface;
+
   const openCreate = useCallback(() => {
     setEditCategory(null);
     setFormName('');
@@ -132,7 +191,7 @@ export function CategoriesScreen() {
     setFormColor(presetColors[0]);
     setFormType('expense');
     setModalVisible(true);
-  }, []);
+  }, [presetColors]);
 
   const openEdit = useCallback((cat: Category) => {
     setEditCategory(cat);
@@ -266,52 +325,64 @@ export function CategoriesScreen() {
         : filterType === 'earning'
           ? catEarningTotal
           : catEarningTotal - catExpenseTotal;
+      const rowColor = item.type === 'expense' ? colors.error : colors.success;
+      const amountColor = filterType === 'expense'
+        ? colors.error
+        : filterType === 'earning'
+          ? colors.success
+          : displayTotal < 0 ? colors.error : displayTotal > 0 ? colors.success : colors.onSurface;
 
       return (
-        <TouchableOpacity
+        <LedgerPressable
           onPress={() => openEdit(item)}
           accessibilityRole="button"
           accessibilityLabel={`Categoría ${item.name}, ${totalTx} transacciones`}
           accessibilityHint="Toca para editar la categoría"
-          style={{ marginBottom: spacing.md }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.md,
+            paddingVertical: spacing.md,
+            borderBottomWidth: strokeWidth.medium,
+            borderBottomColor: colors.outlineVariant,
+          }}
         >
-          <GlassCard>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 14,
-                  backgroundColor: item.color + '20',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="folder" size={22} color={item.color} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[typography.titleMd, { color: colors.onSurface }]}>
-                  {item.name}
-                </Text>
-                <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
-                  {totalTx} transacciones
-                </Text>
-              </View>
-              <Text style={[typography.titleMd, { color: colors.onSurface }]}>
-                {formatAmount(displayTotal)}
-              </Text>
-              <TouchableOpacity
-                onPress={() => handleDelete(item)}
-                accessibilityRole="button"
-                accessibilityLabel={`Eliminar categoría ${item.name}`}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                style={{ padding: spacing.xs }}
-              >
-                <Ionicons name="trash-outline" size={20} color={colors.error} />
-              </TouchableOpacity>
-            </View>
-          </GlassCard>
-        </TouchableOpacity>
+          <View
+            accessible={false}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: borderRadius.md,
+              backgroundColor: colors.surfaceContainer,
+              borderWidth: strokeWidth.medium,
+              borderColor: rowColor,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="folder" size={22} color={item.color} accessible={false} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[typography.titleMd, { color: colors.onSurface }]}>
+              {item.name}
+            </Text>
+            <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
+              {totalTx} transacciones
+            </Text>
+          </View>
+          <Text style={[typography.titleMd, { color: amountColor, fontVariant: tabularNumbers }]}>
+            {formatAmount(displayTotal)}
+          </Text>
+          <LedgerPressable
+            onPress={() => handleDelete(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`Eliminar categoría ${item.name}`}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={{ padding: spacing.xs }}
+          >
+            <Ionicons name="trash-outline" size={20} color={colors.error} />
+          </LedgerPressable>
+        </LedgerPressable>
       );
     },
     [totalsByCategory, filterType, openEdit, handleDelete, colors]
@@ -321,7 +392,7 @@ export function CategoriesScreen() {
     () =>
       loadingMore ? (
         <View style={{ paddingVertical: spacing.md, alignItems: 'center' }}>
-          <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>Cargando...</Text>
+          <SkeletonCategoryRows rows={1} label="Cargando más categorías" />
         </View>
       ) : null,
     [loadingMore, colors]
@@ -329,116 +400,156 @@ export function CategoriesScreen() {
 
   const listEmpty = useCallback(
     () => (
-      <GlassCard>
-        <View style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md }}>
-          <Ionicons name="apps-outline" size={48} color={colors.onSurfaceVariant} />
-          <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
-            {filterType === 'all'
-              ? 'No hay categorías aún'
-              : `No hay categorías de ${filterType === 'expense' ? 'gastos' : 'ingresos'}`}
-          </Text>
-          <GradientButton title="Crear categoría" onPress={openCreate} />
+      <View
+        style={{
+          alignItems: 'center',
+          gap: spacing.sm,
+          paddingVertical: spacing['2xl'],
+          paddingHorizontal: spacing.lg,
+          borderRadius: borderRadius.md,
+          borderWidth: strokeWidth.medium,
+          borderColor: colors.outlineVariant,
+        }}
+      >
+        <View
+          accessible={false}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: borderRadius.md,
+            backgroundColor: colors.surfaceContainer,
+            borderWidth: strokeWidth.medium,
+            borderColor: colors.outlineVariant,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="apps-outline" size={24} color={colors.onSurfaceVariant} />
         </View>
-      </GlassCard>
+        <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
+          {filterType === 'all'
+            ? 'No hay categorías aún'
+            : `No hay categorías de ${filterType === 'expense' ? 'gastos' : 'ingresos'}`}
+        </Text>
+        <GradientButton title="Crear categoría" onPress={openCreate} />
+      </View>
     ),
     [colors, filterType, openCreate]
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        colors={colors.gradient.primary}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: spacing.container }}
+      <View
+        style={{
+          width: '100%',
+          maxWidth: layout.contentMaxWidth,
+          alignSelf: 'center',
+          paddingTop: insets.top + spacing.md,
+          paddingBottom: spacing.md,
+          paddingHorizontal: spacing.container,
+          backgroundColor: colors.surface,
+          borderBottomWidth: strokeWidth.medium,
+          borderBottomColor: colors.outlineVariant,
+        }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <TouchableOpacity
+          <LedgerPressable
             onPress={() => goBackOrHome(navigation)}
             accessibilityRole="button"
             accessibilityLabel="Volver"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <View
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Ionicons name="apps" size={20} color="#FFFFFF" />
-          </View>
-          <Text style={[typography.headlineMd, { color: '#FFFFFF', flex: 1 }]}>
+            <Ionicons name="arrow-back" size={24} color={colors.onSurface} />
+          </LedgerPressable>
+          <Glyph name="apps" tone="primary" size={44} />
+          <Text style={[typography.headlineMd, { color: colors.onSurface, flex: 1 }]}>
             Categorías
           </Text>
-          <TouchableOpacity
+          <LedgerPressable
             onPress={openCreate}
             accessibilityRole="button"
             accessibilityLabel="Crear categoría"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="add-circle" size={28} color="#FFFFFF" />
-          </TouchableOpacity>
+            <Ionicons name="add-circle" size={28} color={colors.primary} />
+          </LedgerPressable>
         </View>
-      </LinearGradient>
+      </View>
 
       <FlashList
         data={filteredCategories}
         keyExtractor={keyExtractor}
         renderItem={renderCategory}
-        contentContainerStyle={{ padding: spacing.container }}
+        contentContainerStyle={{
+          padding: spacing.container,
+          width: '100%',
+          maxWidth: layout.contentMaxWidth,
+          alignSelf: 'center',
+        }}
         ListHeaderComponent={() => (
           <>
             <View
               style={{
                 flexDirection: 'row',
-                backgroundColor: colors.surfaceContainerHigh,
+                backgroundColor: colors.surfaceContainer,
                 borderRadius: borderRadius.full,
+                borderWidth: strokeWidth.medium,
+                borderColor: colors.outlineVariant,
                 padding: spacing.xs,
-                marginBottom: spacing.sm,
+                marginBottom: spacing.lg,
               }}
             >
               {([
-                { key: 'all', label: 'Todos' },
-                { key: 'expense', label: 'Gastos' },
-                { key: 'earning', label: 'Ingresos' },
-              ] as const).map((t) => (
-                <TouchableOpacity
-                  key={t.key}
-                  onPress={() => setFilterType(t.key)}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: filterType === t.key }}
-                  accessibilityLabel={`Mostrar ${t.label.toLowerCase()}`}
-                  style={{
-                    flex: 1,
-                    paddingVertical: spacing.sm + 2,
-                    borderRadius: borderRadius.full,
-                    backgroundColor: filterType === t.key ? colors.primary : 'transparent',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text
-                    style={[
-                      typography.labelMd,
-                      { color: filterType === t.key ? '#FFFFFF' : colors.onSurfaceVariant, fontWeight: '600' },
-                    ]}
+                { key: 'all', label: 'Todos', tone: colors.primary, tint: colors.primaryContainer, semantic: false },
+                { key: 'expense', label: 'Gastos', tone: colors.error, tint: colors.errorContainer, semantic: true },
+                { key: 'earning', label: 'Ingresos', tone: colors.success, tint: colors.successContainer, semantic: true },
+              ] as const).map((t) => {
+                const active = filterType === t.key;
+                return (
+                  <LedgerPressable
+                    key={t.key}
+                    onPress={() => setFilterType(t.key)}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`Mostrar ${t.label.toLowerCase()}`}
+                    hitSlop={4}
+                    style={{
+                      flex: 1,
+                      minHeight: layout.touchTarget - spacing.xs * 2,
+                      paddingVertical: spacing.sm,
+                      borderRadius: borderRadius.full,
+                      backgroundColor: active ? t.tint : 'transparent',
+                      borderWidth: strokeWidth.medium,
+                      borderColor: active ? t.tone : 'transparent',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
                   >
-                    {t.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        typography.labelMd,
+                        {
+                          color: t.semantic ? t.tone : (active ? colors.primary : colors.onSurfaceVariant),
+                          fontWeight: active ? '700' : t.semantic ? '600' : '400',
+                        },
+                      ]}
+                    >
+                      {t.label}
+                    </Text>
+                  </LedgerPressable>
+                );
+              })}
             </View>
 
-            <GlassCard style={{ marginBottom: spacing.md }}>
-              <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>{summaryLabel}</Text>
-              <Text style={[typography.displayMd, { color: colors.onSurface, marginTop: spacing.xs }]}>
+            {loading ? (
+              <SkeletonCategorySummary rows={3} />
+            ) : (
+            <View style={{ marginBottom: spacing.lg }}>
+              <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>{summaryLabel}</Text>
+              <Text style={[typography.displayLg, { color: summaryColor, marginTop: spacing.xs, fontVariant: tabularNumbers }]}>
                 {formatAmount(summaryValue)}
               </Text>
+              <View style={{ height: strokeWidth.medium, backgroundColor: colors.outline, marginTop: spacing.md }} />
               {categoryBreakdown.length > 0 && (
                 <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
                   {categoryBreakdown.map((item) => {
@@ -446,43 +557,101 @@ export function CategoriesScreen() {
                     return (
                       <View key={item.key}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs }}>
-                          <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>{item.label}</Text>
-                          <Text style={[typography.bodySm, { color: colors.onSurface }]}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                            <View
+                              accessible={false}
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: borderRadius.sm,
+                                backgroundColor: item.color,
+                              }}
+                            />
+                            <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>{item.label}</Text>
+                          </View>
+                          <Text style={[typography.bodySm, { color: item.isExpense ? colors.error : colors.success, fontVariant: tabularNumbers }]}>
                             {item.isExpense ? '-' : '+'}{formatCurrency(item.value)}
                           </Text>
                         </View>
-                        <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.surfaceContainerHighest, overflow: 'hidden' }}>
-                          <View style={{ height: '100%', width: `${Math.min(percent, 100)}%`, borderRadius: 3, backgroundColor: item.color }} />
+                        <View style={{ height: strokeWidth.medium, borderRadius: borderRadius.full, backgroundColor: colors.surfaceContainerHighest, overflow: 'hidden' }}>
+                          <View
+                            style={{
+                              height: '100%',
+                              width: `${Math.min(percent, 100)}%`,
+                              borderRadius: borderRadius.full,
+                              backgroundColor: item.isExpense ? colors.error : colors.success,
+                            }}
+                          />
                         </View>
                       </View>
                     );
                   })}
                 </View>
               )}
-            </GlassCard>
+            </View>
+            )}
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
-              <Text style={[typography.titleLg, { color: colors.onSurface }]}>
+              <Text style={[typography.headlineSm, { color: colors.onSurface }]}>
                 Mis Categorías
               </Text>
-              <TouchableOpacity onPress={openCreate}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primaryContainer, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: borderRadius.full }}>
-                  <Ionicons name="add" size={18} color={colors.onPrimaryContainer} />
-                  <Text style={[typography.labelMd, { color: colors.onPrimaryContainer }]}>Añadir</Text>
-                </View>
-              </TouchableOpacity>
+              <LedgerPressable
+                onPress={openCreate}
+                accessibilityRole="button"
+                accessibilityLabel="Crear categoría"
+                hitSlop={8}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.xs,
+                  minHeight: layout.touchTarget,
+                  paddingVertical: spacing.sm,
+                  paddingHorizontal: spacing.md,
+                  backgroundColor: colors.surface,
+                  borderRadius: borderRadius.full,
+                  borderWidth: strokeWidth.medium,
+                  borderColor: colors.outline,
+                }}
+              >
+                <Ionicons name="add" size={18} color={colors.primary} />
+                <Text style={[typography.labelMd, { color: colors.primary }]}>Añadir</Text>
+              </LedgerPressable>
             </View>
+
+            {loading && <SkeletonCategoryRows rows={3} label="Cargando categorías" />}
           </>
         )}
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
         ListFooterComponent={listFooter}
-        ListEmptyComponent={listEmpty}
+        ListEmptyComponent={loading ? null : listEmpty}
       />
 
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: borderRadius['2xl'], borderTopRightRadius: borderRadius['2xl'], padding: spacing.container, paddingBottom: insets.bottom + spacing.md }}>
+        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+          <View
+            accessible={false}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: colors.background,
+              opacity: 0.7,
+            }}
+          />
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderTopLeftRadius: borderRadius['2xl'],
+              borderTopRightRadius: borderRadius['2xl'],
+              borderTopWidth: strokeWidth.medium,
+              borderTopColor: colors.outlineVariant,
+              padding: spacing.container,
+              paddingBottom: insets.bottom + spacing.md,
+            }}
+          >
             <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.outlineVariant, alignSelf: 'center', marginBottom: spacing.lg }} />
             <Text style={[typography.titleLg, { color: colors.onSurface, marginBottom: spacing.lg }]}>
               {editCategory ? 'Editar categoría' : 'Nueva categoría'}
@@ -493,54 +662,74 @@ export function CategoriesScreen() {
             <View style={{ height: spacing.md }} />
             <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4, marginBottom: spacing.sm }]}>Tipo</Text>
             <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
-              <TouchableOpacity
+              <LedgerPressable
                 onPress={() => setFormType('expense')}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: formType === 'expense' }}
+                accessibilityLabel="Tipo gasto"
                 style={{
                   flex: 1,
+                  minHeight: layout.touchTarget,
                   paddingVertical: spacing.sm,
                   alignItems: 'center',
-                  borderRadius: borderRadius.full,
-                  backgroundColor: formType === 'expense' ? colors.error : colors.surfaceContainerHigh,
+                  justifyContent: 'center',
+                  borderRadius: borderRadius.md,
+                  borderWidth: strokeWidth.medium,
+                  borderColor: formType === 'expense' ? colors.error : colors.outlineVariant,
+                  backgroundColor: formType === 'expense' ? colors.errorContainer : colors.surfaceContainer,
                 }}
               >
-                <Text style={[typography.labelMd, { color: formType === 'expense' ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                <Text style={[typography.labelMd, { color: formType === 'expense' ? colors.error : colors.onSurfaceVariant }]}>
                   Gasto
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              </LedgerPressable>
+              <LedgerPressable
                 onPress={() => setFormType('earning')}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: formType === 'earning' }}
+                accessibilityLabel="Tipo ingreso"
                 style={{
                   flex: 1,
+                  minHeight: layout.touchTarget,
                   paddingVertical: spacing.sm,
                   alignItems: 'center',
-                  borderRadius: borderRadius.full,
-                  backgroundColor: formType === 'earning' ? colors.success : colors.surfaceContainerHigh,
+                  justifyContent: 'center',
+                  borderRadius: borderRadius.md,
+                  borderWidth: strokeWidth.medium,
+                  borderColor: formType === 'earning' ? colors.success : colors.outlineVariant,
+                  backgroundColor: formType === 'earning' ? colors.successContainer : colors.surfaceContainer,
                 }}
               >
-                <Text style={[typography.labelMd, { color: formType === 'earning' ? '#FFFFFF' : colors.onSurfaceVariant }]}>
+                <Text style={[typography.labelMd, { color: formType === 'earning' ? colors.success : colors.onSurfaceVariant }]}>
                   Ingreso
                 </Text>
-              </TouchableOpacity>
+              </LedgerPressable>
             </View>
             <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, marginLeft: 4, marginBottom: spacing.sm }]}>Color</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-              {presetColors.map((c) => (
-                <TouchableOpacity
+              {presetColors.map((c, index) => (
+                <LedgerPressable
                   key={c}
                   onPress={() => setFormColor(c)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: formColor === c }}
+                  accessibilityLabel={`Color ${index + 1}`}
                   style={{
                     width: 36,
                     height: 36,
-                    borderRadius: 10,
-                    backgroundColor: c,
+                    borderRadius: borderRadius.full,
+                    backgroundColor: colors.surfaceContainer,
+                    borderWidth: formColor === c ? 2 : strokeWidth.medium,
+                    borderColor: formColor === c ? colors.primary : colors.outlineVariant,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderWidth: formColor === c ? 3 : 0,
-                    borderColor: '#FFFFFF',
                   }}
                 >
-                  {formColor === c && <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
-                </TouchableOpacity>
+                  <View
+                    accessible={false}
+                    style={{ width: 24, height: 24, borderRadius: borderRadius.full, backgroundColor: c }}
+                  />
+                </LedgerPressable>
               ))}
             </View>
             <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>

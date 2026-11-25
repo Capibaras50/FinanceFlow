@@ -1,9 +1,16 @@
-import { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+} from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { typography, spacing, borderRadius } from '../../theme';
+import { typography, strokeWidth, spacing, borderRadius, layout } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
@@ -59,34 +66,38 @@ export function RegisterScreen() {
     >
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, backgroundColor: colors.background, paddingTop: insets.top + spacing['2xl'], paddingHorizontal: spacing.container, paddingBottom: insets.bottom + spacing['2xl'] }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          width: '100%',
+          maxWidth: layout.readingMaxWidth,
+          alignSelf: 'center',
+          paddingTop: insets.top + spacing['2xl'],
+          paddingBottom: insets.bottom + spacing['2xl'],
+          paddingHorizontal: spacing.container,
+        }}
         keyboardShouldPersistTaps="handled"
       >
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
-            backgroundColor: colors.surfaceContainerHigh,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: spacing.lg,
-          }}
+          style={[s.backButton, { backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant }]}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          accessibilityHint="Regresa a la pantalla anterior"
         >
-          <Ionicons name="arrow-back" size={20} color={colors.onSurface} />
+          <Ionicons name="arrow-back" size={20} color={colors.onSurface} accessible={false} />
         </TouchableOpacity>
 
-        <View style={{ marginBottom: spacing['2xl'] }}>
-          <Text style={[typography.headlineLg, { color: colors.onSurface }]}>
-            Crear Cuenta
+        <View style={s.heading}>
+          <Text accessibilityRole="header" style={[typography.headlineLg, { color: colors.onSurface }]}>
+            Crear cuenta
           </Text>
           <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, marginTop: spacing.xs }]}>
-            Registrate para empezar a gestionar tus finanzas
+            Regístrate para empezar a gestionar tus finanzas
           </Text>
         </View>
 
-        <View style={{ gap: spacing.md }}>
+        <View style={s.form}>
           <Input
             label="Nombre"
             placeholder="Tu nombre"
@@ -102,9 +113,18 @@ export function RegisterScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
             />
-            <View style={{ marginTop: spacing.xs, marginLeft: 4 }}>
+            <View
+              style={s.hint}
+              accessibilityLiveRegion="polite"
+            >
+              <Ionicons
+                name={emailValid ? 'checkmark-circle-outline' : 'ellipse-outline'}
+                size={14}
+                color={emailValid ? colors.success : colors.onSurfaceVariant}
+                accessible={false}
+              />
               <Text style={[typography.bodySm, { color: emailValid ? colors.success : colors.onSurfaceVariant }]}>
-                {email.length > 0 && !emailValid ? '✗' : '✓'} Formato de correo válido
+                Formato de correo válido
               </Text>
             </View>
           </View>
@@ -118,58 +138,76 @@ export function RegisterScreen() {
             />
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
-              style={{ position: 'absolute', right: 12, bottom: 14 }}
+              style={s.eyeIcon}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              accessibilityState={{ selected: showPassword }}
             >
               <Ionicons
-                name={showPassword ? 'eye-off' : 'eye'}
-                size={20}
+                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={22}
                 color={colors.onSurfaceVariant}
+                accessible={false}
               />
             </TouchableOpacity>
-            <View style={{ marginTop: spacing.xs, marginLeft: 4 }}>
+            <View style={s.requirements}>
               <PasswordRequirements password={password} />
             </View>
           </View>
         </View>
 
         <GradientButton
-          title="Crear Cuenta"
+          title="Crear cuenta"
           onPress={handleRegister}
+          loading={loading}
           disabled={!canSubmit}
-          style={{ marginTop: spacing['2xl'] }}
+          style={{ marginTop: spacing.xl }}
         />
 
-        <View style={styles.divider}>
-          <View style={[styles.dividerLine, { backgroundColor: colors.outlineVariant }]} />
+        <View style={s.divider}>
+          <View style={[s.dividerLine, { backgroundColor: colors.outlineVariant }]} />
           <Text style={[typography.bodySm, { color: colors.onSurfaceVariant, marginHorizontal: spacing.md }]}>
-            O
+            o
           </Text>
-          <View style={[styles.dividerLine, { backgroundColor: colors.outlineVariant }]} />
+          <View style={[s.dividerLine, { backgroundColor: colors.outlineVariant }]} />
         </View>
 
         <TouchableOpacity
           onPress={handleGoogleLogin}
-          style={[styles.googleButton, { backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 }]}
+          style={[
+            s.googleButton,
+            {
+              backgroundColor: colors.surfaceContainerHigh,
+              borderColor: colors.outlineVariant,
+              opacity: loading ? 0.6 : 1,
+            },
+          ]}
           disabled={loading}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel="Registrarse con Google"
+          accessibilityState={{ disabled: loading, busy: loading }}
         >
-          <Ionicons name="logo-google" size={20} color={colors.primary} />
-          <Text style={[typography.labelLg, { color: colors.onSurface, marginLeft: spacing.sm, fontWeight: '600' }]}>
+          <Ionicons name="logo-google" size={20} color={colors.primary} accessible={false} />
+          <Text style={[typography.labelLg, { color: colors.onSurface, marginLeft: spacing.sm }]}>
             Registrarse con Google
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={{
-            marginTop: spacing.md,
-            paddingVertical: spacing.md,
-            borderRadius: borderRadius.full,
-            alignItems: 'center',
-          }}
+          style={s.loginLink}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel="Inicia sesión"
+          accessibilityHint="Volver al inicio de sesión"
         >
           <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>
             ¿Ya tienes cuenta?{' '}
-            <Text style={{ color: colors.primary, fontWeight: '600' }}>Inicia sesión</Text>
+            <Text style={{ color: colors.primary, textDecorationLine: 'underline' }}>
+              Inicia sesión
+            </Text>
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -177,7 +215,42 @@ export function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
+  backButton: {
+    width: layout.touchTarget,
+    height: layout.touchTarget,
+    borderRadius: borderRadius.md,
+    borderWidth: strokeWidth.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  heading: {
+    marginBottom: spacing.xl,
+  },
+  form: {
+    gap: spacing.md,
+  },
+  hint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+    paddingLeft: spacing.xs,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: spacing.sm,
+    bottom: spacing.sm,
+    minHeight: layout.touchTarget,
+    minWidth: layout.touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  requirements: {
+    marginTop: spacing.xs,
+    paddingLeft: spacing.xs,
+  },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -185,14 +258,21 @@ const styles = StyleSheet.create({
   },
   dividerLine: {
     flex: 1,
-    height: 1,
+    height: strokeWidth.medium,
   },
   googleButton: {
     flexDirection: 'row',
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
+    minHeight: layout.touchTarget,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: strokeWidth.medium,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  loginLink: {
+    alignSelf: 'center',
+    minHeight: layout.touchTarget,
+    justifyContent: 'center',
+    marginTop: spacing.sm,
   },
 });
