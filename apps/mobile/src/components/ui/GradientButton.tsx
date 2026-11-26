@@ -51,12 +51,12 @@ export function GradientButton({
     primary: {
       background: inactive ? colors.surfaceContainerHighest : colors.primarySolid,
       foreground: inactive ? colors.onSurfaceVariant : colors.onPrimarySolid,
-      border: inactive ? colors.outlineVariant : colors.primary,
+      border: inactive ? colors.outlineVariant : colors.actionBorder,
     },
     outlined: {
       background: inactive ? colors.surfaceContainerLow : colors.primaryContainer,
       foreground: inactive ? colors.onSurfaceVariant : colors.primary,
-      border: colors.primary,
+      border: colors.actionBorder,
     },
     ghost: {
       background: 'transparent',

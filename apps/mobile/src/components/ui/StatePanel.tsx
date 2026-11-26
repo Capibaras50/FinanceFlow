@@ -120,7 +120,7 @@ export const StatePanel = memo(function StatePanel({
                 borderRadius: borderRadius.md,
                 backgroundColor: colors.primarySolid,
                 borderWidth: strokeWidth.thick,
-                borderColor: colors.primary,
+                borderColor: colors.actionBorder,
               }}
             >
               <Text style={[typography.labelLg, { color: colors.onPrimarySolid, textAlign: 'center' }]}>

@@ -36,8 +36,8 @@
       "shortName": "Finance Flow",
       "description": "Finance Flow - Controla tus gastos, ingresos y deudas desde cualquier dispositivo.",
       "lang": "es",
-      "themeColor": "#101516",
-      "backgroundColor": "#101516"
+      "themeColor": "#0B1326",
+      "backgroundColor": "#0B1326"
     },
     "plugins": [
       [

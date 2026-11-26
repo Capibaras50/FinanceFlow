@@ -12,7 +12,7 @@ interface GradientHeaderProps {
   gradient?: readonly [string, string];
 }
 
-/** Heavy safe-front header: solid panel, thick lower stroke and an orange notch. */
+/** Heavy safe-front header: solid panel, thick lower stroke and a solid-action notch. */
 export function GradientHeader({ title, subtitle, rightAction }: GradientHeaderProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();

@@ -83,7 +83,7 @@ Trigger: the user rejected the first direction as obsolete and asked for real sk
 - [done] V2.3 Weight pass: every hairline border in `src/**` replaced by a 2px structural stroke; panels use 3px boundaries; header plates, cards, chips, avatars and tab icons are heavier.
 - [done] V2.4 Skeletons: shaped loading states on Inicio, Movimientos (initial + pagination), Carteras, Categorías, Deudas, Detalle de deuda/contacto, Contactos, Chat, Escáner y permisos de cámara. Loading is distinct from empty everywhere.
 - [done] V2.5 Motion: balance dial + count-up, focus rise, press springs, Add shutter rotation, shimmer, chat dots; all gated by `useReducedMotion()`.
-- [done] V2.6 Navigation/web: weighted tab plates, Add plate, mechanical rail, thicker tab bar, `theme-color` updated to `#101516`; noindex and share flow unchanged.
+- [done] V2.6 Navigation/web: weighted tab plates, Add plate, mechanical rail, thicker tab bar, `theme-color` updated to `#101516` (later realigned to logo navy `#0B1326`); noindex and share flow unchanged.
 - [done] V2.7 Validation: `npx tsc --noEmit`; all-platform Expo export; contrast recomputation; contract/route/endpoint diff; no new dependencies.
 
 Validation: tsc clean, web/iOS/Android export successful, no hard-coded colours in screens, contrast pairs ≥5.18:1.

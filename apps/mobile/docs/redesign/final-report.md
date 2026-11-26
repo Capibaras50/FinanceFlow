@@ -4,9 +4,9 @@ Date: 2026-11-25. Scope: `apps/mobile` (Android, iOS, web/PWA), root web-server 
 
 ## 1. Outcome
 
-The first redesign (*Tinta y Cobre*) was rejected by the user as obsolete: too quiet, hairline-led, without real skeletons, insufficiently rich icons and movement. This pass replaces it with **Caja Fuerte**, a strongbox system: graphite/sage panels with 2–3px strokes, safety-orange signal, mint/coral/blue semantic bands, heavy Outfit numerals, weighted `Glyph` plates, shaped skeleton loading states and mechanical motion (dial, shutter, press, stamp).
+The first redesign (*Tinta y Cobre*) was rejected by the user as obsolete: too quiet, hairline-led, without real skeletons, insufficiently rich icons and movement. This pass replaces it with **Caja Fuerte**, a strongbox system: heavy panels with 2–3px strokes, heavy Outfit numerals, weighted `Glyph` plates, shaped skeleton loading states and mechanical motion (dial, shutter, press, stamp). The final palette is split by user choice: logo navy/purple in dark, the original sage/orange in light (§4c).
 
-It is a **system replacement, not a feature rewrite**: routes, params, endpoint calls, auth/storage, financial calculations and Spanish copy are preserved. Nothing was committed or pushed; the work stays uncommitted on `desing/frontend`.
+It is a **system replacement, not a feature rewrite**: routes, params, endpoint calls, auth/storage, financial calculations and Spanish copy are preserved. The redesign is committed as `d6c2abf` and the follow-up refactors as `d752bfd` on `desing/frontend`; the palette/border alignment below is the current uncommitted work. Nothing has been pushed.
 
 The Caja Fuerte change set was **45 modified tracked files** (`4,451` insertions, `2,760` deletions), **12 new source files** and **5 design documents**. The later performance/SEO hygiene pass added targeted startup, bundle, context, list and cache fixes without changing any visual token or component.
 
@@ -14,7 +14,7 @@ The Caja Fuerte change set was **45 modified tracked files** (`4,451` insertions
 
 ### Tokens and foundations
 
-- `src/theme/colors.ts`: complete dark/light Caja Fuerte palette. Every pre-existing `ThemeColors` key is retained; new keys are `primarySolid`, `onPrimarySolid`, `stroke`, `strokeStrong`, `skeletonBase`, `skeletonShine` and a single `scrim`. Legacy `gradient` arrays remain as identical-stop compatibility values with no call sites.
+- `src/theme/colors.ts`: complete dark/light token set. Every pre-existing `ThemeColors` key is retained; new keys are `primarySolid`, `onPrimarySolid`, `stroke`, `strokeStrong`, `skeletonBase`, `skeletonShine`, a single `scrim`, and `actionBorder` for button/FAB outlines. Legacy `gradient` arrays remain as identical-stop compatibility values with no call sites. The values were later realigned to the app logo (§4c).
 - `src/theme/typography.ts`: Outfit 700 for figures/headings/labels (display up to 42/48, tabular), Inter 500/400 for reading, `maxFontSizeMultiplier: 1.35` on large figures.
 - `src/theme/spacing.ts` + `src/theme/outlineColor.ts`: 4px rhythm, `contentMaxWidth 1120`, `readingMaxWidth 720`, `wideBreakpoint 1024`, `touchTarget 44`, `strokeWidth thin/medium/thick`, motion and skeleton tokens, web focus-ring helper.
 - `src/theme/index.ts`: exports the new tokens without removing existing exports.
@@ -40,8 +40,8 @@ The Caja Fuerte change set was **45 modified tracked files** (`4,451` insertions
 - `MainTabNavigator.tsx`: solid 60px Add plate that turns 45° on press; bottom sheet slides in like a shutter; weighted tab plates and a 3px top stroke; `NavRail` on wide screens. Route names and targets are unchanged.
 - `RootNavigator.tsx`: weighted splash dial; the single `deliverSharedImage()` gate and auth/deeplink logic are untouched. `NavigationContainer` now receives a theme built from Caja Fuerte tokens so cards and the canvas behind transitions use `colors.background` instead of React Navigation's default white sheet.
 - `App.tsx`: font-loading state uses a thick framed mark with the `Dial` and a live label; no skeleton is shown while no data is being fetched.
-- `public/index.html`: `noindex, nofollow, noarchive, nosnippet` for generic and Google crawlers, `color-scheme: dark light`, `theme-color: #101516`, Spanish `noscript`. No canonical public URL, sitemap, OG pages or structured data.
-- `public/manifest.json`: theme/background `#101516`; `share_target` and icons unchanged.
+- `public/index.html`: `noindex, nofollow, noarchive, nosnippet` for generic and Google crawlers, `color-scheme: dark light`, `theme-color: #0B1326`, Spanish `noscript`. No canonical public URL, sitemap, OG pages or structured data.
+- `public/manifest.json`: theme/background `#0B1326`; `share_target` and icons unchanged.
 
 ### Screens
 
@@ -91,13 +91,14 @@ Shaped skeletons are reserved for blank-page waits that present real data struct
 
 | Pair | Dark | Light |
 |---|---:|---:|
-| Primary text on panel | 14.97:1 | 18.16:1 |
-| Muted text on panel | 8.00:1 | 6.57:1 |
-| Signal text on panel | 6.93:1 | 5.46:1 |
-| Text on solid action | 6.62:1 | 5.18:1 |
-| Mint on panel | 9.87:1 | 6.21:1 |
-| Coral on panel | 6.84:1 | 6.41:1 |
-| Blue on panel | 7.06:1 | 6.78:1 |
+| Primary accent on panel | 6.59:1 | 5.46:1 |
+| Muted text on panel | 9.06:1 | 6.57:1 |
+| Secondary on panel | 6.90:1 | 6.78:1 |
+| Text on solid action | 5.51:1 | 5.18:1 |
+| Success on panel | 11.33:1 | 6.21:1 |
+| Error on panel | 8.86:1 | 6.41:1 |
+| Tertiary on panel | 8.90:1 | 6.57:1 |
+| Button border (`actionBorder`) on panel | 3.04:1 | 5.46:1 |
 
 Semantic state is never colour-only: amounts carry sign + icon + text, chips carry Spanish labels, and selection/focus carry `accessibilityState`.
 
@@ -115,14 +116,28 @@ The approved Caja Fuerte design was treated as fixed. Performance/SEO changes af
 | Chat | Scroll-to-bottom now marks success once instead of re-arming up to ten timers per message; a new sent message resets the flag. | Less layout/scroll work; users are no longer yanked down while reading history. |
 | Contacts | Profile search is debounced 300 ms with a request id; stale responses are discarded. | Fewer API calls and no out-of-order results while typing. |
 | Scanner / share | Web blob URLs are revoked when replaced, cancelled, uploaded or on unmount; the PWA share handler revokes its own URL after handoff. | No memory growth from repeated receipt previews; share delivery path unchanged. |
-| Web head | Description/theme-color injected once from `app.json` (aligned to `#101516`); added root `robots.txt` with `Disallow: /`; `sw.js` bypasses same-origin `/api/`; nginx adds immutable caching for hashed assets and `no-cache` for shell/SW. | Clean single metadata tags, crawler defence in depth, no authenticated API caching, faster repeat loads. |
+| Web head | Description/theme-color injected once from `app.json` (aligned to `#0B1326`); added root `robots.txt` with `Disallow: /`; `sw.js` bypasses same-origin `/api/`; nginx adds immutable caching for hashed assets and `no-cache` for shell/SW. | Clean single metadata tags, crawler defence in depth, no authenticated API caching, faster repeat loads. |
 | Provider churn | `AppAlert` context value memoized. | Small reduction in re-renders while the alert modal mounts. |
 | Route chunks | `lazyScreens.tsx` / `lazyScreens.web.tsx`: login, Home and the navigator shell stay eager; all other stack and tab screens are web-only async imports. Native still re-exports eager screens. Web fallbacks are route-shaped (form, list, detail, chat, scanner, categories, debts), not one generic list; `withSuspense` wraps each in `colors.background` so a code-split route never exposes a white canvas. | Expo export emits 21 web chunks: main 1,548 KB → ~1.0–1.1 MB, shared chunk 168 KB; local Lighthouse route-split run 67 → 72 (later reruns 69–72), TBT 110–230 ms, unused JS 584–609 KiB. Route names, params, deep links and share delivery are unchanged. |
 | Skeleton alignment | `Skeleton.tsx` now forwards `radius`, shimmers with `motion.shimmer`, and exposes named shapes that reuse the loaded components' frames, strokes, icon plates, line heights, meters, bubbles and action rows. Call sites in Home, Movimientos, Carteras, Categorías, Deudas, Contactos, Detalles, Chat y Escáner reserve the same slots as the loaded UI; Categories rows sit below “Mis Categorías” and Caja Fuerte semantic borders stay error/success. `StatePanel` no longer adds reading-width padding to loading shapes. A later correction removed skeletons from non-data waits (boot, camera permission, contact search, pagination, upload buttons) and capped the shimmer at `0.36` opacity. | Loading no longer swaps the hero for a shorter generic card or replaces two action buttons with one block. Spanish loading labels and WCAG live regions are unchanged. No device was attached, so this is a structural/token match verified by code, tsc and all-platform export, not a pixel screenshot diff. |
-| Theme persistence | `themeStorage` platform adapter: web uses `localStorage` and reads it synchronously before React renders; native keeps `SecureStore`. An inline head script applies the same key before first paint and updates `theme-color`. `ThemeContext` exposes `isHydrated`, and the native splash now waits for it. | Headless Chrome reload with `finance_flow_theme=light` now emits `<html data-theme="light">` and light palette (`rgb(233,239,236)`) before hydration. Native Keychain path is unchanged and no longer flashes dark after splash; no device was attached for a smoke test. |
+| Theme persistence | `themeStorage` platform adapter: web uses `localStorage` and reads it synchronously before React renders; native keeps `SecureStore`. An inline head script applies the same key before first paint and updates `theme-color`. `ThemeContext` exposes `isHydrated`, and the native splash now waits for it. | Headless Chrome reload with `finance_flow_theme=light` now emits `<html data-theme="light">` and light palette (`rgb(245,248,255)`) before hydration. Native Keychain path is unchanged and no longer flashes dark after splash; no device was attached for a smoke test. |
 | Amount forms | Fixed-width non-shrinking `$` prefix, `minWidth: 0` input, focus-border compensation in shared `Input`; expense/earning/debt amounts drop from 30/42 px to 22 px below 380 dp. `KeyboardAvoidingView` (iOS) and safe-area bottom padding applied to the three forms. | Long currency values no longer clip or visually shift on 320–375 dp phones; desktop/PWA uses the same headline tokens as before. Spanish labels and `decimal-pad` remain. |
 
-Intentionally **not** changed: route names/params, endpoint set (50 unique `*Api.*` identifiers identical to `HEAD`), auth/storage semantics, financial calculations, Spanish copy, Caja Fuerte tokens, spacing, screens, `share_target`, native share plugin config, backend, dependencies or lockfiles. Stale-time caching on tab focus was evaluated but deferred because it risks showing outdated balances; indexable SEO content was rejected because it conflicts with the private-app posture.
+## 4c. Final palette decision: logo dark, original orange light (post-approval)
+
+`assets/icon.png` was sampled directly: navy `#0B1326`, cyan `#06B6D4`, purples `#8B3BE1` / `#943DDB` and pink `#D645A9`. After trying the full logo palette in both themes, the user chose a split: **keep the purple logo theme in dark, restore the original Caja Fuerte orange theme in light**.
+
+| Area | Change | Evidence / impact |
+|---|---|---|
+| `src/theme/colors.ts` dark | Unchanged from the logo pass: navy canvas `#0B1326`, `primary` `#B98CFF`, `primarySolid` `#8B3BE1`, cyan `#06B6D4` secondary, pink `#F0A6D8` tertiary, teal/rose ledger signals. | Dark buttons, FABs, icons, chips, borders and focus rings stay logo purple; the user explicitly approved this theme. |
+| `src/theme/colors.ts` light | Restored from `HEAD`: sage canvas `#E9EFEC`, `primary` `#B8430A`, `primarySolid` `#C2410C`, `primaryContainer` `#FFE3D2`, `inversePrimary` `#FF8A4C`, blue `#3155B5` secondary, mint/coral ledger signals and the original outline/skeleton/scrim tones. | Light buttons, FABs, icons, chips, borders and focus rings are orange again; all `ThemeColors` keys and exports are preserved, and no screen/component reads a literal colour. |
+| `actionBorder` token | Kept: dark `#8B3BE1` (logo purple), light `#B8430A` (the original border colour). Applied to `GradientButton` primary/outlined borders, the bottom-tab FAB, the `NavRail` FAB and the `StatePanel` retry button. | Each theme's outline matches its own solid fill. Dark border is 3.04:1 on panel (3.36:1 on navy canvas); light border is 5.46:1 on white (4.69:1 on sage canvas), both above the 3:1 non-text target. |
+| Web shell | `app.json` and `public/manifest.json` keep `#0B1326` as the dark default; `public/index.html` and `themeStorage.web.ts` switch the runtime `theme-color`/`background` to `#e9efec` in light mode. `src/utils/format.ts` keeps the purple `#8B3BE1` category fallback from the logo pass. | No first-paint flash of the wrong canvas; `noindex` robots directives and `share_target` are untouched. |
+| Docs | `design-direction.md` token table, `design-system.md` token/contrast tables and this report were updated to the split palette. | The strongbox layout, typography, motion, Spanish copy and component structure remain the approved v2 design. |
+
+Only web/browser metadata changed; the native share-intent plugin configuration was not touched, so `expo prebuild --clean` is not required for this palette pass.
+
+Intentionally **not** changed: route names/params, endpoint set (50 unique `*Api.*` identifiers identical to `HEAD`), auth/storage semantics, financial calculations, Spanish copy, the approved token structure (split palette values in §4c), spacing, screens, `share_target`, native share plugin config, backend, dependencies or lockfiles. Stale-time caching on tab focus was evaluated but deferred because it risks showing outdated balances; indexable SEO content was rejected because it conflicts with the private-app posture.
 
 ## 5. Repository hygiene
 
@@ -141,4 +156,4 @@ Intentionally **not** changed: route names/params, endpoint set (50 unique `*Api
 
 ## 7. Final status
 
-The v2 Caja Fuerte design is complete and unchanged. TypeScript is clean, all three platforms export successfully, the endpoint set and route map are unchanged, and no dependency, backend, auth/storage semantic, share-flow or financial-calculation change was introduced. The later performance/SEO pass only removes waste and hardens technical metadata; the skeleton pass aligns loading shapes with the approved UI and then restricts them to real data waits, with a themed navigation canvas and a subdued shimmer to remove white flashes. The work remains uncommitted on `desing/frontend`.
+The v2 Caja Fuerte structure is complete: layout, typography, motion, screens and behaviour are unchanged. The colour tokens follow the user's final choice — logo purple/navy in dark, the original orange/sage in light — including button/FAB borders. TypeScript is clean, all three platforms export successfully, the endpoint set and route map are unchanged, and no dependency, backend, auth/storage semantic, share-flow or financial-calculation change was introduced. The performance/SEO pass removes waste and hardens technical metadata; the skeleton pass restricts loading shapes to real data waits; the palette pass recolours tokens and web metadata without touching component structure. This palette/border work remains uncommitted on `desing/frontend`.

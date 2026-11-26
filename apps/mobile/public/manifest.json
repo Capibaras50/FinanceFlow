@@ -7,8 +7,8 @@
   "display": "standalone",
   "orientation": "portrait",
   "lang": "es",
-  "theme_color": "#101516",
-  "background_color": "#101516",
+  "theme_color": "#0B1326",
+  "background_color": "#0B1326",
   "categories": ["finance", "productivity"],
   "share_target": {
     "action": "/share-target",

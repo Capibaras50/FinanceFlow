@@ -29,7 +29,7 @@ export function formatDate(dateString: string): string {
 }
 
 export function getCategoryColor(color: string): string {
-  return color || '#7C3AED';
+  return color || '#8B3BE1';
 }
 
 export function getErrorMessage(error: unknown, fallback: string): string {

@@ -93,7 +93,7 @@ export const NavRail = memo(function NavRail({ items, activeKey, onSelect, onAdd
           borderRadius: borderRadius.md,
           backgroundColor: colors.primarySolid,
           borderWidth: strokeWidth.thick,
-          borderColor: colors.primary,
+          borderColor: colors.actionBorder,
         }}
       >
         <Ionicons accessible={false} name="add" size={26} color={colors.onPrimarySolid} />

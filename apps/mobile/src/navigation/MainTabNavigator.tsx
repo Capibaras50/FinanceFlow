@@ -70,7 +70,7 @@ function AddButton({ onPress }: BottomTabBarButtonProps) {
           justifyContent: 'center',
           backgroundColor: colors.primarySolid,
           borderWidth: strokeWidth.thick,
-          borderColor: colors.primary,
+          borderColor: colors.actionBorder,
           transform: [
             {
               rotate: rotation.interpolate({

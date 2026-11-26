@@ -10,40 +10,47 @@ Depth comes from **weight**, not glass or gradients. Gradients exist only as com
 
 ## 2. Colour tokens
 
-`src/theme/colors.ts` keeps every historical `ThemeColors` key. New keys: `primarySolid`, `onPrimarySolid`, `stroke`, `strokeStrong`, `skeletonBase`, `skeletonShine`.
+`src/theme/colors.ts` keeps every historical `ThemeColors` key. New keys: `primarySolid`, `onPrimarySolid`, `stroke`, `strokeStrong`, `skeletonBase`, `skeletonShine`, `actionBorder`.
+
+The two themes are deliberately different by explicit user choice. Dark keeps the app logo palette (`assets/icon.png`: navy `#0B1326`, purple `#8B3BE1`, cyan `#06B6D4`, pink `#D645A9`); light restores the original Caja Fuerte palette (sage `#E9EFEC`, signal orange `#B8430A` / `#C2410C`, blue `#3155B5`, mint/coral ledger signals). Every accent role — `primary`, `primarySolid`, containers, solid buttons/FABs, icons, chips, focus rings and `actionBorder` — follows its theme's accent. Text roles use accessible tints of the same hues so both themes stay at WCAG 2.2 AA. Component structure, spacing and motion are unchanged.
 
 | Token | Dark | Light | Role |
 |---|---|---|---|
-| `background` | `#101516` | `#E9EFEC` | Graphite / sage canvas |
-| `surface` | `#1A2223` | `#FFFFFF` | Primary panel |
-| `surfaceContainerHigh` | `#25302F` | `#F4F8F5` | Raised steel / nested panel |
-| `surfaceContainerHighest` | `#2E3B39` | `#E9EFEC` | Plate backing |
-| `surfaceContainerLow` | `#151C1E` | `#F7FAF8` | Recessed field |
-| `primary` | `#FF8A4C` | `#B8430A` | Signal orange: text, border, active |
-| `primarySolid` | `#FF6A2A` | `#C2410C` | Solid action / FAB |
-| `onPrimarySolid` | `#1A0E06` | `#FFFFFF` | Text on solid action |
-| `primaryContainer` | `#3A1E10` | `#FFE3D2` | Selected fill |
-| `secondary` | `#8CA8FF` | `#3155B5` | Debts / neutral information |
-| `tertiary` | `#A9BAB5` | `#4F615C` | Annotation |
-| `error` | `#FF8577` | `#B02E2E` | Expense / destructive |
-| `errorContainer` | `#46201D` | `#FFE1DE` | Selected expense state |
-| `success` | `#5DE0B6` | `#0B6E56` | Income / positive |
-| `successContainer` | `#12352D` | `#DCF5EA` | Selected earning state |
-| `onSuccessContainer` | `#C9F6E6` | `#0B4F3E` | Text on selected earning state |
-| `onBackground` / `onSurface` | `#F3F7F4` | `#101716` | Primary text |
-| `onSurfaceVariant` | `#A9BAB5` | `#4F615C` | Muted text |
-| `outline` | `#4A5D59` | `#B7C6C1` | Standard stroke |
-| `strokeStrong` | `#7C9A93` | `#6E837D` | Structural stroke |
-| `skeletonBase` | `#2A3635` | `#E1E9E5` | Loading block |
-| `skeletonShine` | `#3D4E4B` | `#F3F7F5` | Loading shimmer |
-| `scrim` | `rgba(4, 8, 9, 0.76)` | `rgba(16, 23, 22, 0.42)` | Modal backdrop (single token) |
+| `background` | `#0B1326` | `#E9EFEC` | Logo navy / original sage canvas |
+| `surface` | `#111D36` | `#FFFFFF` | Primary panel |
+| `surfaceContainerHigh` | `#182747` | `#F4F8F5` | Raised steel / nested panel |
+| `surfaceContainerHighest` | `#223259` | `#E9EFEC` | Plate backing |
+| `surfaceContainerLow` | `#0E1830` | `#F7FAF8` | Recessed field |
+| `primary` | `#B98CFF` | `#B8430A` | Logo purple / signal orange: text, icons, borders, active |
+| `primarySolid` | `#8B3BE1` | `#C2410C` | Solid action / FAB |
+| `onPrimarySolid` | `#FFFFFF` | `#FFFFFF` | Text on solid action |
+| `primaryContainer` | `#2E1A52` | `#FFE3D2` | Selected fill |
+| `actionBorder` | `#8B3BE1` | `#B8430A` | Button/FAB outline: logo purple / signal orange |
+| `secondary` | `#06B6D4` | `#3155B5` | Logo cyan / original blue: debts / neutral information |
+| `secondaryContainer` | `#083344` | `#E1E8FF` | Cyan / blue selected fill |
+| `inversePrimary` | `#943DDB` | `#FF8A4C` | Other purple / bright orange swatch |
+| `warning` | `#8B3BE1` | `#B8430A` | Warning follows theme accent |
+| `info` | `#06B6D4` | `#3155B5` | Info follows theme secondary |
+| `tertiary` | `#F0A6D8` | `#4F615C` | Pink / annotation accents |
+| `error` | `#FDA4AF` | `#B02E2E` | Rose / coral expense |
+| `errorContainer` | `#46152D` | `#FFE1DE` | Selected expense state |
+| `success` | `#5EEAD4` | `#0B6E56` | Teal / mint earning |
+| `successContainer` | `#083A36` | `#DCF5EA` | Selected earning state |
+| `onSuccessContainer` | `#B7F7E9` | `#0B4F3E` | Text on selected earning state |
+| `onBackground` / `onSurface` | `#F2F6FF` | `#101716` | Primary text |
+| `onSurfaceVariant` | `#AFC0D8` | `#4F615C` | Muted text |
+| `outline` | `#5A7096` | `#B7C6C1` | Standard stroke |
+| `strokeStrong` | `#9FB4D6` | `#6E837D` | Structural stroke |
+| `skeletonBase` | `#182747` | `#E1E9E5` | Loading block |
+| `skeletonShine` | `#223259` | `#F3F7F5` | Loading shimmer |
+| `scrim` | `rgba(5, 9, 20, 0.78)` | `rgba(16, 23, 22, 0.42)` | Modal backdrop (single token) |
 | `gradient` | identical-stop pairs | identical-stop pairs | Kept for API compatibility; unused |
 
 Rules:
 - No hex or `rgba()` literals in screens/components; everything comes from `useTheme()`.
 - Semantic state is never colour-only: amounts carry sign + icon + label; status chips carry Spanish text; selection carries `accessibilityState`.
 - Modal backdrops use only `colors.scrim`.
-- **Ledger colour code:** expenses are always `colors.error` (red) and earnings always `colors.success` (green) in Movimientos and Categorías. It is applied to transaction card frames (3px), Gastos/Ingresos tabs, summary figures, category breakdown bars, category row plates and type selectors. Selection additionally uses the matching container tint, a thicker border and a checkmark, so it never relies on hue alone. User-chosen category colours survive as small markers, not as the semantic signal.
+- **Ledger colour code:** expenses are always `colors.error` (rose) and earnings always `colors.success` (teal) in Movimientos and Categorías. It is applied to transaction card frames (3px), Gastos/Ingresos tabs, summary figures, category breakdown bars, category row plates and type selectors. Selection additionally uses the matching container tint, a thicker border and a checkmark, so it never relies on hue alone. User-chosen category colours survive as small markers, not as the semantic signal.
 
 ### Contrast verification (WCAG 2.2 AA)
 
@@ -51,16 +58,17 @@ Computed against the actual tokens:
 
 | Pair | Dark | Light |
 |---|---:|---:|
-| Primary text on panel | 14.97:1 | 18.16:1 |
-| Muted text on panel | 8.00:1 | 6.57:1 |
-| Signal text on panel | 6.93:1 | 5.46:1 |
-| Text on solid action | 6.62:1 | 5.18:1 |
-| Mint on panel | 9.87:1 | 6.21:1 |
-| Coral on panel | 6.84:1 | 6.41:1 |
-| Blue on panel | 7.06:1 | 6.78:1 |
-| Primary text on canvas | — | 15.59:1 |
+| Primary accent on panel | 6.59:1 | 5.46:1 |
+| Muted text on panel | 9.06:1 | 6.57:1 |
+| Secondary on panel | 6.90:1 | 6.78:1 |
+| Text on solid action | 5.51:1 | 5.18:1 |
+| Success on panel | 11.33:1 | 6.21:1 |
+| Error on panel | 8.86:1 | 6.41:1 |
+| Tertiary on panel | 8.90:1 | 6.57:1 |
+| Button border (`actionBorder`) on panel | 3.04:1 | 5.46:1 |
+| Primary text on canvas | 7.27:1 | 15.59:1 |
 
-All normal-text pairs exceed 4.5:1. Skeleton blocks are decorative (`accessible={false}`) and the containing region announces "Cargando…" politely.
+All normal-text pairs exceed 4.5:1 in both themes. The `actionBorder` outline is exact logo purple `#8B3BE1` in dark (3.04:1 on panel, 3.36:1 on the navy canvas) and the original signal orange `#B8430A` in light (5.46:1 on white, 4.69:1 on the sage canvas), so both clear the 3:1 non-text contrast target. Skeleton blocks are decorative (`accessible={false}`) and the containing region announces "Cargando…" politely.
 
 ## 3. Typography
 
@@ -142,7 +150,7 @@ No cascades, parallax or infinite decorative loops.
 ## 8. Web/SEO contract
 
 - Private authenticated app: `noindex, nofollow, noarchive, nosnippet` for generic and Google crawlers; no sitemap, OG pages, structured data or user data in metadata.
-- Spanish `lang`, title/description, `color-scheme: dark light`, `theme-color: #101516`.
+- Spanish `lang`, title/description, `color-scheme: dark light`, `theme-color: #0B1326`.
 - Share target, service worker and the single `deliverSharedImage()` gate remain untouched.
 
 ## 9. Non-goals

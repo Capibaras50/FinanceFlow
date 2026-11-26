@@ -2,6 +2,8 @@
 
 Date: 2026-11-25. Scope: `apps/mobile` (Android, iOS, web/PWA), its shared packages (`packages/api-client`, `packages/shared-types`) and the NestJS backend in `apps/backend` as the API source of truth. This is a read-only audit; no application source was changed to produce it.
 
+> **Historical baseline:** the findings below describe the app *before* the v2 redesign and the later logo-palette alignment. The colour values quoted in them are the old ones; current tokens and verified contrasts are documented in `design-system.md` and `final-report.md`.
+
 ## 1. Method and sources
 
 - Inspected every file under `apps/mobile/src` (21 screens, 15 UI components, 2 layouts, 2 share handlers, 3 navigation files, theme/context/hooks/services/utils), the root entry points, Expo/native/web config, `public/` assets and the workspace package scripts.

@@ -27,7 +27,7 @@
           document.documentElement.dataset.theme = mode;
           document.documentElement.style.colorScheme = mode;
           var themeMeta = document.querySelector('meta[name="theme-color"]');
-          if (themeMeta) themeMeta.content = mode === 'light' ? '#e9efec' : '#101516';
+          if (themeMeta) themeMeta.content = mode === 'light' ? '#e9efec' : '#0b1326';
         } catch (e) {}
       })();
     </script>
@@ -52,11 +52,11 @@
       html,
       body,
       #root {
-        background: #101516;
+        background: #0b1326;
       }
       html[data-theme='dark'] body,
       html[data-theme='dark'] #root {
-        background: #101516;
+        background: #0b1326;
       }
       html[data-theme='light'] body,
       html[data-theme='light'] #root {

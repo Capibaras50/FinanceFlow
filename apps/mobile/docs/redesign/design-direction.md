@@ -2,9 +2,11 @@
 
 This supersedes the earlier *Tinta y Cobre* direction. The user rejected that proposal as obsolete: too quiet, too hairline-led, insufficient visual weight and motion. The new brief is explicit: a genuinely new idea, real skeleton loading states, richer icons, more movement and more "grosor" (visual weight), across phone, tablet and web.
 
+> **Colour decision (final):** the two themes are intentionally different. Dark keeps the logo palette sampled from `assets/icon.png` — navy `#0B1326`, purple `#8B3BE1` for solid actions and borders, cyan `#06B6D4` secondary, pink accents. Light returns to the original Caja Fuerte palette — sage `#E9EFEC` canvas with signal orange `#B8430A` / `#C2410C`, blue secondary and mint/coral ledger signals. All roles (text, fills, borders, icons, chips, focus rings, `actionBorder`) follow their theme's accent. Text roles use accessible tints so WCAG 2.2 AA is preserved. Layout, typography, motion and component structure are unchanged.
+
 ## Subject and idea
 
-Finance Flow is a personal safe for money: balances, movements, debts and receipts. The metaphor is a **caja fuerte** — a physical strongbox with a dial, a slot and heavy panels. That gives us specific material cues instead of another generic finance dashboard: thick frames, safety-orange signal colour, mint/coral ledger signals, embossed icon plates and a dial that turns when the balance changes.
+Finance Flow is a personal safe for money: balances, movements, debts and receipts. The metaphor is a **caja fuerte** — a physical strongbox with a dial, a slot and heavy panels. That gives us specific material cues instead of another generic finance dashboard: thick frames, logo-purple signal in dark and signal orange in light, with cyan/blue and pink accents, teal/rose ledger signals, embossed icon plates and a dial that turns when the balance changes.
 
 This is deliberately not a ledger-paper system. There are no hairline-only dividers, no quiet lavender/teal palette and no glass. Hierarchy comes from **weight**: 2–3px borders, 20–28px radii, heavy numerals, solid colour blocks and raised panels.
 
@@ -12,16 +14,18 @@ This is deliberately not a ledger-paper system. There are no hairline-only divid
 
 | Role | Dark | Light | Use |
 |---|---|---|---|
-| Graphite / canvas | `#101516` | `#E9EFEC` | App background |
-| Panel | `#1A2223` | `#FFFFFF` | Primary surface |
-| Raised steel | `#25302F` | `#F4F8F5` | Nested surface / skeleton base |
-| Signal orange | `#FF8A4C` | `#B8430A` | Text, borders, active state |
-| Signal fill | `#FF6A2A` | `#C2410C` | Solid primary button / FAB |
-| Mint | `#5DE0B6` | `#0B6E56` | Income / success |
-| Coral | `#FF8577` | `#B02E2E` | Expense / error |
-| Blue | `#8CA8FF` | `#3155B5` | Debts / neutral information |
-| Ink | `#F3F7F4` | `#101716` | Primary text |
-| Annotation | `#A9BAB5` | `#4F615C` | Muted text |
+| Navy / sage canvas | `#0B1326` | `#E9EFEC` | App background |
+| Panel | `#111D36` | `#FFFFFF` | Primary surface |
+| Raised steel | `#182747` | `#F4F8F5` | Nested surface / skeleton base |
+| Primary accent | `#B98CFF` (logo purple) | `#B8430A` (signal orange) | `primary` text, icons, borders, active state |
+| Solid fill | `#8B3BE1` (logo purple) | `#C2410C` (orange) | `primarySolid` — solid button / FAB |
+| Button/FAB border | `#8B3BE1` | `#B8430A` | `actionBorder` — matches each theme's accent |
+| Secondary | `#06B6D4` (logo cyan) | `#3155B5` (blue) | Debts / neutral information |
+| Teal | `#5EEAD4` | `#0B6E56` | Income / success |
+| Rose | `#FDA4AF` | `#B02E2E` | Expense / error |
+| Tertiary | `#F0A6D8` (pink) | `#4F615C` (annotation) | `tertiary` accents |
+| Ink | `#F2F6FF` | `#101716` | Primary text |
+| Annotation | `#AFC0D8` | `#4F615C` | Muted text |
 
 All pairs used for normal text exceed 4.5:1 (verified in `design-system.md`). Semantic states always carry an icon, sign or label, never colour alone.
 

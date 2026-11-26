@@ -29,6 +29,6 @@ export async function writeThemeMode(mode: ThemeMode): Promise<void> {
     document.documentElement.dataset.theme = mode;
     document.documentElement.style.colorScheme = mode;
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    if (meta) meta.content = mode === 'dark' ? '#101516' : '#E9EFEC';
+    if (meta) meta.content = mode === 'dark' ? '#0B1326' : '#E9EFEC';
   }
 }

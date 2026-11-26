@@ -1,78 +1,89 @@
 import { Appearance } from 'react-native';
 
 /**
- * Caja Fuerte — a weighted, high-contrast palette for Android, iOS and web.
+ * Finance Flow — two deliberately distinct themes for Android, iOS and web.
  *
- * Every historical ThemeColors key is retained for compatibility; new keys add
- * the strong strokes, solid action fill and skeleton tones used by this design.
- * Screens must read colours through `useTheme()`, never through literals.
+ * Dark is derived from `assets/icon.png`: navy `#0B1326`, logo purple
+ * `#8B3BE1` for solid actions and borders, cyan `#06B6D4` as secondary.
+ * Light keeps the original Caja Fuerte palette: sage canvas `#E9EFEC` with
+ * signal orange `#B8430A` / `#C2410C` for the same roles, blue secondary and
+ * mint/coral ledger signals. The user chose this split explicitly.
+ *
+ * Every historical `ThemeColors` key is retained, including `actionBorder`
+ * (logo purple in dark, signal orange in light). Text roles use accessible
+ * tints so both themes stay at WCAG 2.2 AA. Screens must read colours through
+ * `useTheme()`, never through literals.
  */
 const darkPalette = {
-  background: '#101516',
-  surface: '#1A2223',
-  surfaceDim: '#101516',
-  surfaceBright: '#25302F',
-  surfaceContainer: '#1A2223',
-  surfaceContainerHigh: '#25302F',
-  surfaceContainerHighest: '#2E3B39',
-  surfaceContainerLow: '#151C1E',
-  surfaceContainerLowest: '#0B1011',
+  background: '#0B1326',
+  surface: '#111D36',
+  surfaceDim: '#080E1C',
+  surfaceBright: '#182747',
+  surfaceContainer: '#111D36',
+  surfaceContainerHigh: '#182747',
+  surfaceContainerHighest: '#223259',
+  surfaceContainerLow: '#0E1830',
+  surfaceContainerLowest: '#070C18',
 
-  primary: '#FF8A4C',
-  primaryContainer: '#3A1E10',
-  onPrimary: '#1A0E06',
-  onPrimaryContainer: '#FFD8C2',
-  primarySolid: '#FF6A2A',
-  onPrimarySolid: '#1A0E06',
-  inversePrimary: '#B8430A',
+  // Former signal orange → logo purple.
+  primary: '#B98CFF',
+  primaryContainer: '#2E1A52',
+  onPrimary: '#0B1326',
+  onPrimaryContainer: '#D6C2FF',
+  primarySolid: '#8B3BE1',
+  onPrimarySolid: '#FFFFFF',
+  inversePrimary: '#943DDB',
+  actionBorder: '#8B3BE1',
 
-  secondary: '#8CA8FF',
-  secondaryContainer: '#1E2A45',
-  onSecondary: '#0B1224',
-  onSecondaryContainer: '#DCE6FF',
+  // Former blue → logo cyan.
+  secondary: '#06B6D4',
+  secondaryContainer: '#083344',
+  onSecondary: '#0B1326',
+  onSecondaryContainer: '#A5F3FC',
 
-  tertiary: '#A9BAB5',
-  tertiaryContainer: '#2A3635',
-  onTertiary: '#101516',
-  onTertiaryContainer: '#DCE8E3',
+  tertiary: '#F0A6D8',
+  tertiaryContainer: '#4A1538',
+  onTertiary: '#0B1326',
+  onTertiaryContainer: '#FBCFE8',
 
-  error: '#FF8577',
-  errorContainer: '#46201D',
-  onError: '#24100E',
-  onErrorContainer: '#FFE1DE',
+  error: '#FDA4AF',
+  errorContainer: '#46152D',
+  onError: '#2A0A18',
+  onErrorContainer: '#FFD6E5',
 
-  success: '#5DE0B6',
-  successContainer: '#12352D',
-  onSuccessContainer: '#C9F6E6',
-  warning: '#FF8A4C',
+  success: '#5EEAD4',
+  successContainer: '#083A36',
+  onSuccessContainer: '#B7F7E9',
+  warning: '#8B3BE1',
 
-  info: '#8CA8FF',
-  infoContainer: '#1E2A45',
-  onInfo: '#0B1224',
+  info: '#06B6D4',
+  infoContainer: '#083344',
+  onInfo: '#0B1326',
 
-  onBackground: '#F3F7F4',
-  onSurface: '#F3F7F4',
-  onSurfaceVariant: '#A9BAB5',
+  onBackground: '#F2F6FF',
+  onSurface: '#F2F6FF',
+  onSurfaceVariant: '#AFC0D8',
 
-  outline: '#4A5D59',
-  outlineVariant: '#354744',
-  stroke: '#4A5D59',
-  strokeStrong: '#7C9A93',
+  outline: '#5A7096',
+  outlineVariant: '#34476B',
+  stroke: '#5A7096',
+  strokeStrong: '#9FB4D6',
 
-  skeletonBase: '#2A3635',
-  skeletonShine: '#3D4E4B',
+  skeletonBase: '#182747',
+  skeletonShine: '#223259',
 
-  scrim: 'rgba(4, 8, 9, 0.76)',
+  scrim: 'rgba(5, 9, 20, 0.78)',
 
   // Retained for API compatibility. Values are flat; no data surface is a gradient.
   gradient: {
-    primary: ['#FF8A4C', '#FF8A4C'] as const,
-    secondary: ['#8CA8FF', '#8CA8FF'] as const,
-    accent: ['#25302F', '#25302F'] as const,
+    primary: ['#8B3BE1', '#8B3BE1'] as const,
+    secondary: ['#06B6D4', '#06B6D4'] as const,
+    accent: ['#182747', '#182747'] as const,
   },
 } as const;
 
 const lightPalette = {
+  // Original Caja Fuerte light theme, restored at the user's request.
   background: '#E9EFEC',
   surface: '#FFFFFF',
   surfaceDim: '#DCE6E1',
@@ -83,6 +94,7 @@ const lightPalette = {
   surfaceContainerLow: '#F7FAF8',
   surfaceContainerLowest: '#FFFFFF',
 
+  // Signal orange: text, borders, containers and solid actions.
   primary: '#B8430A',
   primaryContainer: '#FFE3D2',
   onPrimary: '#FFFFFF',
@@ -90,6 +102,8 @@ const lightPalette = {
   primarySolid: '#C2410C',
   onPrimarySolid: '#FFFFFF',
   inversePrimary: '#FF8A4C',
+  // The original light-theme button/FAB border colour.
+  actionBorder: '#B8430A',
 
   secondary: '#3155B5',
   secondaryContainer: '#E1E8FF',
