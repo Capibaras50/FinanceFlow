@@ -1,10 +1,11 @@
-import { useState, useCallback, useMemo, useRef, useEffect, type ComponentProps } from 'react';
-import { View, Text, Pressable, Modal, type StyleProp, type ViewStyle, type TextStyle } from 'react-native';
+import { useState, useCallback, useMemo, type ComponentProps } from 'react';
+import { View, Text, Pressable, Modal, ActivityIndicator, type StyleProp, type ViewStyle, type TextStyle } from 'react-native';
 import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { typography, strokeWidth, spacing, borderRadius, layout, outlineColor } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
+import { useFocusReload } from '../../hooks/useFocusReload';
 import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { SkeletonCategoryRows, SkeletonCategorySummary } from '../../components/ui/Skeleton';
@@ -12,7 +13,7 @@ import { Glyph } from '../../components/ui/Glyph';
 import { categoriesApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { showAlert } from '../../components/ui/AppAlert';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 import { formatCurrency } from '../../utils/format';
 import { goBackOrHome } from '../../utils/navigation';
@@ -114,14 +115,7 @@ export function CategoriesScreen() {
     }
   }, [showError]);
 
-  const loadFirstPageRef = useRef(loadFirstPage);
-  useEffect(() => {
-    loadFirstPageRef.current = loadFirstPage;
-  }, [loadFirstPage]);
-
-  useFocusEffect(
-    useCallback(() => { loadFirstPageRef.current(); }, [])
-  );
+  useFocusReload(loadFirstPage);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
@@ -391,8 +385,14 @@ export function CategoriesScreen() {
   const listFooter = useCallback(
     () =>
       loadingMore ? (
-        <View style={{ paddingVertical: spacing.md, alignItems: 'center' }}>
-          <SkeletonCategoryRows rows={1} label="Cargando más categorías" />
+        <View
+          accessible
+          accessibilityRole="text"
+          accessibilityLiveRegion="polite"
+          accessibilityLabel="Cargando más categorías"
+          style={{ paddingVertical: spacing.md, alignItems: 'center' }}
+        >
+          <ActivityIndicator size="small" color={colors.primary} />
         </View>
       ) : null,
     [loadingMore, colors]

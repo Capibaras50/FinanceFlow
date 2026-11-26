@@ -24,6 +24,11 @@ import {
   removeRefreshToken,
 } from './storage';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+type NativeFormFile = { uri: string; name: string; type: string };
+type NativeFormData = FormData & {
+  append(name: string, value: NativeFormFile): void;
+};
+
 let forceLogoutHandler: (() => void) | null = null;
 
 export function setForceLogoutHandler(handler: (() => void) | null) {
@@ -73,7 +78,7 @@ export async function uploadAvatarAsync(uri: string, fileName?: string, mimeType
   const name = fileName || 'avatar.jpg';
   const type = mimeType || 'image/jpeg';
 
-  const formData = new FormData();
+  const formData = new FormData() as NativeFormData;
 
   if (Platform.OS === 'web') {
     const response = await fetch(manipulated.uri);
@@ -85,7 +90,7 @@ export async function uploadAvatarAsync(uri: string, fileName?: string, mimeType
       uri: manipulated.uri,
       name,
       type,
-    } as any);
+    });
   }
 
   return client.uploadFile<User>('/users/upload-avatar', formData);

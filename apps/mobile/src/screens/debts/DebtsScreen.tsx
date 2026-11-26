@@ -1,8 +1,8 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { DebtCard } from '../../components/ui/DebtCard';
 import { FocusFadeIn } from '../../components/ui/FocusFadeIn';
@@ -11,6 +11,7 @@ import { SkeletonDebtRows, SkeletonLine } from '../../components/ui/Skeleton';
 import { Glyph } from '../../components/ui/Glyph';
 import { typography, strokeWidth, spacing, borderRadius, layout } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
+import { useFocusReload } from '../../hooks/useFocusReload';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { formatCurrency } from '../../utils/format';
@@ -98,16 +99,8 @@ export function DebtsScreen() {
     }
   }, [filters, showError]);
 
-  // Ref pattern: the focus effect only refetches when the screen gains focus.
   // Filter/search actions call loadData explicitly with their overrides.
-  const loadDataRef = useRef(loadData);
-  useEffect(() => {
-    loadDataRef.current = loadData;
-  }, [loadData]);
-
-  useFocusEffect(
-    useCallback(() => { loadDataRef.current(); }, [])
-  );
+  useFocusReload(loadData);
 
   const openFilters = () => {
     setDraftFilters({ ...filters, name: searchText.trim() || undefined });

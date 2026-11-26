@@ -13,6 +13,11 @@ interface SkeletonProps {
 
 export type SkeletonTone = 'expense' | 'earning' | 'mixed' | 'neutral';
 
+// Keep the shimmer inside the surface family: a full-opacity shine reads as a
+// white flash, especially in the light palette.
+const SHIMMER_MIN = 0.08;
+const SHIMMER_MAX = 0.36;
+
 function useIndexes(count: number) {
   return useMemo(() => Array.from({ length: count }, (_, index) => index), [count]);
 }
@@ -28,24 +33,24 @@ function toneColor(tone: SkeletonTone, index: number, colors: ReturnType<typeof 
 export function SkeletonBlock({ width = '100%', height = 16, radius = borderRadius.sm, style }: SkeletonProps) {
   const { colors } = useTheme();
   const reduceMotion = useReducedMotion();
-  const highlight = useRef(new Animated.Value(0.25)).current;
+  const highlight = useRef(new Animated.Value(SHIMMER_MIN)).current;
   const halfShimmer = motion.shimmer / 2;
 
   useEffect(() => {
     if (reduceMotion) {
-      highlight.setValue(0.25);
+      highlight.setValue(SHIMMER_MIN);
       return;
     }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(highlight, {
-          toValue: 1,
+          toValue: SHIMMER_MAX,
           duration: halfShimmer,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(highlight, {
-          toValue: 0.25,
+          toValue: SHIMMER_MIN,
           duration: halfShimmer,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect, type ComponentProps } from 'react';
+import { useState, useCallback, useMemo, type ComponentProps } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { TransactionCard } from '../../components/ui/TransactionCard';
 import { FocusFadeIn } from '../../components/ui/FocusFadeIn';
 import { BalanceHero } from '../../components/ui/BalanceHero';
@@ -16,6 +16,7 @@ import { Glyph, type GlyphTone } from '../../components/ui/Glyph';
 import { SkeletonDebtSummary, SkeletonHero, SkeletonTransactionRows } from '../../components/ui/Skeleton';
 import { typography, spacing, borderRadius, layout, strokeWidth, outlineColor } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
+import { useFocusReload } from '../../hooks/useFocusReload';
 import { formatCurrency } from '../../utils/format';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
@@ -85,14 +86,7 @@ export function HomeScreen() {
     }
   }, [showError]);
 
-  const loadDataRef = useRef(loadData);
-  useEffect(() => {
-    loadDataRef.current = loadData;
-  }, [loadData]);
-
-  useFocusEffect(
-    useCallback(() => { loadDataRef.current(); }, [])
-  );
+  useFocusReload(loadData);
 
   const totalEarnings = useMemo(() => balanceData.reduce((sum, w) => sum + Number(w.totalEarnings), 0), [balanceData]);
   const totalExpenses = useMemo(() => balanceData.reduce((sum, w) => sum + Number(w.totalExpenses), 0), [balanceData]);

@@ -11,7 +11,7 @@ import { Input } from '../../components/ui/Input';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { DateTimePickerModal } from '../../components/ui/DateTimePickerModal';
 import { contactsApi, debtsApi } from '../../services/api';
-import { getErrorMessage, formatCurrencyInput, parseCurrencyInput } from '../../utils/format';
+import { getErrorMessage, formatCurrencyInput, parsePositiveAmount } from '../../utils/format';
 import { DEBT_TYPE_LABELS } from '../../utils/debts';
 import { getOtherProfile } from '../../utils/debts';
 import { goBackOrHome } from '../../utils/navigation';
@@ -106,8 +106,8 @@ export function AddDebtScreen() {
     const trimmedName = name.trim();
     const trimmedContact = contactName.trim();
     if (!trimmedName || !trimmedContact) return;
-    const numValue = parseFloat(parseCurrencyInput(amountText));
-    if (isNaN(numValue) || numValue <= 0) return;
+    const numValue = parsePositiveAmount(amountText);
+    if (numValue === null) return;
 
     setLoading(true);
     try {
@@ -137,8 +137,7 @@ export function AddDebtScreen() {
     }
   };
 
-  const numValue = parseFloat(parseCurrencyInput(amountText));
-  const isValueValid = !isNaN(numValue) && numValue > 0;
+  const isValueValid = parsePositiveAmount(amountText) !== null;
   const canSave = name.trim() && contactName.trim() && isValueValid;
   const directionColor = direction === 'receivable' ? colors.success : colors.error;
 

@@ -13,6 +13,12 @@ interface TransactionCardProps {
   walletName?: string;
 }
 
+/** Some list responses still expose the legacy snake_case wallet name. */
+function getLegacyWalletName(transaction: Expense | Earning): string | undefined {
+  const candidate = transaction as { wallet_name?: unknown };
+  return typeof candidate.wallet_name === 'string' ? candidate.wallet_name : undefined;
+}
+
 export const TransactionCard = memo(function TransactionCard({
   transaction,
   type,
@@ -22,11 +28,10 @@ export const TransactionCard = memo(function TransactionCard({
   const isExpense = type === 'expense';
   // The full frame carries the semantic colour: red for expenses, green for earnings.
   const amountColor = isExpense ? colors.error : colors.success;
-  const raw = transaction as unknown as Record<string, unknown>;
   const name =
     walletName ??
     transaction.wallet?.name ??
-    (typeof raw.wallet_name === 'string' ? raw.wallet_name : undefined);
+    getLegacyWalletName(transaction);
   const categoryColor = transaction.category?.color
     ? getCategoryColor(transaction.category.color)
     : undefined;

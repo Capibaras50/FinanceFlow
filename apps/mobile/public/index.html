@@ -48,6 +48,12 @@
         height: 100%;
         flex: 1;
       }
+      /* Dark default prevents a white first paint before the inline theme script. */
+      html,
+      body,
+      #root {
+        background: #101516;
+      }
       html[data-theme='dark'] body,
       html[data-theme='dark'] #root {
         background: #101516;

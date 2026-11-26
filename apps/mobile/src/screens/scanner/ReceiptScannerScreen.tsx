@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -10,8 +10,6 @@ import { typography, strokeWidth, spacing, borderRadius, layout } from '../../th
 import { useTheme } from '../../hooks/useTheme';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
-import { StatePanel } from '../../components/ui/StatePanel';
-import { SkeletonBlock } from '../../components/ui/Skeleton';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
@@ -185,7 +183,7 @@ export function ReceiptScannerScreen() {
           mimeType: 'image/jpeg',
         });
         if (result.status >= 400) {
-          throw { message: parseUploadError(result.body, 'Upload failed'), statusCode: result.status };
+          throw new Error(parseUploadError(result.body, 'Upload failed'));
         }
       }
       showSuccess('Recibo enviado. El asistente IA lo está procesando.');
@@ -261,30 +259,18 @@ export function ReceiptScannerScreen() {
       <Text style={[typography.titleMd, { color: colors.onSurface, textAlign: 'center', marginBottom: spacing.md }]}>
         ¿Escaneamos este recibo?
       </Text>
-      {uploading ? (
-        <View
-          accessible
-          accessibilityRole="text"
-          accessibilityLiveRegion="polite"
-          accessibilityLabel="Subiendo recibo"
-          style={{ width: '100%', flexDirection: 'row', gap: spacing.md }}
-        >
-          <SkeletonBlock height={layout.primaryButtonHeight} radius={borderRadius.md} style={{ flex: 1 }} />
-          <SkeletonBlock height={layout.primaryButtonHeight} radius={borderRadius.md} style={{ flex: 1 }} />
+      <View style={{ flexDirection: 'row', gap: spacing.md }}>
+        <GradientButton
+          title="Cancelar"
+          variant="outlined"
+          onPress={resetConfirm}
+          disabled={uploading}
+          style={{ flex: 1 }}
+        />
+        <View style={{ flex: 1 }}>
+          <GradientButton title="Escanear" onPress={handleScan} loading={uploading} />
         </View>
-      ) : (
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <GradientButton
-            title="Cancelar"
-            variant="outlined"
-            onPress={resetConfirm}
-            style={{ flex: 1 }}
-          />
-          <View style={{ flex: 1 }}>
-            <GradientButton title="Escanear" onPress={handleScan} />
-          </View>
-        </View>
-      )}
+      </View>
     </GlassCard>
   );
 
@@ -362,12 +348,18 @@ export function ReceiptScannerScreen() {
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         {renderHeader()}
         <View style={{ flex: 1, justifyContent: 'center' }}>
-          <StatePanel
-            state="loading"
-            title="Solicitando permisos…"
-            variant="plain"
-            style={{ paddingHorizontal: spacing.container }}
-          />
+          <View
+            accessible
+            accessibilityRole="text"
+            accessibilityLiveRegion="polite"
+            accessibilityLabel="Solicitando permisos…"
+            style={{ alignItems: 'center', gap: spacing.md }}
+          >
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>
+              Solicitando permisos…
+            </Text>
+          </View>
         </View>
       </View>
     );

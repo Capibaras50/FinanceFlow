@@ -10,7 +10,7 @@ import { StatusBar } from 'react-native';
 import { useTheme } from './src/hooks/useTheme';
 import { useAppFonts } from './src/hooks/useAppFonts';
 import { ActivityIndicator, Text, View } from 'react-native';
-import { SkeletonBlock } from './src/components/ui/Skeleton';
+import { Dial } from './src/components/ui/Dial';
 import { useReducedMotion } from './src/hooks/useReducedMotion';
 import { hideNativeSplash } from './src/utils/nativeSplash';
 import { borderRadius, spacing, typography } from './src/theme';
@@ -47,8 +47,7 @@ function AppContent() {
             padding: 8,
           }}
         >
-          <SkeletonBlock height={12} radius={4} />
-          <SkeletonBlock height={8} width="60%" radius={4} style={{ marginTop: 8 }} />
+          <Dial progress={reduceMotion ? 1 : 0.65} size={48} />
         </View>
         {reduceMotion ? (
           <Text accessibilityLiveRegion="polite" style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>

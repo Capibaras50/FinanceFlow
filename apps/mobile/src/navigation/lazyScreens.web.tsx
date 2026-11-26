@@ -160,7 +160,18 @@ function withSuspense<P extends object>(
   fallback: ReactNode = <FormFallback />
 ) {
   return function LoadableScreen(props: P) {
-    return <Suspense fallback={fallback}><Component {...props} /></Suspense>;
+    const { colors } = useTheme();
+    return (
+      <Suspense
+        fallback={
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
+            {fallback}
+          </View>
+        }
+      >
+        <Component {...props} />
+      </Suspense>
+    );
   };
 }
 

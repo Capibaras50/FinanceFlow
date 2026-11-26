@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { ContactCard } from '../../components/ui/ContactCard';
 import { Avatar } from '../../components/ui/Avatar';
@@ -13,6 +13,7 @@ import { SkeletonContactRows } from '../../components/ui/Skeleton';
 import { Glyph } from '../../components/ui/Glyph';
 import { typography, strokeWidth, spacing, borderRadius, layout } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
+import { useFocusReload } from '../../hooks/useFocusReload';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { showAlert } from '../../components/ui/AppAlert';
@@ -56,14 +57,7 @@ export function ContactsScreen() {
     }
   }, [showError]);
 
-  const loadDataRef = useRef(loadData);
-  useEffect(() => {
-    loadDataRef.current = loadData;
-  }, [loadData]);
-
-  useFocusEffect(
-    useCallback(() => { loadDataRef.current(); }, [])
-  );
+  useFocusReload(loadData);
 
   const relatedProfileIds = useMemo(() => {
     const ids = new Set<number>();
@@ -476,7 +470,15 @@ export function ContactsScreen() {
               />
               <ScrollView style={{ marginTop: spacing.md }} keyboardShouldPersistTaps="handled">
                 {searching ? (
-                  <SkeletonContactRows rows={3} label="Buscando contactos…" />
+                  <View
+                    accessible
+                    accessibilityRole="text"
+                    accessibilityLiveRegion="polite"
+                    accessibilityLabel="Buscando contactos…"
+                    style={{ alignItems: 'center', paddingVertical: spacing.lg }}
+                  >
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  </View>
                 ) : query.trim().length >= 3 && results.length === 0 ? (
                   <StatePanel state="empty" title="Sin resultados" message="Prueba con otro nombre." />
                 ) : (

@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { View, Text, Pressable, TouchableOpacity, TextInput, Modal, ScrollView } from 'react-native';
+import { View, Text, Pressable, TouchableOpacity, TextInput, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -12,8 +12,9 @@ import { GradientButton } from '../../components/ui/GradientButton';
 import { FocusFadeIn } from '../../components/ui/FocusFadeIn';
 import { typography, strokeWidth, spacing, borderRadius, layout, outlineColor } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
+import { useFocusReload } from '../../hooks/useFocusReload';
 import { formatCurrency } from '../../utils/format';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { expensesApi, earningsApi, transactionsApi, categoriesApi, walletsApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { showAlert } from '../../components/ui/AppAlert';
@@ -209,19 +210,8 @@ export function TransactionListScreen() {
     }
   };
 
-  // Keep a ref to the latest loadData so the focus effect only re-runs when
-  // the screen is actually focused (not on every filter/tab state change).
-  const loadDataRef = useRef(loadData);
-  useEffect(() => {
-    loadDataRef.current = loadData;
-  }, [loadData]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadMeta();
-      loadDataRef.current();
-    }, [loadMeta])
-  );
+  // Only refetch when the screen gains focus (not on every filter/tab change).
+  useFocusReload(loadData, loadMeta);
 
   // Reload only when the tab actually changes (skip the mount pass, the focus
   // effect already covers it) to avoid duplicate network requests.
@@ -285,7 +275,7 @@ export function TransactionListScreen() {
   const retryInitialLoad = () => {
     setInitialError(false);
     setInitialLoading(true);
-    loadDataRef.current();
+    loadData();
   };
 
   const hasActiveFilters = filterCategory !== undefined || filterWallet !== undefined || filterSortBy !== undefined;
@@ -384,16 +374,12 @@ export function TransactionListScreen() {
           accessibilityRole="text"
           accessibilityLiveRegion="polite"
           accessibilityLabel="Cargando más transacciones"
-          style={{ paddingVertical: spacing.md }}
+          style={{ alignItems: 'center', paddingVertical: spacing.md }}
         >
-          <SkeletonTransactionRows
-            rows={1}
-            tone={tab === 'earnings' ? 'earning' : tab === 'expenses' ? 'expense' : 'mixed'}
-            label="Cargando más transacciones"
-          />
+          <ActivityIndicator size="small" color={colors.primary} />
         </View>
       ) : null,
-    [loadingMore, tab]
+    [loadingMore, colors]
   );
 
   const listEmpty = useCallback(

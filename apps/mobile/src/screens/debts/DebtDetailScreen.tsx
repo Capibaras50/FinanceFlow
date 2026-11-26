@@ -122,6 +122,7 @@ export function DebtDetailScreen() {
 
   if (!debt) return null;
 
+  const receiptUrl = debt.receiptUrl;
   const isReceivable = getMyDirection(debt, myProfileId) === 'receivable';
   const amountColor = isReceivable ? colors.success : colors.error;
   const isPayable = debt.status === 'pending' || debt.status === 'overdue';
@@ -272,9 +273,9 @@ export function DebtDetailScreen() {
           </View>
         ) : null}
 
-        {debt.receiptUrl ? (
+        {receiptUrl ? (
           <TouchableOpacity
-            onPress={() => Linking.openURL(debt.receiptUrl!)}
+            onPress={() => Linking.openURL(receiptUrl)}
             accessibilityRole="button"
             accessibilityLabel="Ver comprobante"
             accessibilityHint="Abre el comprobante de la deuda"

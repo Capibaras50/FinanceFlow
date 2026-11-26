@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo, useRef, useEffect, type ComponentProps } from 'react';
+import { useState, useCallback, useMemo, type ComponentProps } from 'react';
 import { View, Text, ScrollView, Pressable, Modal, type StyleProp, type ViewStyle, type TextStyle } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FocusFadeIn } from '../../components/ui/FocusFadeIn';
@@ -11,6 +11,7 @@ import { typography, strokeWidth, spacing, borderRadius, layout, outlineColor } 
 import { Glyph } from '../../components/ui/Glyph';
 import { SkeletonLine, SkeletonMovementRows, SkeletonWalletCards } from '../../components/ui/Skeleton';
 import { useTheme } from '../../hooks/useTheme';
+import { useFocusReload } from '../../hooks/useFocusReload';
 import { formatCurrency } from '../../utils/format';
 import { walletsApi, expensesApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
@@ -86,14 +87,7 @@ export function WalletsScreen() {
     }
   }, [showError]);
 
-  const loadDataRef = useRef(loadData);
-  useEffect(() => {
-    loadDataRef.current = loadData;
-  }, [loadData]);
-
-  useFocusEffect(
-    useCallback(() => { loadDataRef.current(); }, [])
-  );
+  useFocusReload(loadData);
 
   const openCreate = () => {
     setEditWallet(null);

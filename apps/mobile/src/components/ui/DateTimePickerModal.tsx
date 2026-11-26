@@ -1,8 +1,19 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, FlatList, type ListRenderItemInfo } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  FlatList,
+  type ListRenderItemInfo,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
+} from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
+import type { ThemeColors } from '../../theme/colors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { typography, strokeWidth, spacing, borderRadius, layout } from '../../theme';
 import { GradientButton } from './GradientButton';
@@ -41,7 +52,7 @@ interface ScrollPickerProps {
   items: string[];
   selectedIndex: number;
   onIndexChange: (index: number) => void;
-  colors: any;
+  colors: ThemeColors;
 }
 
 function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPickerProps) {
@@ -59,14 +70,14 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
   );
 
   const handleMomentumScrollEnd = useCallback(
-    (e: any) => {
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       snapToNearest(e.nativeEvent.contentOffset.y);
     },
     [snapToNearest],
   );
 
   const handleScrollEndDrag = useCallback(
-    (e: any) => {
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       snapToNearest(e.nativeEvent.contentOffset.y);
     },
     [snapToNearest],
@@ -112,7 +123,7 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
   );
 
   const getItemLayout = useCallback(
-    (_: any, index: number) => ({
+    (_: ArrayLike<string> | null | undefined, index: number) => ({
       length: ITEM_HEIGHT,
       offset: ITEM_HEIGHT * index,
       index,

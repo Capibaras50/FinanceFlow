@@ -10,7 +10,7 @@ import { DateTimePickerModal } from '../../components/ui/DateTimePickerModal';
 import { showAlert } from '../../components/ui/AppAlert';
 import { categoriesApi, walletsApi, expensesApi } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
-import { getErrorMessage, formatCurrencyInput, parseCurrencyInput } from '../../utils/format';
+import { getErrorMessage, formatCurrencyInput, parsePositiveAmount } from '../../utils/format';
 import { goBackOrHome } from '../../utils/navigation';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { RootNavigationProp, RootStackParamList } from '../../navigation/types';
@@ -70,9 +70,8 @@ export function AddExpenseScreen() {
 
   const handleSave = async () => {
     if (!name || !value || !selectedCategory || !selectedWallet) return;
-    const rawValue = parseCurrencyInput(value);
-    const numValue = parseFloat(rawValue);
-    if (isNaN(numValue) || numValue <= 0) return;
+    const numValue = parsePositiveAmount(value);
+    if (numValue === null) return;
     setLoading(true);
     try {
       const dto = {
@@ -106,8 +105,9 @@ export function AddExpenseScreen() {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
+            if (!expenseId) return;
             try {
-              await expensesApi.delete(expenseId!);
+              await expensesApi.delete(expenseId);
               goBackOrHome(navigation);
             } catch (e) {
               showError(getErrorMessage(e, 'Error al eliminar gasto'));
@@ -128,9 +128,7 @@ export function AddExpenseScreen() {
     return createdAt.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) + `, ${timeStr}`;
   };
 
-  const rawValue = parseCurrencyInput(value);
-  const numValue = parseFloat(rawValue);
-  const isValueValid = !isNaN(numValue) && numValue > 0;
+  const isValueValid = parsePositiveAmount(value) !== null;
   const canSave = name && isValueValid && selectedCategory && selectedWallet;
 
   return (

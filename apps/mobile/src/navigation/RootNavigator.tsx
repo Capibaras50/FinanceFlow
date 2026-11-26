@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
-import { NavigationContainer, NavigationContainerRef, type LinkingOptions } from '@react-navigation/native';
+import {
+  DefaultTheme,
+  NavigationContainer,
+  NavigationContainerRef,
+  type LinkingOptions,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
@@ -104,8 +109,25 @@ function SplashScreen() {
 
 export function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { colors, isDark } = useTheme();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const [navReady, setNavReady] = useState(false);
+
+  // Navigation owns the canvas behind every card; without this, transitions
+  // and lazy route fallbacks expose React Navigation's default white sheet.
+  const navTheme = useMemo(() => ({
+    ...DefaultTheme,
+    dark: isDark,
+    colors: {
+      ...DefaultTheme.colors,
+      primary: colors.primarySolid,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.onSurface,
+      border: colors.outlineVariant,
+      notification: colors.error,
+    },
+  }), [colors, isDark]);
 
   // Single delivery point: only hand the shared image to the scanner when the
   // navigator is ready AND the user is logged in. If a share arrives while on
@@ -137,9 +159,13 @@ export function RootNavigator() {
     <NavigationContainer
       ref={navigationRef}
       linking={linking}
+      theme={navTheme}
       onReady={() => setNavReady(true)}
     >
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.background },
+      }}>
         {isAuthenticated ? (
           <>
             <Stack.Screen name="MainTabs" component={MainTabNavigator} />

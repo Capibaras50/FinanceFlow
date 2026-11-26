@@ -58,3 +58,9 @@ export function formatCurrencyInput(text: string): string {
 export function parseCurrencyInput(text: string): string {
   return text.replace(/,/g, '');
 }
+
+/** Parses a formatted amount; returns `null` for empty, invalid or non-positive values. */
+export function parsePositiveAmount(text: string): number | null {
+  const value = parseFloat(parseCurrencyInput(text));
+  return isNaN(value) || value <= 0 ? null : value;
+}
