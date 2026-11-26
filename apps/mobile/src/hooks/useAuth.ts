@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { Platform } from 'react-native';
 import axios from 'axios';
 import * as WebBrowser from 'expo-web-browser';
@@ -80,12 +80,14 @@ export function useAuthProvider(): AuthContextType {
     }
 
     const accessToken = await getToken();
-    await getRefreshToken();
 
     if (!accessToken) {
       setState({ user: null, isLoading: false, isAuthenticated: false });
       return;
     }
+
+    // Hydrate the refresh token only for signed-in users; a 401 retry needs it.
+    await getRefreshToken();
 
     try {
       const user = await usersApi.me();
@@ -175,5 +177,10 @@ export function useAuthProvider(): AuthContextType {
     setState(prev => ({ ...prev, user }));
   }, []);
 
-  return { ...state, login, register, loginWithGoogle, logout, refreshUser };
+  const value = useMemo<AuthContextType>(
+    () => ({ ...state, login, register, loginWithGoogle, logout, refreshUser }),
+    [state, login, register, loginWithGoogle, logout, refreshUser]
+  );
+
+  return value;
 }

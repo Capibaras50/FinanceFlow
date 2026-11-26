@@ -1,10 +1,22 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, FlatList, type ListRenderItemInfo } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  FlatList,
+  type ListRenderItemInfo,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
+} from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
-import { typography, spacing, borderRadius } from '../../theme';
+import type { ThemeColors } from '../../theme/colors';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { typography, strokeWidth, spacing, borderRadius, layout } from '../../theme';
+import { GradientButton } from './GradientButton';
 
 interface DateTimePickerModalProps {
   visible: boolean;
@@ -40,7 +52,7 @@ interface ScrollPickerProps {
   items: string[];
   selectedIndex: number;
   onIndexChange: (index: number) => void;
-  colors: any;
+  colors: ThemeColors;
 }
 
 function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPickerProps) {
@@ -58,14 +70,14 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
   );
 
   const handleMomentumScrollEnd = useCallback(
-    (e: any) => {
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       snapToNearest(e.nativeEvent.contentOffset.y);
     },
     [snapToNearest],
   );
 
   const handleScrollEndDrag = useCallback(
-    (e: any) => {
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       snapToNearest(e.nativeEvent.contentOffset.y);
     },
     [snapToNearest],
@@ -99,7 +111,7 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
             style={{
               fontSize: isSelected ? 20 : 15,
               fontWeight: isSelected ? '700' : '400',
-              color: isSelected ? colors.primary : colors.onSurfaceVariant + '55',
+              color: isSelected ? colors.primary : colors.outline,
             }}
           >
             {item}
@@ -111,7 +123,7 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
   );
 
   const getItemLayout = useCallback(
-    (_: any, index: number) => ({
+    (_: ArrayLike<string> | null | undefined, index: number) => ({
       length: ITEM_HEIGHT,
       offset: ITEM_HEIGHT * index,
       index,
@@ -130,7 +142,7 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
           height: ITEM_HEIGHT,
           backgroundColor: colors.surfaceContainerHigh,
           borderRadius: borderRadius.lg,
-          borderWidth: 1,
+          borderWidth: strokeWidth.medium,
           borderColor: colors.outlineVariant,
           zIndex: 0,
         }}
@@ -160,8 +172,8 @@ function ScrollPicker({ items, selectedIndex, onIndexChange, colors }: ScrollPic
 
 export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode = 'datetime', defaultUseNow = true }: DateTimePickerModalProps) {
   const { colors } = useTheme();
+  const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
-  const gradientColors = colors.gradient.primary;
   const isDateMode = mode === 'date';
 
   const [useNow, setUseNow] = useState(defaultUseNow);
@@ -232,8 +244,13 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode =
   const CELL_SIZE = 36;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType={reduceMotion ? 'none' : 'slide'}
+      onRequestClose={onClose}
+    >
+      <View style={{ flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' }}>
         <View
           style={{
             backgroundColor: colors.surfaceContainer,
@@ -250,22 +267,33 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode =
             <Text style={[typography.titleLg, { color: colors.onSurface }]}>
               {isDateMode ? 'Seleccionar Fecha' : 'Seleccionar Fecha y Hora'}
             </Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={22} color={colors.onSurfaceVariant} />
+            <TouchableOpacity
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar selector de fecha"
+              hitSlop={8}
+              style={{ minHeight: layout.touchTarget, minWidth: layout.touchTarget, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons accessible={false} name="close" size={22} color={colors.onSurfaceVariant} />
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
             onPress={() => setUseNow(!useNow)}
+            accessibilityRole="button"
+            accessibilityLabel={isDateMode ? 'Usar la fecha actual' : 'Usar hoy, ahora mismo'}
+            accessibilityState={{ selected: useNow }}
+            hitSlop={4}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
+              minHeight: 56,
               padding: spacing.md,
-              borderRadius: borderRadius.xl,
-              backgroundColor: useNow ? colors.primaryContainer + '15' : colors.surfaceContainerHigh,
-              borderWidth: 1,
-              borderColor: useNow ? colors.primary : 'transparent',
+              borderRadius: borderRadius.md,
+              backgroundColor: useNow ? colors.primaryContainer : colors.surfaceContainerHigh,
+              borderWidth: strokeWidth.medium,
+              borderColor: useNow ? colors.primary : colors.outlineVariant,
               marginBottom: spacing.md,
             }}
           >
@@ -295,7 +323,7 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode =
                   width: 22,
                   height: 22,
                   borderRadius: 11,
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: colors.onPrimary,
                   alignSelf: useNow ? 'flex-end' : 'flex-start',
                 }}
               />
@@ -309,11 +337,23 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode =
                   {MONTHS_ES[month]} {year}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 2 }}>
-                  <TouchableOpacity onPress={handlePrevMonth} style={{ padding: 4 }}>
-                    <Ionicons name="chevron-back" size={18} color={colors.primary} />
+                  <TouchableOpacity
+                    onPress={handlePrevMonth}
+                    accessibilityRole="button"
+                    accessibilityLabel="Mes anterior"
+                    hitSlop={8}
+                    style={{ minHeight: layout.touchTarget, minWidth: layout.touchTarget, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Ionicons accessible={false} name="chevron-back" size={18} color={colors.primary} />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleNextMonth} style={{ padding: 4 }}>
-                    <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+                  <TouchableOpacity
+                    onPress={handleNextMonth}
+                    accessibilityRole="button"
+                    accessibilityLabel="Mes siguiente"
+                    hitSlop={8}
+                    style={{ minHeight: layout.touchTarget, minWidth: layout.touchTarget, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Ionicons accessible={false} name="chevron-forward" size={18} color={colors.primary} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -332,10 +372,14 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode =
                     {day !== null ? (
                       <TouchableOpacity
                         onPress={() => setSelectedDay(day)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Día ${day}`}
+                        accessibilityState={{ selected: selectedDay === day }}
+                        hitSlop={2}
                         style={{
                           width: CELL_SIZE,
                           height: CELL_SIZE,
-                          borderRadius: CELL_SIZE / 2,
+                          borderRadius: borderRadius.full,
                           alignItems: 'center',
                           justifyContent: 'center',
                           backgroundColor: selectedDay === day ? colors.primary : 'transparent',
@@ -345,7 +389,7 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode =
                           style={{
                             fontSize: 13,
                             fontWeight: selectedDay === day ? '700' : '400',
-                            color: selectedDay === day ? '#FFFFFF' : colors.onSurface,
+                            color: selectedDay === day ? colors.onPrimary : colors.onSurface,
                           }}
                         >
                           {day}
@@ -388,28 +432,40 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode =
                 <View style={{ gap: 6, marginLeft: spacing.sm }}>
                   <TouchableOpacity
                     onPress={() => setAmpm('AM')}
+                    accessibilityRole="button"
+                    accessibilityLabel="AM"
+                    accessibilityState={{ selected: ampm === 'AM' }}
+                    hitSlop={4}
                     style={{
+                      minHeight: layout.touchTarget,
                       paddingHorizontal: spacing.md,
                       paddingVertical: spacing.sm,
                       borderRadius: borderRadius.md,
-                      backgroundColor: ampm === 'AM' ? colors.primary + '33' : colors.surfaceContainerHigh,
-                      borderWidth: 1,
-                      borderColor: ampm === 'AM' ? colors.primary : 'transparent',
+                      backgroundColor: ampm === 'AM' ? colors.primaryContainer : colors.surfaceContainerHigh,
+                      borderWidth: strokeWidth.medium,
+                      borderColor: ampm === 'AM' ? colors.primary : colors.outlineVariant,
                       alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
                     <Text style={{ fontSize: 13, fontWeight: '600', color: ampm === 'AM' ? colors.primary : colors.onSurfaceVariant }}>AM</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setAmpm('PM')}
+                    accessibilityRole="button"
+                    accessibilityLabel="PM"
+                    accessibilityState={{ selected: ampm === 'PM' }}
+                    hitSlop={4}
                     style={{
+                      minHeight: layout.touchTarget,
                       paddingHorizontal: spacing.md,
                       paddingVertical: spacing.sm,
                       borderRadius: borderRadius.md,
-                      backgroundColor: ampm === 'PM' ? colors.primary + '33' : colors.surfaceContainerHigh,
-                      borderWidth: 1,
-                      borderColor: ampm === 'PM' ? colors.primary : 'transparent',
+                      backgroundColor: ampm === 'PM' ? colors.primaryContainer : colors.surfaceContainerHigh,
+                      borderWidth: strokeWidth.medium,
+                      borderColor: ampm === 'PM' ? colors.primary : colors.outlineVariant,
                       alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
                     <Text style={{ fontSize: 13, fontWeight: '600', color: ampm === 'PM' ? colors.primary : colors.onSurfaceVariant }}>PM</Text>
@@ -419,24 +475,7 @@ export function DateTimePickerModal({ visible, value, onClose, onConfirm, mode =
             </View>
             )}
 
-            <TouchableOpacity onPress={handleConfirm} activeOpacity={0.8} style={{ marginTop: spacing.xs }}>
-              <LinearGradient
-                colors={gradientColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  height: 48,
-                  borderRadius: borderRadius.xl,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: spacing.sm,
-                }}
-              >
-                <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                <Text style={[typography.bodyMd, { color: '#FFFFFF', fontWeight: '700' }]}>Confirmar</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            <GradientButton title="Confirmar" onPress={handleConfirm} />
           </ScrollView>
         </View>
       </View>

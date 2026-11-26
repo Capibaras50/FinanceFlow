@@ -1,9 +1,6 @@
 import { createContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import { getThemeColors, getSystemThemeMode, type ThemeMode, type ThemeColors } from '../theme/colors';
-
-const THEME_STORAGE_KEY = 'finance_flow_theme';
+import { getInitialThemeMode, isThemeHydratedSync, readThemeMode, writeThemeMode } from '../services/themeStorage';
 
 interface ThemeContextType {
   mode: ThemeMode;
@@ -11,38 +8,31 @@ interface ThemeContextType {
   setMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
   isDark: boolean;
+  /** Native waits for the SecureStore read before hiding the splash. */
+  isHydrated: boolean;
 }
 
 export const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const systemScheme = useColorScheme();
-  const [mode, setModeState] = useState<ThemeMode>('dark');
+  const [mode, setModeState] = useState<ThemeMode>(getInitialThemeMode);
+  const [isHydrated, setIsHydrated] = useState(isThemeHydratedSync);
 
   useEffect(() => {
-    loadSavedTheme();
+    let active = true;
+    readThemeMode().then((saved) => {
+      if (!active) return;
+      setModeState(saved ?? getSystemThemeMode());
+      setIsHydrated(true);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
-
-  const loadSavedTheme = async () => {
-    try {
-      const saved = await SecureStore.getItemAsync(THEME_STORAGE_KEY);
-      if (saved === 'light' || saved === 'dark') {
-        setModeState(saved);
-        return;
-      }
-    } catch (e) {
-      console.warn('ThemeContext: error reading saved theme', e);
-    }
-    setModeState(getSystemThemeMode());
-  };
 
   const setMode = useCallback(async (newMode: ThemeMode) => {
     setModeState(newMode);
-    try {
-      await SecureStore.setItemAsync(THEME_STORAGE_KEY, newMode);
-    } catch (e) {
-      console.warn('ThemeContext: error saving theme', e);
-    }
+    await writeThemeMode(newMode);
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -57,7 +47,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setMode,
     toggleTheme,
     isDark: mode === 'dark',
-  }), [mode, colors, setMode, toggleTheme]);
+    isHydrated,
+  }), [mode, colors, setMode, toggleTheme, isHydrated]);
 
   return (
     <ThemeContext.Provider value={value}>

@@ -1,20 +1,56 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { useState, useCallback, useMemo, type ComponentProps } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { GlassCard } from '../../components/ui/GlassCard';
+import { useNavigation } from '@react-navigation/native';
 import { TransactionCard } from '../../components/ui/TransactionCard';
 import { FocusFadeIn } from '../../components/ui/FocusFadeIn';
-import { typography, spacing, borderRadius } from '../../theme';
+import { BalanceHero } from '../../components/ui/BalanceHero';
+import { Glyph, type GlyphTone } from '../../components/ui/Glyph';
+import { SkeletonDebtSummary, SkeletonHero, SkeletonTransactionRows } from '../../components/ui/Skeleton';
+import { typography, spacing, borderRadius, layout, strokeWidth, outlineColor } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
+import { useFocusReload } from '../../hooks/useFocusReload';
 import { formatCurrency } from '../../utils/format';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { expensesApi, earningsApi, walletsApi, debtsApi, contactsApi } from '../../services/api';
 import type { RootNavigationProp } from '../../navigation/types';
 import type { Expense, Earning, WalletBalance, DebtSummary } from '@finance-flow/shared-types';
+
+type PressableBaseProps = ComponentProps<typeof Pressable>;
+
+interface LedgerPressableProps extends Omit<PressableBaseProps, 'style' | 'onFocus' | 'onBlur'> {
+  style?: StyleProp<ViewStyle>;
+  onFocus?: PressableBaseProps['onFocus'];
+  onBlur?: PressableBaseProps['onBlur'];
+}
+
+/** Press/focus feedback that keeps the web keyboard ring visible. */
+function LedgerPressable({ style, onFocus, onBlur, ...rest }: LedgerPressableProps) {
+  const { colors } = useTheme();
+  const [focused, setFocused] = useState(false);
+  return (
+    <Pressable
+      {...rest}
+      onFocus={(event) => { setFocused(true); onFocus?.(event); }}
+      onBlur={(event) => { setFocused(false); onBlur?.(event); }}
+      style={({ pressed }) => [
+        style,
+        pressed ? { opacity: 0.82, transform: [{ scale: 0.985 }] } : undefined,
+        focused ? outlineColor(colors.primary) : undefined,
+      ]}
+    >
+      {rest.children}
+    </Pressable>
+  );
+}
 
 export function HomeScreen() {
   const navigation = useNavigation<RootNavigationProp>();
@@ -27,6 +63,7 @@ export function HomeScreen() {
   const [balanceData, setBalanceData] = useState<WalletBalance[]>([]);
   const [debtSummary, setDebtSummary] = useState<DebtSummary | null>(null);
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     try {
@@ -44,28 +81,16 @@ export function HomeScreen() {
       setPendingRequests(pendingData.count);
     } catch {
       showError('Error al cargar datos del inicio');
+    } finally {
+      setLoading(false);
     }
   }, [showError]);
 
-  const loadDataRef = useRef(loadData);
-  useEffect(() => {
-    loadDataRef.current = loadData;
-  }, [loadData]);
-
-  useFocusEffect(
-    useCallback(() => { loadDataRef.current(); }, [])
-  );
+  useFocusReload(loadData);
 
   const totalEarnings = useMemo(() => balanceData.reduce((sum, w) => sum + Number(w.totalEarnings), 0), [balanceData]);
   const totalExpenses = useMemo(() => balanceData.reduce((sum, w) => sum + Number(w.totalExpenses), 0), [balanceData]);
   const balance = useMemo(() => totalEarnings - totalExpenses, [totalEarnings, totalExpenses]);
-  const { incomeBarWidth, expenseBarWidth } = useMemo(() => {
-    const maxVal = Math.max(totalEarnings, totalExpenses, 1);
-    return {
-      incomeBarWidth: (totalEarnings / maxVal) * 100,
-      expenseBarWidth: (totalExpenses / maxVal) * 100,
-    };
-  }, [totalEarnings, totalExpenses]);
 
   const recentTransactions = useMemo(() =>
     [...expenses.map(e => ({ ...e, _type: 'expense' as const })),
@@ -83,296 +108,210 @@ export function HomeScreen() {
   }, [debtSummary]);
   const hasOutstandingDebts = receivableDebtsTotal > 0 || payableDebtsTotal > 0;
 
+  const quickActions: Array<{
+    label: string;
+    icon: 'add-circle' | 'remove-circle' | 'qr-code' | 'sparkles';
+    tone: GlyphTone;
+    accessibilityLabel: string;
+    onPress: () => void;
+  }> = [
+    { label: 'Ingresos', icon: 'add-circle', tone: 'success', accessibilityLabel: 'Registrar ingreso', onPress: () => navigation.navigate('AddEarning') },
+    { label: 'Gastos', icon: 'remove-circle', tone: 'error', accessibilityLabel: 'Registrar gasto', onPress: () => navigation.navigate('AddExpense') },
+    { label: 'Escanear', icon: 'qr-code', tone: 'primary', accessibilityLabel: 'Escanear recibo', onPress: () => navigation.navigate('ReceiptScanner') },
+    { label: 'IA Chat', icon: 'sparkles', tone: 'info', accessibilityLabel: 'Abrir chat con IA', onPress: () => navigation.navigate('Chat') },
+  ];
+
+  const divider = { height: strokeWidth.thick, backgroundColor: colors.strokeStrong, borderRadius: strokeWidth.thick };
+
   return (
     <FocusFadeIn>
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: spacing['2xl'] }}
-      >
-        <View style={{ paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.container, gap: spacing.lg }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-              <LinearGradient
-                colors={colors.gradient.primary}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 14,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="wallet" size={22} color="#FFFFFF" />
-              </LinearGradient>
-              <View>
-                <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
-                  Finance Flow
-                </Text>
-                <Text style={[typography.titleMd, { color: colors.onSurface }]}>
-                  ¡Hola, {user?.profile?.name || 'Usuario'}!
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Contacts')}
-              accessibilityRole="button"
-              accessibilityLabel={
-                pendingRequests > 0
-                  ? `Notificaciones, ${pendingRequests} solicitudes pendientes`
-                  : 'Notificaciones'
-              }
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 14,
-                backgroundColor: colors.surfaceContainerHigh,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: colors.outlineVariant + '60',
-              }}
-            >
-              <Ionicons name="notifications" size={22} color={colors.primary} />
-              {pendingRequests > 0 && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: -4,
-                    right: -4,
-                    minWidth: 18,
-                    height: 18,
-                    borderRadius: 9,
-                    backgroundColor: colors.error,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingHorizontal: 4,
-                    borderWidth: 2,
-                    borderColor: colors.background,
-                  }}
-                >
-                  <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>
-                    {pendingRequests > 9 ? '9+' : pendingRequests}
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: spacing['2xl'] }}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth: layout.contentMaxWidth,
+              alignSelf: 'center',
+              paddingTop: insets.top + spacing.md,
+              paddingHorizontal: spacing.container,
+              gap: spacing.xl,
+            }}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                <Glyph name="wallet" tone="primary" size={48} />
+                <View>
+                  <Text style={[typography.labelLg, { color: colors.onSurfaceVariant }]}>
+                    Finance Flow
+                  </Text>
+                  <Text style={[typography.headlineSm, { color: colors.onSurface }]}>
+                    ¡Hola, {user?.profile?.name || 'Usuario'}!
                   </Text>
                 </View>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <GlassCard glowColor={colors.primary}>
-            <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
-              Saldo Total
-            </Text>
-            <Text style={[typography.displayMd, { color: colors.onSurface, marginTop: spacing.xs }]}>
-              {formatCurrency(balance)}
-            </Text>
-          </GlassCard>
-
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('AddEarning')}
-              accessibilityRole="button"
-              accessibilityLabel="Registrar ingreso"
-              style={{ flex: 1, alignItems: 'center', gap: spacing.xs }}
-            >
-              <LinearGradient
-                colors={[colors.success + '25', colors.success + '10']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 16,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: colors.success + '30',
-                }}
-              >
-                <Ionicons name="add-circle" size={28} color={colors.success} />
-              </LinearGradient>
-              <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Ingresos</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('AddExpense')}
-              accessibilityRole="button"
-              accessibilityLabel="Registrar gasto"
-              style={{ flex: 1, alignItems: 'center', gap: spacing.xs }}
-            >
-              <LinearGradient
-                colors={[colors.error + '25', colors.error + '10']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 16,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: colors.error + '30',
-                }}
-              >
-                <Ionicons name="remove-circle" size={28} color={colors.error} />
-              </LinearGradient>
-              <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Gastos</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('ReceiptScanner')}
-              accessibilityRole="button"
-              accessibilityLabel="Escanear recibo"
-              style={{ flex: 1, alignItems: 'center', gap: spacing.xs }}
-            >
-              <View
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 16,
-                  backgroundColor: colors.primary + '15',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: colors.primary + '30',
-                }}
-              >
-                <Ionicons name="qr-code" size={28} color={colors.primary} />
               </View>
-              <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Escanear</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Chat')}
-              accessibilityRole="button"
-              accessibilityLabel="Abrir chat con IA"
-              style={{ flex: 1, alignItems: 'center', gap: spacing.xs }}
-            >
-              <View
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 16,
-                  backgroundColor: colors.secondary + '15',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: colors.secondary + '30',
-                }}
+              <LedgerPressable
+                onPress={() => navigation.navigate('Contacts')}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  pendingRequests > 0
+                    ? `Notificaciones, ${pendingRequests} solicitudes pendientes`
+                    : 'Notificaciones'
+                }
+                hitSlop={8}
+                style={{ borderRadius: borderRadius.md }}
               >
-                <Ionicons name="sparkles" size={28} color={colors.secondary} />
-              </View>
-              <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>IA Chat</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
-              <Text style={[typography.titleLg, { color: colors.onSurface }]}>
-                Deudas Pendientes
-              </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Debts')}>
-                <Text style={[typography.bodySm, { color: colors.primary }]}>Ver todas</Text>
-              </TouchableOpacity>
+                <Glyph
+                  name="notifications"
+                  tone="primary"
+                  size={48}
+                  badge={pendingRequests > 0 ? pendingRequests : undefined}
+                />
+              </LedgerPressable>
             </View>
-            <GlassCard>
-              {hasOutstandingDebts ? (
-                <View style={{ flexDirection: 'row' }}>
+
+            {/* The single orchestrated moment: a safe door that turns and counts. */}
+            {loading ? (
+              <SkeletonHero label="Cargando saldo" />
+            ) : (
+              <BalanceHero balance={balance} income={totalEarnings} expenses={totalExpenses} />
+            )}
+
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {quickActions.map((action) => (
+                <LedgerPressable
+                  key={action.label}
+                  onPress={action.onPress}
+                  accessibilityRole="button"
+                  accessibilityLabel={action.accessibilityLabel}
+                  style={{ flex: 1, alignItems: 'center', gap: spacing.sm, minHeight: 74 }}
+                >
+                  <Glyph name={action.icon} tone={action.tone} size={48} />
+                  <Text style={[typography.labelMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
+                    {action.label}
+                  </Text>
+                </LedgerPressable>
+              ))}
+            </View>
+
+            <View style={divider} />
+
+            <View style={{ gap: spacing.md }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={[typography.headlineSm, { color: colors.onSurface }]}>
+                  Deudas pendientes
+                </Text>
+                <LedgerPressable
+                  onPress={() => navigation.navigate('Debts')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver todas las deudas"
+                  hitSlop={8}
+                >
+                  <Text style={[typography.labelLg, { color: colors.primary }]}>Ver todas</Text>
+                </LedgerPressable>
+              </View>
+              {loading ? (
+                <SkeletonDebtSummary label="Cargando deudas" />
+              ) : hasOutstandingDebts ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'stretch',
+                    backgroundColor: colors.surface,
+                    borderWidth: strokeWidth.medium,
+                    borderColor: colors.stroke,
+                    borderRadius: borderRadius.md,
+                    padding: spacing.md,
+                  }}
+                >
                   <View style={{ flex: 1, gap: spacing.xs }}>
-                    <Text style={[typography.labelMd, { color: colors.success }]}>Me deben</Text>
-                    <Text style={[typography.headlineMd, { color: colors.success }]}>
+                    <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Me deben</Text>
+                    <Text style={[typography.titleLg, { color: colors.success, fontVariant: ['tabular-nums'] }]}>
                       {formatCurrency(receivableDebtsTotal)}
                     </Text>
                   </View>
-                  <View
-                    style={{
-                      width: 1,
-                      backgroundColor: colors.outlineVariant + '60',
-                      marginHorizontal: spacing.lg,
-                    }}
-                  />
+                  <View style={{ width: strokeWidth.medium, backgroundColor: colors.strokeStrong, marginHorizontal: spacing.lg }} />
                   <View style={{ flex: 1, gap: spacing.xs }}>
-                    <Text style={[typography.labelMd, { color: colors.error }]}>Debo</Text>
-                    <Text style={[typography.headlineMd, { color: colors.error }]}>
+                    <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Debo</Text>
+                    <Text style={[typography.titleLg, { color: colors.error, fontVariant: ['tabular-nums'] }]}>
                       {formatCurrency(payableDebtsTotal)}
                     </Text>
                   </View>
                 </View>
               ) : (
-                <TouchableOpacity
+                <LedgerPressable
                   onPress={() => navigation.navigate('AddDebt')}
-                  style={{ alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Crear deuda"
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: layout.touchTarget }}
                 >
-                  <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>
-                    No tienes deudas pendientes
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                    <Ionicons name="add-circle" size={18} color={colors.primary} />
+                  <Glyph name="add-circle" tone="primary" size={44} />
+                  <View>
+                    <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>
+                      No tienes deudas pendientes
+                    </Text>
                     <Text style={[typography.labelLg, { color: colors.primary }]}>Crear deuda</Text>
                   </View>
-                </TouchableOpacity>
+                </LedgerPressable>
               )}
-            </GlassCard>
-          </View>
-
-          <View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
-              <Text style={[typography.titleLg, { color: colors.onSurface }]}>
-                Resumen del Mes
-              </Text>
             </View>
-            <GlassCard>
-              <View style={{ gap: spacing.md }}>
-                <View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs }}>
-                    <Text style={[typography.bodySm, { color: colors.success }]}>Ingresos</Text>
-                    <Text style={[typography.bodySm, { color: colors.success }]}>{formatCurrency(totalEarnings)}</Text>
-                  </View>
-                  <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.surfaceContainerHighest, overflow: 'hidden' }}>
-                    <View style={{ height: '100%', width: `${incomeBarWidth}%`, borderRadius: 4, backgroundColor: colors.success, opacity: 0.7 }} />
-                  </View>
-                </View>
-                <View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs }}>
-                    <Text style={[typography.bodySm, { color: colors.error }]}>Gastos</Text>
-                    <Text style={[typography.bodySm, { color: colors.error }]}>{formatCurrency(totalExpenses)}</Text>
-                  </View>
-                  <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.surfaceContainerHighest, overflow: 'hidden' }}>
-                    <View style={{ height: '100%', width: `${expenseBarWidth}%`, borderRadius: 4, backgroundColor: colors.error, opacity: 0.7 }} />
-                  </View>
-                </View>
-              </View>
-            </GlassCard>
-          </View>
 
-          <View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
-              <Text style={[typography.titleLg, { color: colors.onSurface }]}>
-                Últimas Transacciones
-              </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'Transactions' })}>
-                <Text style={[typography.bodySm, { color: colors.primary }]}>Ver todo</Text>
-              </TouchableOpacity>
-            </View>
-            {recentTransactions.length === 0 ? (
-              <GlassCard>
-                <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
-                  No hay transacciones aún
+            <View style={divider} />
+
+            <View style={{ gap: spacing.md }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={[typography.headlineSm, { color: colors.onSurface }]}>
+                  Últimas transacciones
                 </Text>
-              </GlassCard>
-            ) : (
-              recentTransactions.map((t, i) => (
-                <TouchableOpacity
-                  key={t.id}
-                  onPress={() => navigation.navigate('TransactionDetail', { transactionId: t.id, type: t._type })}
+                <LedgerPressable
+                  onPress={() => navigation.navigate('MainTabs', { screen: 'Transactions' })}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver todas las transacciones"
+                  hitSlop={8}
                 >
-                  <TransactionCard transaction={t} type={t._type} />
-                </TouchableOpacity>
-              ))
-            )}
+                  <Text style={[typography.labelLg, { color: colors.primary }]}>Ver todo</Text>
+                </LedgerPressable>
+              </View>
+              {loading ? (
+                <SkeletonTransactionRows rows={5} tone="mixed" label="Cargando transacciones" />
+              ) : recentTransactions.length === 0 ? (
+                <View
+                  accessible
+                  accessibilityRole="text"
+                  style={{
+                    alignItems: 'center',
+                    paddingVertical: spacing.xl,
+                    borderRadius: borderRadius.md,
+                    borderWidth: strokeWidth.medium,
+                    borderColor: colors.stroke,
+                    backgroundColor: colors.surface,
+                  }}
+                >
+                  <Glyph name="receipt-outline" tone="neutral" size={48} />
+                  <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.md }]}>
+                    No hay transacciones aún
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ gap: spacing.sm }}>
+                  {recentTransactions.map((t) => (
+                    <LedgerPressable
+                      key={t.id}
+                      onPress={() => navigation.navigate('TransactionDetail', { transactionId: t.id, type: t._type })}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Ver detalle de ${t.name}`}
+                    >
+                      <TransactionCard transaction={t} type={t._type} />
+                    </LedgerPressable>
+                  ))}
+                </View>
+              )}
+            </View>
           </View>
-        </View>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
     </FocusFadeIn>
   );
 }

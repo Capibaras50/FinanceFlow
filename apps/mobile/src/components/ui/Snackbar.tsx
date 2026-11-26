@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { Text, StyleSheet, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { typography, spacing, borderRadius } from '../../theme';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { typography, strokeWidth, spacing, borderRadius, motion } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 type SnackbarType = 'error' | 'success';
 
@@ -15,14 +16,27 @@ interface SnackbarProps {
   duration?: number;
 }
 
-export function Snackbar({ message, type = 'error', visible, onDismiss, duration = 3500 }: SnackbarProps) {
+export function Snackbar({
+  message,
+  type = 'error',
+  visible,
+  onDismiss,
+  duration = 3500,
+}: SnackbarProps) {
   const { colors } = useTheme();
+  const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const opacity = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onDismissRef = useRef(onDismiss);
 
-  const bgColor = type === 'error' ? colors.error : colors.success;
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
+
+  const accent = type === 'error' ? colors.error : colors.success;
   const iconName = type === 'error' ? 'alert-circle' : 'checkmark-circle';
+  const animationDuration = reduceMotion ? 0 : motion.press;
 
   useEffect(() => {
     if (visible) {
@@ -30,36 +44,43 @@ export function Snackbar({ message, type = 'error', visible, onDismiss, duration
       opacity.setValue(0);
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 250,
+        duration: animationDuration,
         useNativeDriver: true,
       }).start();
       timerRef.current = setTimeout(() => {
         Animated.timing(opacity, {
           toValue: 0,
-          duration: 250,
+          duration: animationDuration,
           useNativeDriver: true,
-        }).start(() => onDismiss());
+        }).start(() => onDismissRef.current());
       }, duration);
     }
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [visible]);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [visible, duration, animationDuration, opacity]);
 
   if (!visible) return null;
 
   return (
     <Animated.View
+      accessible
+      accessibilityRole={type === 'error' ? 'alert' : 'text'}
+      accessibilityLiveRegion="polite"
+      accessibilityLabel={message}
       style={[
         styles.container,
         {
           opacity,
-          backgroundColor: bgColor,
+          backgroundColor: colors.surfaceContainerHighest,
+          borderColor: accent,
           bottom: insets.bottom + spacing.md,
           marginHorizontal: spacing.container,
         },
       ]}
     >
-      <Ionicons name={iconName} size={20} color="#FFFFFF" />
-      <Text style={[typography.bodyMd, styles.text]}>{message}</Text>
+      <Ionicons accessible={false} name={iconName} size={20} color={accent} />
+      <Text style={[typography.bodyMd, styles.text, { color: colors.onSurface }]}>{message}</Text>
     </Animated.View>
   );
 }
@@ -72,18 +93,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: spacing.md,
+    minHeight: 48,
+    paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    borderRadius: borderRadius.md,
+    borderWidth: strokeWidth.medium,
     zIndex: 9999,
   },
   text: {
-    color: '#FFFFFF',
     flex: 1,
   },
 });

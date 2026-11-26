@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { GlassCard } from './GlassCard';
 import { Avatar } from './Avatar';
 import { typography, spacing } from '../../theme';
@@ -15,15 +15,22 @@ interface ContactCardProps {
   onDelete?: () => void;
 }
 
-export const ContactCard = memo(function ContactCard({ profile, subtitle, onPress, onLongPress, onDelete }: ContactCardProps) {
+export const ContactCard = memo(function ContactCard({
+  profile,
+  subtitle,
+  onPress,
+  onLongPress,
+  onDelete,
+}: ContactCardProps) {
   const { colors } = useTheme();
   return (
     <TouchableOpacity
       onPress={onPress}
       onLongPress={onLongPress}
-      activeOpacity={0.7}
+      activeOpacity={0.85}
       accessibilityRole="button"
       accessibilityLabel={subtitle ? `${profile.name}, ${subtitle}` : profile.name}
+      accessibilityHint="Toca para ver el detalle del contacto"
     >
       <GlassCard style={{ marginBottom: spacing.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
@@ -44,12 +51,13 @@ export const ContactCard = memo(function ContactCard({ profile, subtitle, onPres
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel={`Eliminar a ${profile.name}`}
-              style={{ padding: spacing.xs }}
+              accessibilityHint="Elimina este contacto de tu lista"
+              style={{ minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Ionicons name="trash-outline" size={20} color={colors.error} />
+              <Ionicons accessible={false} name="trash-outline" size={20} color={colors.error} />
             </TouchableOpacity>
           )}
-          <Ionicons name="chevron-forward" size={18} color={colors.onSurfaceVariant} />
+          <Ionicons accessible={false} name="chevron-forward" size={18} color={colors.onSurfaceVariant} />
         </View>
       </GlassCard>
     </TouchableOpacity>

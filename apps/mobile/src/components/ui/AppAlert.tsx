@@ -1,17 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  Pressable,
-  Platform,
-  Alert,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { Modal, View, Text, TouchableOpacity, Pressable, Platform, Alert, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
-import { typography, borderRadius, spacing } from '../../theme';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { typography, strokeWidth, borderRadius, spacing, layout } from '../../theme';
 
 interface AlertButton {
   text: string;
@@ -55,6 +46,7 @@ export function showAlert(config: AlertConfig) {
 
 export function AppAlertProvider({ children }: { children: React.ReactNode }) {
   const { colors } = useTheme();
+  const reduceMotion = useReducedMotion();
   const [visible, setVisible] = useState(false);
   const [config, setConfig] = useState<AlertConfig | null>(null);
 
@@ -67,6 +59,8 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
     globalShow = show;
   }, [show]);
 
+  const contextValue = useMemo(() => ({ show }), [show]);
+
   const handlePress = (btn: AlertButton) => {
     setVisible(false);
     btn.onPress?.();
@@ -75,18 +69,18 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
   if (!config) return <>{children}</>;
 
   return (
-    <AppAlertContext.Provider value={{ show }}>
+    <AppAlertContext.Provider value={contextValue}>
       {children}
       <Modal
         visible={visible}
         transparent
-        animationType="fade"
+        animationType={reduceMotion ? 'none' : 'fade'}
         onRequestClose={() => setVisible(false)}
       >
         <Pressable
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            backgroundColor: colors.scrim,
             justifyContent: 'center',
             alignItems: 'center',
             padding: spacing.lg,
@@ -94,24 +88,22 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
           onPress={() => setVisible(false)}
         >
           <Pressable
+            accessibilityRole="alert"
+            accessibilityLabel={config.title}
             style={{
-              backgroundColor: colors.surfaceContainerHigh,
-              borderRadius: borderRadius.xl,
-              borderWidth: 1,
-              borderColor: colors.outlineVariant + '60',
+              backgroundColor: colors.surface,
+              borderRadius: borderRadius.lg,
+              borderWidth: strokeWidth.medium,
+              borderColor: colors.outline,
               width: '100%',
               maxWidth: 340,
-              shadowColor: colors.primary,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.2,
-              shadowRadius: 16,
-              elevation: 8,
               overflow: 'hidden',
             }}
             onPress={(e) => e.stopPropagation()}
           >
             <View style={{ padding: spacing.lg }}>
               <Text
+                accessibilityRole="header"
                 style={[
                   typography.titleLg,
                   { color: colors.onSurface, marginBottom: spacing.xs },
@@ -133,8 +125,8 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
 
             <View
               style={{
-                borderTopWidth: 1,
-                borderTopColor: colors.outlineVariant + '40',
+                borderTopWidth: strokeWidth.medium,
+                borderTopColor: colors.outlineVariant,
                 flexDirection: config.buttons.length > 2 ? 'column' : 'row',
                 justifyContent: 'flex-end',
               }}
@@ -147,22 +139,30 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
                   <TouchableOpacity
                     key={i}
                     onPress={() => handlePress(btn)}
+                    accessibilityRole="button"
+                    accessibilityLabel={btn.text}
+                    accessibilityHint={
+                      isDestructive ? 'Esta acción no se puede deshacer' : undefined
+                    }
+                    hitSlop={4}
                     style={{
-                      paddingVertical: 14,
-                      paddingHorizontal: 20,
+                      minHeight: layout.touchTarget,
+                      justifyContent: 'center',
+                      paddingVertical: spacing.sm,
+                      paddingHorizontal: spacing.lg,
                       ...(isStacked
                         ? {
                             width: '100%',
                             borderTopWidth: i > 0 ? 1 : 0,
-                            borderTopColor: colors.outlineVariant + '40',
+                            borderTopColor: colors.outlineVariant,
                           }
                         : {
                             flex: isCancel ? 1 : undefined,
                             borderLeftWidth: i > 0 ? 1 : 0,
-                            borderLeftColor: colors.outlineVariant + '40',
+                            borderLeftColor: colors.outlineVariant,
                           }),
                     }}
-                    activeOpacity={0.6}
+                    activeOpacity={0.85}
                   >
                     <Text
                       style={[

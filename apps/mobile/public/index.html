@@ -5,7 +5,11 @@
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
     <title>%WEB_TITLE%</title>
-    <meta name="description" content="Finance Flow - Controla tus gastos, ingresos y deudas desde cualquier dispositivo." />
+    <!-- Private, authenticated financial app: never index user data or auth screens. -->
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet" />
+    <meta name="color-scheme" content="dark light" />
+    <!-- description/theme-color are injected from app.json to avoid duplicate tags. -->
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
@@ -13,6 +17,20 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Finance Flow" />
+    <!-- Apply the saved theme before React mounts so a reload never flashes dark. -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('finance_flow_theme');
+          var system = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          var mode = saved === 'light' || saved === 'dark' ? saved : system;
+          document.documentElement.dataset.theme = mode;
+          document.documentElement.style.colorScheme = mode;
+          var themeMeta = document.querySelector('meta[name="theme-color"]');
+          if (themeMeta) themeMeta.content = mode === 'light' ? '#e9efec' : '#0b1326';
+        } catch (e) {}
+      })();
+    </script>
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
       /* These styles make the body full-height */
@@ -30,13 +48,26 @@
         height: 100%;
         flex: 1;
       }
+      /* Dark default prevents a white first paint before the inline theme script. */
+      html,
+      body,
+      #root {
+        background: #0b1326;
+      }
+      html[data-theme='dark'] body,
+      html[data-theme='dark'] #root {
+        background: #0b1326;
+      }
+      html[data-theme='light'] body,
+      html[data-theme='light'] #root {
+        background: #e9efec;
+      }
     </style>
   </head>
 
   <body>
-    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
     <noscript>
-      You need to enable JavaScript to run this app.
+      Necesitas habilitar JavaScript para usar esta aplicación.
     </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>

@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Animated } from 'react-native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Markdown from 'react-native-markdown-display';
-import { typography, spacing, borderRadius } from '../../theme';
+import { typography, strokeWidth, spacing, borderRadius, layout, motion } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
-import { GlassCard } from '../../components/ui/GlassCard';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { SkeletonChatBubble, SkeletonScreen } from '../../components/ui/Skeleton';
+import { Glyph } from '../../components/ui/Glyph';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { useNavigation } from '@react-navigation/native';
 import type { RootNavigationProp } from '../../navigation/types';
@@ -17,12 +18,22 @@ import type { ChatMessage } from '@finance-flow/shared-types';
 
 function TypingIndicator() {
   const { colors } = useTheme();
+  const reduceMotion = useReducedMotion();
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (reduceMotion) {
+      // No looping motion and no staggered dots: show the static state at once.
+      fadeAnim.setValue(1);
+      dot1.setValue(0);
+      dot2.setValue(0);
+      dot3.setValue(0);
+      return;
+    }
+
     const bounce = (dot: Animated.Value, delay: number) =>
       Animated.loop(
         Animated.sequence([
@@ -33,7 +44,7 @@ function TypingIndicator() {
         ])
       );
 
-    const fade = Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true });
+    const fade = Animated.timing(fadeAnim, { toValue: 1, duration: motion.reveal, useNativeDriver: true });
     fade.start();
     const b1 = bounce(dot1, 0);
     const b2 = bounce(dot2, 200);
@@ -42,16 +53,30 @@ function TypingIndicator() {
     b2.start();
     b3.start();
     return () => { fade.stop(); b1.stop(); b2.stop(); b3.stop(); };
-  }, [dot1, dot2, dot3, fadeAnim]);
+  }, [dot1, dot2, dot3, fadeAnim, reduceMotion]);
 
   return (
     <Animated.View
-      style={{ opacity: fadeAnim, alignSelf: 'flex-start', maxWidth: '80%', marginBottom: spacing.md, marginLeft: spacing.container }}
+      style={{
+        opacity: fadeAnim,
+        alignSelf: 'flex-start',
+        maxWidth: '80%',
+        marginBottom: spacing.md,
+        marginLeft: spacing.container,
+      }}
       accessibilityLabel="El asistente está escribiendo"
       accessibilityLiveRegion="polite"
     >
-      <GlassCard glowColor={colors.primary} style={{ borderColor: `${colors.primary}40`, paddingHorizontal: spacing.md }}>
-        <View style={{ flexDirection: 'row', gap: 6, paddingVertical: spacing.xs }}>
+      <View
+        style={{
+          paddingHorizontal: spacing.md,
+          backgroundColor: colors.surfaceContainerHigh,
+          borderRadius: borderRadius.lg,
+          borderWidth: strokeWidth.medium,
+          borderColor: colors.outlineVariant,
+        }}
+      >
+        <View accessible={false} style={{ flexDirection: 'row', gap: 6, paddingVertical: spacing.xs }}>
           {[dot1, dot2, dot3].map((dot, i) => (
             <Animated.View
               key={i}
@@ -60,12 +85,12 @@ function TypingIndicator() {
                 height: 9,
                 borderRadius: 4.5,
                 backgroundColor: colors.primary,
-                transform: [{ translateY: dot }],
+                transform: reduceMotion ? undefined : [{ translateY: dot }],
               }}
             />
           ))}
         </View>
-      </GlassCard>
+      </View>
     </Animated.View>
   );
 }
@@ -81,14 +106,14 @@ const MessageBubble = memo(function MessageBubble({ item }: { item: ChatMessage 
       heading2: { color: colors.onSurface, fontSize: 18, fontWeight: '700' as const, marginBottom: 4, marginTop: 4 },
       heading3: { color: colors.onSurface, fontSize: 16, fontWeight: '600' as const, marginBottom: 4, marginTop: 4 },
       strong: { color: colors.primary, fontWeight: '700' as const },
-      link: { color: colors.tertiary },
-      blockquote: { borderLeftColor: colors.primary, borderLeftWidth: 3, paddingLeft: 8, opacity: 0.8 },
+      link: { color: colors.primary },
+      blockquote: { borderLeftColor: colors.outline, borderLeftWidth: 2, paddingLeft: 8 },
       bullet_list: { marginVertical: 2 },
       ordered_list: { marginVertical: 2 },
       list_item: { marginVertical: 1 },
-      code_inline: { backgroundColor: colors.surfaceContainerHighest, color: colors.secondary, paddingHorizontal: 4, borderRadius: 4 },
-      fence: { backgroundColor: colors.surfaceContainerHighest, padding: 8, borderRadius: 8, marginVertical: 4 },
-      code_block: { backgroundColor: colors.surfaceContainerHighest, padding: 8, borderRadius: 8 },
+      code_inline: { backgroundColor: colors.surfaceContainerHighest, color: colors.onSurface, paddingHorizontal: 4, borderRadius: borderRadius.sm },
+      fence: { backgroundColor: colors.surfaceContainerHighest, padding: 8, borderRadius: borderRadius.md, marginVertical: 4 },
+      code_block: { backgroundColor: colors.surfaceContainerHighest, padding: 8, borderRadius: borderRadius.md },
     }),
     [colors]
   );
@@ -106,29 +131,37 @@ const MessageBubble = memo(function MessageBubble({ item }: { item: ChatMessage 
       {isUser ? (
         <View
           style={{
-            backgroundColor: colors.primary,
-            borderRadius: borderRadius.xl,
+            backgroundColor: colors.primaryContainer,
+            borderWidth: strokeWidth.medium,
+            borderColor: colors.outline,
+            borderRadius: borderRadius.lg,
             borderBottomRightRadius: borderRadius.sm,
             padding: spacing.md,
           }}
         >
-          <Text style={[typography.bodyMd, { color: '#FFFFFF' }]}>
+          <Text style={[typography.bodyMd, { color: colors.onPrimaryContainer }]}>
             {item.message}
           </Text>
         </View>
       ) : (
-        <GlassCard
-          glowColor={colors.primary}
-          style={{ borderColor: `${colors.primary}40`, padding: spacing.md, gap: spacing.xs }}
+        <View
+          style={{
+            backgroundColor: colors.surfaceContainerHigh,
+            borderWidth: strokeWidth.medium,
+            borderColor: colors.outlineVariant,
+            borderRadius: borderRadius.lg,
+            padding: spacing.md,
+            gap: spacing.xs,
+          }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.xs }}>
-            <Ionicons name="sparkles" size={14} color={colors.primary} />
+            <Ionicons accessible={false} name="sparkles" size={14} color={colors.primary} />
             <Text style={[typography.labelMd, { color: colors.primary }]}>Finance Flow IA</Text>
           </View>
           <Markdown style={markdownStyles}>
             {item.message}
           </Markdown>
-        </GlassCard>
+        </View>
       )}
     </View>
   );
@@ -144,6 +177,7 @@ export function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const flatListRef = useRef<FlashListRef<ChatMessage>>(null);
   const hasScrolledToBottom = useRef(false);
 
@@ -154,8 +188,14 @@ export function ChatScreen() {
     const tryScroll = () => {
       if (attempts >= 10 || hasScrolledToBottom.current) return;
       attempts++;
-      flatListRef.current?.scrollToEnd({ animated: true });
-      if (attempts < 10) timeout = setTimeout(tryScroll, 300);
+      if (!flatListRef.current) {
+        if (attempts < 10) timeout = setTimeout(tryScroll, 300);
+        return;
+      }
+      flatListRef.current.scrollToEnd({ animated: true });
+      // One successful scroll is enough; repeated message updates should not
+      // re-arm ten timers and yank the user back down while reading history.
+      hasScrolledToBottom.current = true;
     };
     tryScroll();
     return () => {
@@ -169,6 +209,8 @@ export function ChatScreen() {
       setMessages(data.reverse());
     } catch {
       showError('Error al cargar mensajes');
+    } finally {
+      setMessagesLoading(false);
     }
   }, [showError]);
 
@@ -191,9 +233,10 @@ export function ChatScreen() {
       message: text,
       createdAt: new Date().toISOString(),
     };
+    // A new exchange should follow the conversation again.
+    hasScrolledToBottom.current = false;
     setMessages((prev) => [...prev, tempUser]);
     setLoading(true);
-    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -217,38 +260,31 @@ export function ChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <LinearGradient
-        colors={colors.gradient.primary}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: spacing.container }}
+      <View
+        style={{
+          backgroundColor: colors.surface,
+          borderBottomWidth: strokeWidth.medium,
+          borderBottomColor: colors.outlineVariant,
+          paddingTop: insets.top + spacing.md,
+          paddingBottom: spacing.md,
+          paddingHorizontal: spacing.container,
+        }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, width: '100%', maxWidth: layout.readingMaxWidth, alignSelf: 'center' }}>
           <TouchableOpacity
             onPress={() => goBackOrHome(navigation)}
             accessibilityRole="button"
             accessibilityLabel="Volver"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons accessible={false} name="arrow-back" size={24} color={colors.onSurface} />
           </TouchableOpacity>
-          <View
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Ionicons name="sparkles" size={20} color="#FFFFFF" />
-          </View>
+          <Glyph name="sparkles" tone="primary" size={44} />
           <View style={{ flex: 1 }}>
-            <Text style={[typography.titleLg, { color: '#FFFFFF' }]}>
+            <Text accessibilityRole="header" style={[typography.titleLg, { color: colors.onSurface }]}>
               Asistente IA
             </Text>
-            <Text style={[typography.bodySm, { color: 'rgba(255,255,255,0.7)' }]}>
+            <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
               Pregúntame sobre tus finanzas
             </Text>
           </View>
@@ -258,40 +294,55 @@ export function ChatScreen() {
             style={{
               width: 36,
               height: 36,
-              borderRadius: 10,
-              backgroundColor: 'rgba(255,255,255,0.15)',
+              borderRadius: borderRadius.md,
+              backgroundColor: colors.surfaceContainerHigh,
+              borderWidth: strokeWidth.medium,
+              borderColor: colors.outlineVariant,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="ellipsis-vertical" size={18} color="#FFFFFF" />
+            <Ionicons accessible={false} name="ellipsis-vertical" size={18} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       <FlashList
         ref={flatListRef}
         data={messages}
         keyExtractor={chatKeyExtractor}
         renderItem={renderMessage}
-        contentContainerStyle={{ padding: spacing.container, paddingBottom: spacing.md }}
+        contentContainerStyle={{
+          width: '100%',
+          maxWidth: layout.readingMaxWidth,
+          alignSelf: 'center',
+          padding: spacing.container,
+          paddingBottom: spacing.md,
+        }}
         ListFooterComponent={loading ? <TypingIndicator /> : null}
-        ListEmptyComponent={loading ? null :
+        ListEmptyComponent={messagesLoading ? (
+          <SkeletonScreen label="Cargando conversación" style={{ gap: spacing.md, paddingTop: spacing.container }}>
+            <SkeletonChatBubble role="user" lines={1} width="64%" />
+            <SkeletonChatBubble role="assistant" lines={2} width="82%" />
+            <SkeletonChatBubble role="user" lines={1} width="52%" />
+          </SkeletonScreen>
+        ) : loading ? null :
           <View style={{ alignItems: 'center', marginTop: spacing['2xl'], gap: spacing.md }}>
-            <LinearGradient
-              colors={colors.gradient.primary}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <View
+              accessible={false}
               style={{
                 width: 64,
                 height: 64,
-                borderRadius: 20,
+                borderRadius: borderRadius.lg,
                 alignItems: 'center',
                 justifyContent: 'center',
+                backgroundColor: colors.primaryContainer,
+                borderWidth: strokeWidth.medium,
+                borderColor: colors.outline,
               }}
             >
-              <Ionicons name="sparkles" size={32} color="#FFFFFF" />
-            </LinearGradient>
+              <Ionicons name="sparkles" size={32} color={colors.primary} />
+            </View>
             <Text style={[typography.titleLg, { color: colors.onSurface }]}>
               ¿En qué puedo ayudarte?
             </Text>
@@ -311,8 +362,8 @@ export function ChatScreen() {
           paddingVertical: spacing.md,
           paddingBottom: insets.bottom + spacing.md,
           backgroundColor: colors.surfaceContainer,
-          borderTopWidth: 1,
-          borderTopColor: colors.outlineVariant + '80',
+          borderTopWidth: strokeWidth.medium,
+          borderTopColor: colors.outlineVariant,
         }}
       >
         <TouchableOpacity
@@ -321,13 +372,15 @@ export function ChatScreen() {
           style={{
             width: 40,
             height: 40,
-            borderRadius: 12,
+            borderRadius: borderRadius.md,
             backgroundColor: colors.surfaceContainerHigh,
+            borderWidth: strokeWidth.medium,
+            borderColor: colors.outlineVariant,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Ionicons name="attach" size={20} color={colors.onSurfaceVariant} />
+          <Ionicons accessible={false} name="attach" size={20} color={colors.onSurfaceVariant} />
         </TouchableOpacity>
         <View
           style={{
@@ -337,8 +390,8 @@ export function ChatScreen() {
             backgroundColor: colors.surfaceContainerHigh,
             borderRadius: borderRadius.full,
             paddingLeft: spacing.md,
-            borderWidth: 1,
-            borderColor: colors.outlineVariant + '60',
+            borderWidth: strokeWidth.medium,
+            borderColor: colors.outlineVariant,
           }}
         >
           <TextInput
@@ -367,14 +420,19 @@ export function ChatScreen() {
             style={{
               width: 40,
               height: 40,
-              borderRadius: 20,
+              borderRadius: borderRadius.full,
               backgroundColor: !input.trim() || loading ? colors.surfaceContainerHighest : colors.primary,
               alignItems: 'center',
               justifyContent: 'center',
               margin: 4,
             }}
           >
-            <Ionicons name="send" size={18} color="#FFFFFF" />
+            <Ionicons
+              accessible={false}
+              name="send"
+              size={18}
+              color={!input.trim() || loading ? colors.onSurfaceVariant : colors.onPrimary}
+            />
           </TouchableOpacity>
         </View>
       </View>

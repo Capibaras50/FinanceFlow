@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthContext, useAuthProvider } from './src/hooks/useAuth';
 import { ThemeProvider } from './src/context/ThemeContext';
@@ -7,39 +8,54 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { StatusBar } from 'react-native';
 import { useTheme } from './src/hooks/useTheme';
-import {
-  useFonts,
-  Outfit_400Regular,
-  Outfit_500Medium,
-  Outfit_600SemiBold,
-  Outfit_700Bold,
-} from '@expo-google-fonts/outfit';
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from '@expo-google-fonts/inter';
-import { ActivityIndicator, View } from 'react-native';
+import { useAppFonts } from './src/hooks/useAppFonts';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { Dial } from './src/components/ui/Dial';
+import { useReducedMotion } from './src/hooks/useReducedMotion';
+import { hideNativeSplash } from './src/utils/nativeSplash';
+import { borderRadius, spacing, typography } from './src/theme';
 
 function AppContent() {
   const auth = useAuthProvider();
-  const { mode, colors } = useTheme();
-  const [fontsLoaded] = useFonts({
-    Outfit_400Regular,
-    Outfit_500Medium,
-    Outfit_600SemiBold,
-    Outfit_700Bold,
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-  });
+  const { mode, colors, isHydrated } = useTheme();
+  const reduceMotion = useReducedMotion();
+  const [fontsLoaded, fontError] = useAppFonts();
+  const bootReady = (fontsLoaded || !!fontError) && isHydrated;
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    if (bootReady && !auth.isLoading) {
+      hideNativeSplash();
+    }
+  }, [bootReady, auth.isLoading]);
+
+  if (!bootReady) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View
+        accessible
+        accessibilityLabel="Cargando la aplicación"
+        style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', gap: spacing.md }}
+      >
+        <View
+          accessible={false}
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: borderRadius.md,
+            backgroundColor: colors.surface,
+            borderWidth: 3,
+            borderColor: colors.strokeStrong,
+            padding: 8,
+          }}
+        >
+          <Dial progress={reduceMotion ? 1 : 0.65} size={48} />
+        </View>
+        {reduceMotion ? (
+          <Text accessibilityLiveRegion="polite" style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
+            Cargando…
+          </Text>
+        ) : (
+          <ActivityIndicator size="small" color={colors.primary} />
+        )}
       </View>
     );
   }

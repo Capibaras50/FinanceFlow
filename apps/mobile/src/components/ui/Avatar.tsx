@@ -1,6 +1,5 @@
 import { View, Text, Image } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { typography } from '../../theme';
+import { borderRadius, strokeWidth, typography } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 
 interface AvatarProps {
@@ -14,43 +13,61 @@ export function Avatar({ name, avatarUrl, size = 44 }: AvatarProps) {
   const initials = name
     .trim()
     .split(/\s+/)
-    .map((w) => w[0])
+    .map((word) => word[0])
     .slice(0, 2)
     .join('')
     .toUpperCase();
 
   if (avatarUrl) {
     return (
-      <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }}>
+      <View
+        accessibilityRole="image"
+        accessibilityLabel={`Foto de perfil de ${name}`}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: borderRadius.full,
+          overflow: 'hidden',
+          backgroundColor: colors.surfaceContainerHigh,
+          borderWidth: strokeWidth.thick,
+          borderColor: colors.outlineVariant,
+        }}
+      >
         <Image source={{ uri: avatarUrl }} style={{ width: size, height: size }} />
       </View>
     );
   }
 
   return (
-    <LinearGradient
-      colors={colors.gradient.primary}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`Avatar de ${name}`}
       style={{
         width: size,
         height: size,
-        borderRadius: size / 2,
+        borderRadius: borderRadius.full,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: colors.primaryContainer,
+        borderWidth: strokeWidth.thick,
+        borderColor: colors.outline,
       }}
     >
       <Text
-        style={{
-          color: '#FFFFFF',
-          fontFamily: typography.titleMd.fontFamily,
-          fontWeight: '700',
-          fontSize: Math.round(size * 0.32),
-          letterSpacing: 0.5,
-        }}
+        accessible={false}
+        maxFontSizeMultiplier={1.4}
+        style={[
+          typography.titleMd,
+          {
+            color: colors.primary,
+            fontSize: Math.round(size * 0.32),
+            letterSpacing: 0.5,
+          },
+        ]}
       >
         {initials || '?'}
       </Text>
-    </LinearGradient>
+    </View>
   );
 }

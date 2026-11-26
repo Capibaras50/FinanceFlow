@@ -20,6 +20,7 @@ const shareKey = (): string => `${window.location.origin}/latest`;
 export function ShareIntentHandler({ onSharedImage }: ShareIntentHandlerProps) {
   useEffect(() => {
     let cancelled = false;
+    let createdUrl: string | null = null;
     let attempts = 0;
     const MAX_ATTEMPTS = 6;
 
@@ -40,7 +41,8 @@ export function ShareIntentHandler({ onSharedImage }: ShareIntentHandlerProps) {
         await cache.delete(shareKey());
         const blob = await response.blob();
         if (!cancelled && blob.size > 0) {
-          onSharedImage(window.URL.createObjectURL(blob));
+          createdUrl = window.URL.createObjectURL(blob);
+          onSharedImage(createdUrl);
         }
       } catch {
         // Cache API unavailable or empty share: nothing to do.
@@ -51,6 +53,7 @@ export function ShareIntentHandler({ onSharedImage }: ShareIntentHandlerProps) {
 
     return () => {
       cancelled = true;
+      if (createdUrl) window.URL.revokeObjectURL(createdUrl);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on app start
   }, []);

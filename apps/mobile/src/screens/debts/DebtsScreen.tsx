@@ -1,14 +1,17 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { DebtCard } from '../../components/ui/DebtCard';
 import { FocusFadeIn } from '../../components/ui/FocusFadeIn';
-import { typography, spacing, borderRadius } from '../../theme';
+import { StatePanel } from '../../components/ui/StatePanel';
+import { SkeletonDebtRows, SkeletonLine } from '../../components/ui/Skeleton';
+import { Glyph } from '../../components/ui/Glyph';
+import { typography, strokeWidth, spacing, borderRadius, layout } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
+import { useFocusReload } from '../../hooks/useFocusReload';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { formatCurrency } from '../../utils/format';
@@ -59,6 +62,8 @@ export function DebtsScreen() {
   const [searchText, setSearchText] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [draftFilters, setDraftFilters] = useState<ActiveFilters>({});
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const hasActiveFilters =
     filters.direction !== undefined ||
@@ -77,6 +82,8 @@ export function DebtsScreen() {
       priority: active.priority,
       name: active.name?.trim() || undefined,
     };
+    setLoading(true);
+    setLoadError(false);
     try {
       const [data, summaryData] = await Promise.all([
         debtsApi.getAll(params),
@@ -85,20 +92,15 @@ export function DebtsScreen() {
       setDebts(data);
       setSummary(summaryData);
     } catch {
+      setLoadError(true);
       showError('Error al cargar deudas');
+    } finally {
+      setLoading(false);
     }
   }, [filters, showError]);
 
-  // Ref pattern: the focus effect only refetches when the screen gains focus.
   // Filter/search actions call loadData explicitly with their overrides.
-  const loadDataRef = useRef(loadData);
-  useEffect(() => {
-    loadDataRef.current = loadData;
-  }, [loadData]);
-
-  useFocusEffect(
-    useCallback(() => { loadDataRef.current(); }, [])
-  );
+  useFocusReload(loadData);
 
   const openFilters = () => {
     setDraftFilters({ ...filters, name: searchText.trim() || undefined });
@@ -137,106 +139,149 @@ export function DebtsScreen() {
 
   const receivableTotal = summary?.receivableTotal ?? 0;
   const payableTotal = summary?.payableTotal ?? 0;
-  const hasOutstanding = receivableTotal > 0 || payableTotal > 0;
 
-  const FilterChip = ({ label, selected, onPress, color }: { label: string; selected: boolean; onPress: () => void; color?: string }) => {
-    const accent = color ?? colors.primary;
-    return (
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityState={{ selected }}
-        accessibilityLabel={label}
-        style={{
-          paddingVertical: spacing.sm + 2,
-          paddingHorizontal: spacing.md,
-          borderRadius: borderRadius.full,
-          backgroundColor: selected ? accent + '1F' : colors.surfaceContainerHigh,
-          borderWidth: 1,
-          borderColor: selected ? accent : colors.outlineVariant,
-        }}
-      >
-        <Text style={[typography.labelMd, { color: selected ? accent : colors.onSurfaceVariant, fontWeight: '600' }]}>
-          {label}
-        </Text>
-      </TouchableOpacity>
-    );
+  const iconButton = {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: colors.surfaceContainerHigh,
+    borderWidth: strokeWidth.medium,
+    borderColor: colors.outlineVariant,
   };
+
+  const FilterChip = ({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
+      hitSlop={4}
+      style={{
+        paddingVertical: spacing.sm + 2,
+        paddingHorizontal: spacing.md,
+        borderRadius: borderRadius.full,
+        backgroundColor: selected ? colors.primaryContainer : colors.surfaceContainerHigh,
+        borderWidth: strokeWidth.medium,
+        borderColor: selected ? colors.primary : colors.outlineVariant,
+      }}
+    >
+      <Text style={[typography.labelMd, {
+        color: selected ? colors.primary : colors.onSurfaceVariant,
+        fontWeight: selected ? '600' : '400',
+      }]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const filterSection = (title: string, children: React.ReactNode) => (
+    <View
+      style={{
+        paddingBottom: spacing.md,
+        marginBottom: spacing.md,
+        borderBottomWidth: strokeWidth.medium,
+        borderBottomColor: colors.outlineVariant,
+      }}
+    >
+      <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm }]}>{title}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>{children}</View>
+    </View>
+  );
 
   return (
     <FocusFadeIn>
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <LinearGradient
-          colors={colors.gradient.primary}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.lg, paddingHorizontal: spacing.container }}
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderBottomWidth: strokeWidth.medium,
+            borderBottomColor: colors.outlineVariant,
+            paddingTop: insets.top + spacing.md,
+            paddingBottom: spacing.md,
+            paddingHorizontal: spacing.container,
+          }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, width: '100%', maxWidth: layout.contentMaxWidth, alignSelf: 'center' }}>
             <TouchableOpacity
               onPress={handleBack}
               accessibilityRole="button"
               accessibilityLabel="Volver"
-              style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
+              hitSlop={4}
+              style={iconButton}
             >
-              <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={20} color={colors.onSurface} />
             </TouchableOpacity>
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name="receipt" size={20} color="#FFFFFF" />
-            </View>
-            <Text style={[typography.headlineSm, { color: '#FFFFFF', flex: 1 }]}>
+            <Glyph name="receipt" tone="primary" size={44} />
+            <Text accessibilityRole="header" style={[typography.headlineSm, { color: colors.onSurface, flex: 1 }]}>
               Mis Deudas
             </Text>
             <TouchableOpacity
               onPress={() => navigation.navigate('Contacts')}
               accessibilityRole="button"
               accessibilityLabel="Ir a contactos"
-              style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
+              hitSlop={4}
+              style={iconButton}
             >
-              <Ionicons name="people" size={20} color="#FFFFFF" />
+              <Ionicons name="people" size={20} color={colors.primary} />
             </TouchableOpacity>
           </View>
-        </LinearGradient>
+        </View>
 
         <ScrollView
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: spacing['2xl'] + 40, paddingHorizontal: spacing.container, gap: spacing.md, paddingTop: spacing.lg }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            width: '100%',
+            maxWidth: layout.contentMaxWidth,
+            alignSelf: 'center',
+            paddingBottom: spacing['2xl'] + 40,
+            paddingHorizontal: spacing.container,
+            gap: spacing.md,
+            paddingTop: spacing.lg,
+          }}
           keyboardShouldPersistTaps="handled"
         >
-          <GlassCard glowColor={colors.primary}>
-            <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
+          <GlassCard>
+            <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
               Resumen de deudas
             </Text>
             <View style={{ flexDirection: 'row', marginTop: spacing.md }}>
               <View style={{ flex: 1, gap: spacing.xs }}>
-                <Text style={[typography.labelMd, { color: colors.success }]}>Me deben</Text>
-                <Text style={[typography.headlineMd, { color: colors.success }]}>
-                  {formatCurrency(receivableTotal)}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                  <Ionicons accessible={false} name="arrow-down-circle" size={14} color={colors.success} />
+                  <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Me deben</Text>
+                </View>
+                {loading ? (
+                  <SkeletonLine width="86%" height={30} radius={borderRadius.md} />
+                ) : (
+                  <Text style={[typography.displayMd, { color: colors.success }]}>
+                    +{formatCurrency(receivableTotal)}
+                  </Text>
+                )}
               </View>
               <View
                 style={{
-                  width: 1,
-                  backgroundColor: colors.outlineVariant + '60',
+                  width: strokeWidth.medium,
+                  backgroundColor: colors.outlineVariant,
                   marginHorizontal: spacing.lg,
                 }}
               />
               <View style={{ flex: 1, gap: spacing.xs }}>
-                <Text style={[typography.labelMd, { color: colors.error }]}>Debo</Text>
-                <Text style={[typography.headlineMd, { color: colors.error }]}>
-                  {formatCurrency(payableTotal)}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                  <Ionicons accessible={false} name="arrow-up-circle" size={14} color={colors.error} />
+                  <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>Debo</Text>
+                </View>
+                {loading ? (
+                  <SkeletonLine width="86%" height={30} radius={borderRadius.md} />
+                ) : (
+                  <Text style={[typography.displayMd, { color: colors.error }]}>
+                    −{formatCurrency(payableTotal)}
+                  </Text>
+                )}
               </View>
             </View>
           </GlassCard>
@@ -246,13 +291,13 @@ export function DebtsScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               backgroundColor: colors.surfaceContainerHigh,
-              borderRadius: borderRadius.lg,
+              borderRadius: borderRadius.md,
               paddingHorizontal: spacing.md,
-              borderWidth: 1,
+              borderWidth: strokeWidth.medium,
               borderColor: colors.outlineVariant,
             }}
           >
-            <Ionicons name="search" size={18} color={colors.onSurfaceVariant} />
+            <Ionicons accessible={false} name="search" size={18} color={colors.onSurfaceVariant} />
             <TextInput
               value={searchText}
               onChangeText={setSearchText}
@@ -260,6 +305,7 @@ export function DebtsScreen() {
               placeholderTextColor={colors.onSurfaceVariant}
               returnKeyType="search"
               onSubmitEditing={applySearch}
+              accessibilityLabel="Buscar por concepto"
               style={[typography.bodyMd, { flex: 1, color: colors.onSurface, paddingVertical: spacing.sm + 2, marginLeft: spacing.sm }]}
             />
             {searchText.length > 0 ? (
@@ -269,7 +315,7 @@ export function DebtsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Limpiar búsqueda"
               >
-                <Ionicons name="close-circle" size={18} color={colors.onSurfaceVariant} />
+                <Ionicons accessible={false} name="close-circle" size={18} color={colors.onSurfaceVariant} />
               </TouchableOpacity>
             ) : null}
             <TouchableOpacity
@@ -280,6 +326,7 @@ export function DebtsScreen() {
               style={{ marginLeft: spacing.sm }}
             >
               <Ionicons
+                accessible={false}
                 name="filter"
                 size={20}
                 color={hasActiveFilters ? colors.primary : colors.onSurfaceVariant}
@@ -290,47 +337,36 @@ export function DebtsScreen() {
           {hasActiveFilters && (
             <TouchableOpacity
               onPress={clearFilters}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start' }}
+              accessibilityRole="button"
+              accessibilityLabel="Limpiar filtros"
+              style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start', minHeight: layout.touchTarget }}
             >
-              <Ionicons name="close-circle" size={16} color={colors.primary} />
+              <Ionicons accessible={false} name="close-circle" size={16} color={colors.primary} />
               <Text style={[typography.bodySm, { color: colors.primary }]}>Filtros activos · Limpiar</Text>
             </TouchableOpacity>
           )}
 
-          {!hasOutstanding && !hasActiveFilters && (
-            <GlassCard>
-              <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
-                No tienes deudas pendientes
-              </Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('AddDebt')}
-                accessibilityRole="button"
-                accessibilityLabel="Crear deuda"
-                style={{
-                  marginTop: spacing.md,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: spacing.xs,
-                }}
-              >
-                <Ionicons name="add" size={18} color={colors.primary} />
-                <Text style={[typography.labelLg, { color: colors.primary }]}>Crear deuda</Text>
-              </TouchableOpacity>
-            </GlassCard>
-          )}
-
           <View style={{ gap: spacing.md }}>
-            <Text style={[typography.titleLg, { color: colors.onSurface }]}>
+            <Text accessibilityRole="header" style={[typography.titleLg, { color: colors.onSurface }]}>
               {hasActiveFilters ? 'Resultados' : 'Todas tus deudas'}
             </Text>
 
-            {debts.length === 0 ? (
-              <GlassCard>
-                <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>
-                  No hay deudas con estos filtros
-                </Text>
-              </GlassCard>
+            {loading && debts.length === 0 ? (
+              <SkeletonDebtRows rows={4} label="Cargando deudas…" />
+            ) : loadError && debts.length === 0 ? (
+              <StatePanel
+                state="error"
+                title="No pudimos cargar tus deudas"
+                onAction={() => loadData()}
+              />
+            ) : debts.length === 0 ? (
+              <StatePanel
+                state="empty"
+                title={hasActiveFilters ? 'No hay deudas con estos filtros' : 'No tienes deudas pendientes'}
+                message={hasActiveFilters
+                  ? 'Prueba con otros filtros o limpia la búsqueda.'
+                  : 'Registra tu primera deuda para empezar.'}
+              />
             ) : (
               debts.map((debt) => (
                 <DebtCard
@@ -341,6 +377,29 @@ export function DebtsScreen() {
                 />
               ))
             )}
+
+            {!hasActiveFilters && debts.length === 0 && !loading && !loadError && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('AddDebt')}
+                accessibilityRole="button"
+                accessibilityLabel="Crear deuda"
+                style={{
+                  alignSelf: 'center',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.xs,
+                  minHeight: layout.touchTarget,
+                  paddingHorizontal: spacing.lg,
+                  borderRadius: borderRadius.md,
+                  backgroundColor: colors.primaryContainer,
+                  borderWidth: strokeWidth.medium,
+                  borderColor: colors.outline,
+                }}
+              >
+                <Ionicons accessible={false} name="add" size={18} color={colors.primary} />
+                <Text style={[typography.labelLg, { color: colors.primary }]}>Crear deuda</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
 
@@ -348,128 +407,133 @@ export function DebtsScreen() {
           onPress={() => navigation.navigate('AddDebt')}
           accessibilityRole="button"
           accessibilityLabel="Crear deuda"
+          hitSlop={4}
           style={{
             position: 'absolute',
             right: spacing.container,
             bottom: insets.bottom + spacing.md,
-            width: 58,
-            height: 58,
-            borderRadius: 29,
-            shadowColor: colors.primary,
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.45,
-            shadowRadius: 16,
-            elevation: 10,
+            width: 56,
+            height: 56,
+            borderRadius: borderRadius.full,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.primaryContainer,
+            borderWidth: strokeWidth.medium,
+            borderColor: colors.outline,
           }}
         >
-          <LinearGradient
-            colors={colors.gradient.primary}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              width: 58,
-              height: 58,
-              borderRadius: 29,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 3,
-              borderColor: colors.background,
-            }}
-          >
-            <Ionicons name="add" size={30} color="#FFFFFF" />
-          </LinearGradient>
+          <Ionicons accessible={false} name="add" size={26} color={colors.primary} />
         </TouchableOpacity>
 
         <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>
-          <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+            <View
+              accessible={false}
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                backgroundColor: colors.surfaceContainerLowest,
+                opacity: 0.75,
+              }}
+            />
             <View
               style={{
                 backgroundColor: colors.surface,
                 borderTopLeftRadius: borderRadius['2xl'],
                 borderTopRightRadius: borderRadius['2xl'],
+                borderTopWidth: strokeWidth.medium,
+                borderTopColor: colors.outlineVariant,
                 padding: spacing.container,
                 paddingBottom: insets.bottom + spacing.lg,
                 maxHeight: '75%',
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
-                <Text style={[typography.titleLg, { color: colors.onSurface }]}>Filtros</Text>
+                <Text accessibilityRole="header" style={[typography.titleLg, { color: colors.onSurface }]}>Filtros</Text>
                 <TouchableOpacity
                   onPress={() => setShowFilters(false)}
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Cerrar filtros"
+                  style={{ minHeight: layout.touchTarget, minWidth: layout.touchTarget, alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <Ionicons name="close" size={24} color={colors.onSurface} />
+                  <Ionicons accessible={false} name="close" size={22} color={colors.onSurface} />
                 </TouchableOpacity>
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm }]}>Dirección</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.lg }}>
-                  {DIRECTION_FILTERS.map((f) => (
-                    <TouchableOpacity
-                      key={f.label}
-                      onPress={() => setDraftFilters((prev) => ({ ...prev, direction: f.value }))}
-                      activeOpacity={0.8}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: draftFilters.direction === f.value }}
-                      accessibilityLabel={f.label}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: spacing.xs,
-                        paddingVertical: spacing.xs + 2,
-                        paddingHorizontal: spacing.md,
-                        borderRadius: borderRadius.full,
-                        backgroundColor: draftFilters.direction === f.value ? colors.primary : colors.surfaceContainerHigh,
-                      }}
-                    >
-                      <Ionicons name={f.icon} size={16} color={draftFilters.direction === f.value ? '#FFFFFF' : colors.onSurfaceVariant} />
-                      <Text style={[typography.labelMd, { color: draftFilters.direction === f.value ? '#FFFFFF' : colors.onSurfaceVariant }]}>
-                        {f.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                {filterSection(
+                  'Dirección',
+                  DIRECTION_FILTERS.map((f) => {
+                    const selected = draftFilters.direction === f.value;
+                    return (
+                      <TouchableOpacity
+                        key={f.label}
+                        onPress={() => setDraftFilters((prev) => ({ ...prev, direction: f.value }))}
+                        activeOpacity={0.8}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        accessibilityLabel={f.label}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: spacing.xs,
+                          minHeight: layout.touchTarget - 6,
+                          paddingHorizontal: spacing.md,
+                          borderRadius: borderRadius.full,
+                          backgroundColor: selected ? colors.primaryContainer : colors.surfaceContainerHigh,
+                          borderWidth: strokeWidth.medium,
+                          borderColor: selected ? colors.primary : colors.outlineVariant,
+                        }}
+                      >
+                        <Ionicons accessible={false} name={f.icon} size={15} color={selected ? colors.primary : colors.onSurfaceVariant} />
+                        <Text style={[typography.labelMd, { color: selected ? colors.primary : colors.onSurfaceVariant }]}>
+                          {f.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
 
-                <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm }]}>Estado</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.lg }}>
-                  {STATUS_FILTERS.map((f) => (
+                {filterSection(
+                  'Estado',
+                  STATUS_FILTERS.map((f) => (
                     <FilterChip
                       key={f.label}
                       label={f.label}
                       selected={draftFilters.status === f.value}
                       onPress={() => setDraftFilters((prev) => ({ ...prev, status: f.value }))}
                     />
-                  ))}
-                </View>
+                  ))
+                )}
 
-                <Text style={[typography.titleMd, { color: colors.onSurface, marginBottom: spacing.sm }]}>Prioridad</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.lg }}>
-                  {PRIORITY_FILTERS.map((f) => (
+                {filterSection(
+                  'Prioridad',
+                  PRIORITY_FILTERS.map((f) => (
                     <FilterChip
                       key={f.label}
                       label={f.label}
                       selected={draftFilters.priority === f.value}
                       onPress={() => setDraftFilters((prev) => ({ ...prev, priority: f.value }))}
-                      color={f.value === 'high' ? colors.error : f.value === 'low' ? colors.success : f.value === 'medium' ? colors.warning : undefined}
                     />
-                  ))}
-                </View>
+                  ))
+                )}
 
-                <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
+                <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm }}>
                   <TouchableOpacity
                     onPress={clearFilters}
                     accessibilityRole="button"
                     accessibilityLabel="Limpiar filtros"
                     style={{
                       flex: 1,
-                      paddingVertical: spacing.md,
+                      minHeight: layout.touchTarget,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderRadius: borderRadius.full,
-                      borderWidth: 1.5,
+                      borderRadius: borderRadius.md,
+                      borderWidth: strokeWidth.medium,
                       borderColor: colors.outlineVariant,
                     }}
                   >
@@ -483,14 +547,16 @@ export function DebtsScreen() {
                     accessibilityLabel="Aplicar filtros"
                     style={{
                       flex: 1,
-                      paddingVertical: spacing.md,
+                      minHeight: layout.touchTarget,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderRadius: borderRadius.full,
-                      backgroundColor: colors.primary,
+                      borderRadius: borderRadius.md,
+                      backgroundColor: colors.primaryContainer,
+                      borderWidth: strokeWidth.medium,
+                      borderColor: colors.outline,
                     }}
                   >
-                    <Text style={[typography.labelMd, { color: '#FFFFFF', fontWeight: '600' }]}>
+                    <Text style={[typography.labelMd, { color: colors.primary, fontWeight: '600' }]}>
                       Aplicar
                     </Text>
                   </TouchableOpacity>

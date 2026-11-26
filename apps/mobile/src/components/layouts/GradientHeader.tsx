@@ -1,48 +1,61 @@
 import { View, Text } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import type { ReactNode } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { typography, spacing } from '../../theme';
+import { spacing, strokeWidth, typography } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 
 interface GradientHeaderProps {
   title: string;
   subtitle?: string;
-  rightAction?: React.ReactNode;
+  rightAction?: ReactNode;
+  /** Retained for API compatibility; the header is intentionally solid. */
   gradient?: readonly [string, string];
 }
 
-export function GradientHeader({
-  title,
-  subtitle,
-  rightAction,
-  gradient,
-}: GradientHeaderProps) {
+/** Heavy safe-front header: solid panel, thick lower stroke and a solid-action notch. */
+export function GradientHeader({ title, subtitle, rightAction }: GradientHeaderProps) {
   const { colors } = useTheme();
-  const resolvedGradient = gradient ?? colors.gradient.primary;
   const insets = useSafeAreaInsets();
 
   return (
-    <LinearGradient
-      colors={resolvedGradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <View
       style={{
         paddingTop: insets.top + spacing.md,
-        paddingBottom: spacing.xl,
+        paddingBottom: spacing.lg,
         paddingHorizontal: spacing.container,
+        backgroundColor: colors.surface,
+        borderBottomWidth: strokeWidth.thick,
+        borderBottomColor: colors.strokeStrong,
       }}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      <View
+        accessible={false}
+        style={{
+          position: 'absolute',
+          top: insets.top,
+          left: spacing.container,
+          width: 44,
+          height: strokeWidth.thick,
+          backgroundColor: colors.primarySolid,
+        }}
+      />
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.md }}>
         <View style={{ flex: 1 }}>
-          <Text style={[typography.headlineMd, { color: '#FFFFFF' }]}>{title}</Text>
+          <Text
+            accessibilityRole="header"
+            maxFontSizeMultiplier={1.5}
+            style={[typography.headlineLg, { color: colors.onSurface }]}
+          >
+            {title}
+          </Text>
           {subtitle && (
-            <Text style={[typography.bodyMd, { color: 'rgba(255,255,255,0.7)', marginTop: spacing.xs }]}>
+            <Text style={[typography.bodySm, { color: colors.onSurfaceVariant, marginTop: spacing.xs }]}>
               {subtitle}
             </Text>
           )}
         </View>
         {rightAction}
       </View>
-    </LinearGradient>
+    </View>
   );
 }

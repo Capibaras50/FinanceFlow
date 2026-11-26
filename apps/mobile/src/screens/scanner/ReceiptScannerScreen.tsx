@@ -1,13 +1,12 @@
-import { useState, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { uploadAsync, FileSystemUploadType } from 'expo-file-system/legacy';
-import { typography, spacing, borderRadius } from '../../theme';
+import { typography, strokeWidth, spacing, borderRadius, layout } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
@@ -86,9 +85,24 @@ export function ReceiptScannerScreen() {
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlRef = useRef<string | null>(null);
+
+  const releasePreviewUrl = useCallback(() => {
+    if (IS_WEB && previewUrlRef.current?.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+    previewUrlRef.current = null;
+  }, []);
+
+  useEffect(() => () => releasePreviewUrl(), [releasePreviewUrl]);
 
   const processCaptured = async (uri: string) => {
     const compressed = await compressImage(uri);
+    if (IS_WEB && uri.startsWith('blob:') && uri !== previewUrlRef.current) {
+      URL.revokeObjectURL(uri);
+    }
+    releasePreviewUrl();
+    previewUrlRef.current = compressed.uri;
     setCapturedImage(compressed.uri);
     setCompressedFile(compressed.file ?? null);
     setShowConfirm(true);
@@ -169,10 +183,11 @@ export function ReceiptScannerScreen() {
           mimeType: 'image/jpeg',
         });
         if (result.status >= 400) {
-          throw { message: parseUploadError(result.body, 'Upload failed'), statusCode: result.status };
+          throw new Error(parseUploadError(result.body, 'Upload failed'));
         }
       }
       showSuccess('Recibo enviado. El asistente IA lo está procesando.');
+      releasePreviewUrl();
       goBackOrHome(navigation);
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'No se pudo procesar el recibo');
@@ -183,42 +198,79 @@ export function ReceiptScannerScreen() {
   };
 
   const resetConfirm = () => {
+    releasePreviewUrl();
     setShowConfirm(false);
     setCapturedImage(null);
     setCompressedFile(null);
   };
 
+  const renderHeader = () => (
+    <View
+      style={{
+        backgroundColor: colors.surface,
+        borderBottomWidth: strokeWidth.medium,
+        borderBottomColor: colors.outlineVariant,
+        paddingTop: insets.top + spacing.md,
+        paddingBottom: spacing.md,
+        paddingHorizontal: spacing.container,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, width: '100%', maxWidth: layout.contentMaxWidth, alignSelf: 'center' }}>
+        <TouchableOpacity
+          onPress={() => goBackOrHome(navigation)}
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar escáner"
+          hitSlop={4}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: borderRadius.md,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.surfaceContainerHigh,
+            borderWidth: strokeWidth.medium,
+            borderColor: colors.outlineVariant,
+          }}
+        >
+          <Ionicons accessible={false} name="close" size={22} color={colors.onSurface} />
+        </TouchableOpacity>
+        <Text accessibilityRole="header" style={[typography.headlineSm, { color: colors.onSurface, flex: 1 }]}>
+          Escanear Recibo
+        </Text>
+      </View>
+    </View>
+  );
+
   const renderConfirm = () => (
     <GlassCard
-      glowColor={colors.primaryContainer}
-      style={IS_WEB
-        ? { position: 'absolute', bottom: insets.bottom + spacing.md, left: spacing.container, right: spacing.container }
-        : { position: 'absolute', bottom: insets.bottom + spacing.md, left: spacing.container, right: spacing.container }
-      }
+      style={{
+        position: 'absolute',
+        bottom: insets.bottom + spacing.md,
+        left: spacing.container,
+        right: spacing.container,
+      }}
     >
       <Image
         source={{ uri: capturedImage! }}
+        accessibilityLabel="Vista previa del recibo"
         style={{ width: '100%', height: 120, borderRadius: borderRadius.md, marginBottom: spacing.md }}
         resizeMode="cover"
       />
       <Text style={[typography.titleMd, { color: colors.onSurface, textAlign: 'center', marginBottom: spacing.md }]}>
         ¿Escaneamos este recibo?
       </Text>
-      {uploading ? (
-        <ActivityIndicator size="large" color={colors.primary} />
-      ) : (
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <GradientButton
-            title="Cancelar"
-            variant="outlined"
-            onPress={resetConfirm}
-            style={{ flex: 1 }}
-          />
-          <View style={{ flex: 1 }}>
-            <GradientButton title="Escanear" onPress={handleScan} />
-          </View>
+      <View style={{ flexDirection: 'row', gap: spacing.md }}>
+        <GradientButton
+          title="Cancelar"
+          variant="outlined"
+          onPress={resetConfirm}
+          disabled={uploading}
+          style={{ flex: 1 }}
+        />
+        <View style={{ flex: 1 }}>
+          <GradientButton title="Escanear" onPress={handleScan} loading={uploading} />
         </View>
-      )}
+      </View>
     </GlassCard>
   );
 
@@ -227,26 +279,23 @@ export function ReceiptScannerScreen() {
       ? { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg, paddingHorizontal: spacing.container }
       : { position: 'absolute', bottom: insets.bottom + spacing.md, left: 0, right: 0, alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.container }
     }>
-      <TouchableOpacity onPress={onCamera}>
-        <LinearGradient
-          colors={colors.gradient.primary}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            width: 80,
-            height: 80,
-            borderRadius: 40,
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: colors.primaryContainer,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.4,
-            shadowRadius: 12,
-            elevation: 8,
-          }}
-        >
-          <Ionicons name="camera" size={32} color="#FFFFFF" />
-        </LinearGradient>
+      <TouchableOpacity
+        onPress={onCamera}
+        accessibilityRole="button"
+        accessibilityLabel="Tomar foto del recibo"
+        hitSlop={4}
+        style={{
+          width: 80,
+          height: 80,
+          borderRadius: borderRadius.full,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.primaryContainer,
+          borderWidth: strokeWidth.medium,
+          borderColor: colors.outline,
+        }}
+      >
+        <Ionicons accessible={false} name="camera" size={32} color={colors.primary} />
       </TouchableOpacity>
       <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>
         Toma una foto del recibo
@@ -256,6 +305,7 @@ export function ReceiptScannerScreen() {
           title="O selecciona de galería"
           onPress={onGallery}
           variant="outlined"
+          accessibilityLabel="Seleccionar recibo de la galería"
         />
       </View>
     </View>
@@ -264,21 +314,7 @@ export function ReceiptScannerScreen() {
   if (IS_WEB) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <LinearGradient
-          colors={colors.gradient.primary}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.md, paddingHorizontal: spacing.container }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-            <TouchableOpacity onPress={() => goBackOrHome(navigation)}>
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={[typography.headlineSm, { color: '#FFFFFF', flex: 1 }]}>
-              Escanear Recibo
-            </Text>
-          </View>
-        </LinearGradient>
+        {renderHeader()}
 
         <input
           ref={cameraInputRef}
@@ -309,41 +345,44 @@ export function ReceiptScannerScreen() {
 
   if (!permission) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={[typography.bodyLg, { color: colors.onSurface }]}>Solicitando permisos...</Text>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        {renderHeader()}
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <View
+            accessible
+            accessibilityRole="text"
+            accessibilityLiveRegion="polite"
+            accessibilityLabel="Solicitando permisos…"
+            style={{ alignItems: 'center', gap: spacing.md }}
+          >
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[typography.bodyMd, { color: colors.onSurfaceVariant }]}>
+              Solicitando permisos…
+            </Text>
+          </View>
+        </View>
       </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: spacing.container }}>
-        <Ionicons name="camera-outline" size={48} color={colors.onSurfaceVariant} />
-        <Text style={[typography.bodyLg, { color: colors.onSurface, textAlign: 'center', marginTop: spacing.md }]}>
-          Necesitamos acceso a la cámara para escanear recibos
-        </Text>
-        <GradientButton title="Conceder Permiso" onPress={requestPermission} style={{ marginTop: spacing.lg }} />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        {renderHeader()}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.container, gap: spacing.md }}>
+          <Ionicons accessible={false} name="camera-outline" size={48} color={colors.onSurfaceVariant} />
+          <Text accessibilityRole="alert" style={[typography.bodyLg, { color: colors.onSurface, textAlign: 'center' }]}>
+            Necesitamos acceso a la cámara para escanear recibos
+          </Text>
+          <GradientButton title="Conceder Permiso" onPress={requestPermission} style={{ marginTop: spacing.lg }} />
+        </View>
       </View>
     );
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        colors={colors.gradient.primary}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.md, paddingHorizontal: spacing.container }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <TouchableOpacity onPress={() => goBackOrHome(navigation)}>
-            <Ionicons name="close" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={[typography.headlineSm, { color: '#FFFFFF', flex: 1 }]}>
-            Escanear Recibo
-          </Text>
-        </View>
-      </LinearGradient>
+      {renderHeader()}
 
       <View style={{ flex: 1 }}>
         <CameraView
