@@ -232,7 +232,12 @@ export function WalletsScreen() {
                 <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
                   Saldo total
                 </Text>
-                <Text style={[typography.displayLg, { color: colors.onSurface, marginTop: spacing.xs, fontVariant: tabularNumbers }]}>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.6}
+                  style={[typography.displayLg, { color: colors.onSurface, marginTop: spacing.xs, fontVariant: tabularNumbers }]}
+                >
                   {formatCurrency(totalBalance)}
                 </Text>
                 <View style={{ height: strokeWidth.thick, backgroundColor: colors.strokeStrong, marginTop: spacing.md }} />
@@ -283,18 +288,37 @@ export function WalletsScreen() {
                         <Ionicons name="wallet" size={20} color={accent} />
                       </View>
                       <View>
-                        <Text style={[typography.labelMd, { color: colors.onSurfaceVariant }]}>
+                        <Text
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                          style={[typography.labelMd, { color: colors.onSurfaceVariant }]}
+                        >
                           {wallet.name}
                         </Text>
-                        <Text style={[typography.titleLg, { color: colors.onSurface, marginTop: 2, fontVariant: tabularNumbers }]}>
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.75}
+                          style={[typography.titleLg, { color: colors.onSurface, marginTop: 2, fontVariant: tabularNumbers }]}
+                        >
                           {formatCurrency(wallet.balance)}
                         </Text>
                       </View>
-                      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                        <Text style={[typography.bodySm, { color: colors.success, fontVariant: tabularNumbers }]}>
+                      <View style={{ gap: spacing.xs }}>
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.8}
+                          style={[typography.bodySm, { color: colors.success, fontVariant: tabularNumbers }]}
+                        >
                           +{formatCurrency(wallet.totalEarnings)}
                         </Text>
-                        <Text style={[typography.bodySm, { color: colors.error, fontVariant: tabularNumbers }]}>
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.8}
+                          style={[typography.bodySm, { color: colors.error, fontVariant: tabularNumbers }]}
+                        >
                           -{formatCurrency(wallet.totalExpenses)}
                         </Text>
                       </View>
@@ -363,15 +387,28 @@ export function WalletsScreen() {
                     >
                       <Ionicons name="trending-down" size={20} color={colors.error} />
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[typography.titleMd, { color: colors.onSurface }]}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                        style={[typography.titleMd, { color: colors.onSurface }]}
+                      >
                         {expense.name}
                       </Text>
-                      <Text style={[typography.bodySm, { color: colors.onSurfaceVariant }]}>
+                      <Text
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                        style={[typography.bodySm, { color: colors.onSurfaceVariant }]}
+                      >
                         {expense.wallet?.name}
                       </Text>
                     </View>
-                    <Text style={[typography.titleMd, { color: colors.error, fontVariant: tabularNumbers }]}>
+                    <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                      style={[typography.titleMd, { color: colors.error, fontVariant: tabularNumbers }]}
+                    >
                       -{formatCurrency(expense.value)}
                     </Text>
                   </View>

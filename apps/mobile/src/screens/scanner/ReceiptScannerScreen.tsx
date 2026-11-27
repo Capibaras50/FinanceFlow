@@ -8,6 +8,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { uploadAsync, FileSystemUploadType } from 'expo-file-system/legacy';
 import { typography, strokeWidth, spacing, borderRadius, layout } from '../../theme';
 import { useTheme } from '../../hooks/useTheme';
+import { Dial } from '../../components/ui/Dial';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { useSnackbar } from '../../context/SnackbarContext';
@@ -24,7 +25,12 @@ const IS_WEB = Platform.OS === 'web';
 const MAX_DIMENSION = 1024;
 const JPEG_QUALITY = 0.7;
 
-async function compressImage(uri: string): Promise<{ uri: string; file?: File }> {
+interface PreparedReceipt {
+  uri: string;
+  file?: File;
+}
+
+async function compressImage(uri: string): Promise<PreparedReceipt> {
   if (IS_WEB) {
     const img = new window.Image();
     img.src = uri;
@@ -82,6 +88,8 @@ export function ReceiptScannerScreen() {
   const [compressedFile, setCompressedFile] = useState<File | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [autoUploading, setAutoUploading] = useState(false);
+  const autoUploadStarted = useRef(false);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -96,7 +104,7 @@ export function ReceiptScannerScreen() {
 
   useEffect(() => () => releasePreviewUrl(), [releasePreviewUrl]);
 
-  const processCaptured = async (uri: string) => {
+  const prepareCaptured = useCallback(async (uri: string) => {
     const compressed = await compressImage(uri);
     if (IS_WEB && uri.startsWith('blob:') && uri !== previewUrlRef.current) {
       URL.revokeObjectURL(uri);
@@ -105,18 +113,86 @@ export function ReceiptScannerScreen() {
     previewUrlRef.current = compressed.uri;
     setCapturedImage(compressed.uri);
     setCompressedFile(compressed.file ?? null);
+    return compressed;
+  }, [releasePreviewUrl]);
+
+  // Same endpoint and payload as the manual "Escanear" button. Returns whether
+  // the upload succeeded so a shared receipt can fall back to manual retry.
+  const submitReceipt = useCallback(async (prepared: PreparedReceipt) => {
+    setUploading(true);
+    try {
+      if (IS_WEB) {
+        let file = prepared.file;
+        if (!file) {
+          const compressed = await compressImage(prepared.uri);
+          if (compressed.file) {
+            file = compressed.file;
+          } else {
+            const res = await fetch(compressed.uri);
+            const blob = await res.blob();
+            file = new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
+          }
+        }
+        const formData = new FormData();
+        formData.append('receipt', file);
+        await receiptsApi.uploadFile(formData);
+      } else {
+        const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
+        const token = getTokenSync();
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const result = await uploadAsync(`${apiUrl}/receipts`, prepared.uri, {
+          fieldName: 'receipt',
+          httpMethod: 'POST',
+          uploadType: FileSystemUploadType.MULTIPART,
+          headers,
+          mimeType: 'image/jpeg',
+        });
+        if (result.status >= 400) {
+          throw new Error(parseUploadError(result.body, 'Upload failed'));
+        }
+      }
+      showSuccess('Recibo enviado. El asistente IA lo está procesando.');
+      releasePreviewUrl();
+      goBackOrHome(navigation);
+      return true;
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'No se pudo procesar el recibo');
+      showError(msg.includes('413') ? 'La imagen es muy pesada. Intenta con otra foto.' : msg);
+      return false;
+    } finally {
+      setUploading(false);
+    }
+  }, [navigation, releasePreviewUrl, showError, showSuccess]);
+
+  const processCaptured = useCallback(async (uri: string) => {
+    await prepareCaptured(uri);
     setShowConfirm(true);
-  };
+  }, [prepareCaptured]);
 
   // Pick up an image shared into the app (share sheet / PWA share target).
+  // Shared images go straight to the backend; the prepared image stays on
+  // screen if the upload fails, so the user can still retry manually.
   useFocusEffect(
     useCallback(() => {
+      if (autoUploadStarted.current) return;
       const shared = consumePendingSharedImage();
-      if (shared?.uri) {
-        processCaptured(shared.uri);
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- processCaptured only sets state
-    }, [])
+      if (!shared?.uri) return;
+      autoUploadStarted.current = true;
+      setAutoUploading(true);
+      showSuccess('Procesando tu recibo…');
+      void (async () => {
+        try {
+          const compressed = await prepareCaptured(shared.uri);
+          const sent = await submitReceipt(compressed);
+          if (!sent) setShowConfirm(true);
+        } catch (err: unknown) {
+          showError(getErrorMessage(err, 'No se pudo preparar el recibo'));
+        } finally {
+          setAutoUploading(false);
+        }
+      })();
+    }, [prepareCaptured, showError, showSuccess, submitReceipt])
   );
 
   const takePicture = async () => {
@@ -149,53 +225,12 @@ export function ReceiptScannerScreen() {
     const blobUrl = URL.createObjectURL(file);
     await processCaptured(blobUrl);
     e.target.value = '';
-  }, []);
+  }, [processCaptured]);
 
-  const handleScan = async () => {
+  const handleScan = useCallback(async () => {
     if (!capturedImage) return;
-    setUploading(true);
-    try {
-      if (IS_WEB) {
-        let file = compressedFile;
-        if (!file) {
-          const compressed = await compressImage(capturedImage);
-          if (compressed.file) {
-            file = compressed.file;
-          } else {
-            const res = await fetch(compressed.uri);
-            const blob = await res.blob();
-            file = new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
-          }
-        }
-        const formData = new FormData();
-        formData.append('receipt', file);
-        await receiptsApi.uploadFile(formData);
-      } else {
-        const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
-        const token = getTokenSync();
-        const headers: Record<string, string> = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-        const result = await uploadAsync(`${apiUrl}/receipts`, capturedImage, {
-          fieldName: 'receipt',
-          httpMethod: 'POST',
-          uploadType: FileSystemUploadType.MULTIPART,
-          headers,
-          mimeType: 'image/jpeg',
-        });
-        if (result.status >= 400) {
-          throw new Error(parseUploadError(result.body, 'Upload failed'));
-        }
-      }
-      showSuccess('Recibo enviado. El asistente IA lo está procesando.');
-      releasePreviewUrl();
-      goBackOrHome(navigation);
-    } catch (err: unknown) {
-      const msg = getErrorMessage(err, 'No se pudo procesar el recibo');
-      showError(msg.includes('413') ? 'La imagen es muy pesada. Intenta con otra foto.' : msg);
-    } finally {
-      setUploading(false);
-    }
-  };
+    await submitReceipt({ uri: capturedImage, file: compressedFile ?? undefined });
+  }, [capturedImage, compressedFile, submitReceipt]);
 
   const resetConfirm = () => {
     releasePreviewUrl();
@@ -274,6 +309,30 @@ export function ReceiptScannerScreen() {
     </GlassCard>
   );
 
+  const renderProcessing = () => (
+    <GlassCard
+      style={{
+        position: 'absolute',
+        bottom: insets.bottom + spacing.md,
+        left: spacing.container,
+        right: spacing.container,
+      }}
+    >
+      <View
+        accessible
+        accessibilityRole="text"
+        accessibilityLiveRegion="polite"
+        accessibilityLabel="Procesando tu recibo…"
+        style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm }}
+      >
+        <Dial progress={0.65} size={48} />
+        <Text style={[typography.titleMd, { color: colors.onSurface, flex: 1 }]}>
+          Procesando tu recibo…
+        </Text>
+      </View>
+    </GlassCard>
+  );
+
   const renderBottomActions = (onCamera: () => void, onGallery: () => void) => (
     <View style={IS_WEB
       ? { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg, paddingHorizontal: spacing.container }
@@ -310,6 +369,17 @@ export function ReceiptScannerScreen() {
       </View>
     </View>
   );
+
+  // A shared receipt is uploaded without waiting for the camera or a manual
+  // tap. Keep the status visible on web and native, even before permissions.
+  if (autoUploading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        {renderHeader()}
+        {renderProcessing()}
+      </View>
+    );
+  }
 
   if (IS_WEB) {
     return (

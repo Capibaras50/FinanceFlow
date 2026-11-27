@@ -2,6 +2,10 @@ packages:
   - "apps/*"
   - "packages/*"
 
+# pnpm 12 ignores node-linker in .npmrc; this must live here to keep
+# node_modules flat and avoid CMake's 250-char object path limit on Windows.
+nodeLinker: hoisted
+
 allowBuilds:
   "@nestjs/core": true
   '@scarf/scarf': false

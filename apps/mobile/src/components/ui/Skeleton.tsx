@@ -452,9 +452,9 @@ export function SkeletonWalletCards({
           />
           <SkeletonLine width="70%" height={16} />
           <SkeletonLine width="86%" height={22} />
-          <View accessible={false} style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <SkeletonLine width={64} height={19} />
-            <SkeletonLine width={64} height={19} />
+          <View accessible={false} style={{ gap: spacing.xs }}>
+            <SkeletonLine width={96} height={19} />
+            <SkeletonLine width={88} height={19} />
           </View>
         </View>
       ))}

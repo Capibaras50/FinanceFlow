@@ -140,14 +140,22 @@ export function HomeScreen() {
               gap: spacing.xl,
             }}
           >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-                <Glyph name="wallet" tone="primary" size={48} />
-                <View>
-                  <Text style={[typography.labelLg, { color: colors.onSurfaceVariant }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm }}>
+              <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                <Glyph name="wallet" tone="primary" size={48} style={{ flexShrink: 0 }} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={[typography.labelLg, { color: colors.onSurfaceVariant }]}
+                  >
                     Finance Flow
                   </Text>
-                  <Text style={[typography.headlineSm, { color: colors.onSurface }]}>
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={[typography.headlineSm, { color: colors.onSurface }]}
+                  >
                     ¡Hola, {user?.profile?.name || 'Usuario'}!
                   </Text>
                 </View>
@@ -161,7 +169,7 @@ export function HomeScreen() {
                     : 'Notificaciones'
                 }
                 hitSlop={8}
-                style={{ borderRadius: borderRadius.md }}
+                style={{ flexShrink: 0, borderRadius: borderRadius.md }}
               >
                 <Glyph
                   name="notifications"
@@ -298,7 +306,7 @@ export function HomeScreen() {
                 <View style={{ gap: spacing.sm }}>
                   {recentTransactions.map((t) => (
                     <LedgerPressable
-                      key={t.id}
+                      key={`${t._type}-${t.id}`}
                       onPress={() => navigation.navigate('TransactionDetail', { transactionId: t.id, type: t._type })}
                       accessibilityRole="button"
                       accessibilityLabel={`Ver detalle de ${t.name}`}
